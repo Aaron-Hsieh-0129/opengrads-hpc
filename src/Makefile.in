@@ -13,6 +13,15 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
+######################################################################
+
+######################################################################
+#
+# Targets
+#
+
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -87,7 +96,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = .
+bin_PROGRAMS = grads$(EXEEXT) sgrads$(EXEEXT) gribmap$(EXEEXT) \
+	stnmap$(EXEEXT) wgrib$(EXEEXT) gribscan$(EXEEXT) \
+	bufrscan$(EXEEXT) grib2scan$(EXEEXT)
+EXTRA_PROGRAMS =
+subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/Xaw.m4 \
 	$(top_srcdir)/m4/ga_lib_readline.m4 $(top_srcdir)/m4/gd.m4 \
@@ -98,14 +111,96 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/Xaw.m4 \
 	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
-	$(am__configure_deps) $(am__DIST_COMMON)
-am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
- configure.lineno config.status.lineno
+DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
+	$(am__DIST_COMMON)
 mkinstalldirs = $(SHELL) $(top_srcdir)/etc/mkinstalldirs
-CONFIG_HEADER = $(top_builddir)/src/config.h
+CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+am__installdirs = "$(DESTDIR)$(bindir)"
+PROGRAMS = $(bin_PROGRAMS)
+am_bufrscan_OBJECTS = bufrscan.$(OBJEXT) gabufr.$(OBJEXT) \
+	gabufrtbl.$(OBJEXT) gamach.$(OBJEXT)
+bufrscan_OBJECTS = $(am_bufrscan_OBJECTS)
+bufrscan_LDADD = $(LDADD)
+bufrscan_DEPENDENCIES =
+am__grads_SOURCES_DIST = main.c grads.c gxsubs.c gxmeta.c gxchpl.c \
+	gxcntr.c gxstrm.c gxwmap.c gxshad.c gxshad2.c gaexpr.c \
+	gafunc.c gautil.c gagx.c gscrpt.c gamach.c bufrstn.c gabufr.c \
+	gabufrtbl.c gxX.c gxdxwd.c galloc.c gagui.c gsgui.c dodstn.c \
+	gaddes.c gaio.c gacfg.c gauser.c gasdf.c gatxt.c gaudx.c gxC.c \
+	gxprint.c gxdb.c
+@USEGUI_TRUE@am__objects_1 = gagui.$(OBJEXT) gsgui.$(OBJEXT)
+@USEGADAP_TRUE@am__objects_2 = dodstn.$(OBJEXT)
+am_grads_OBJECTS = main.$(OBJEXT) grads.$(OBJEXT) gxsubs.$(OBJEXT) \
+	gxmeta.$(OBJEXT) gxchpl.$(OBJEXT) gxcntr.$(OBJEXT) \
+	gxstrm.$(OBJEXT) gxwmap.$(OBJEXT) gxshad.$(OBJEXT) \
+	gxshad2.$(OBJEXT) gaexpr.$(OBJEXT) gafunc.$(OBJEXT) \
+	gautil.$(OBJEXT) gagx.$(OBJEXT) gscrpt.$(OBJEXT) \
+	gamach.$(OBJEXT) bufrstn.$(OBJEXT) gabufr.$(OBJEXT) \
+	gabufrtbl.$(OBJEXT) gxX.$(OBJEXT) gxdxwd.$(OBJEXT) \
+	galloc.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
+	gaddes.$(OBJEXT) gaio.$(OBJEXT) gacfg.$(OBJEXT) \
+	gauser.$(OBJEXT) gasdf.$(OBJEXT) gatxt.$(OBJEXT) \
+	gaudx.$(OBJEXT) gxC.$(OBJEXT) gxprint.$(OBJEXT) gxdb.$(OBJEXT)
+grads_OBJECTS = $(am_grads_OBJECTS)
+am__DEPENDENCIES_1 =
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+grads_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_grib2scan_OBJECTS = grib2scan.$(OBJEXT) gamach.$(OBJEXT) \
+	galloc.$(OBJEXT)
+grib2scan_OBJECTS = $(am_grib2scan_OBJECTS)
+grib2scan_DEPENDENCIES = gautil.sa.o gatxt.o $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_gribmap_OBJECTS = gribmap.$(OBJEXT) gagmap.$(OBJEXT) \
+	gamach.$(OBJEXT) galloc.$(OBJEXT)
+gribmap_OBJECTS = $(am_gribmap_OBJECTS)
+gribmap_DEPENDENCIES = gaddes.sa.o gautil.sa.o gatxt.o \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+am_gribscan_OBJECTS = gribscan.$(OBJEXT) gamach.$(OBJEXT) \
+	galloc.$(OBJEXT)
+gribscan_OBJECTS = $(am_gribscan_OBJECTS)
+gribscan_DEPENDENCIES = gautil.sa.o gatxt.o $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+am__sgrads_SOURCES_DIST = smain.c grads.c gxsubs.c gxmeta.c gxchpl.c \
+	gxcntr.c gxstrm.c gxwmap.c gxshad.c gxshad2.c gaexpr.c \
+	gafunc.c gautil.c gagx.c gscrpt.c gamach.c bufrstn.c gabufr.c \
+	gabufrtbl.c gxX-stubs.c galloc.c gagui.c gsgui.c dodstn.c \
+	gaddes.c gaio.c gacfg.c gauser.c gasdf.c gatxt.c gaudx.c gxC.c \
+	gxprint.c gxdb.c
+am_sgrads_OBJECTS = smain.$(OBJEXT) grads.$(OBJEXT) gxsubs.$(OBJEXT) \
+	gxmeta.$(OBJEXT) gxchpl.$(OBJEXT) gxcntr.$(OBJEXT) \
+	gxstrm.$(OBJEXT) gxwmap.$(OBJEXT) gxshad.$(OBJEXT) \
+	gxshad2.$(OBJEXT) gaexpr.$(OBJEXT) gafunc.$(OBJEXT) \
+	gautil.$(OBJEXT) gagx.$(OBJEXT) gscrpt.$(OBJEXT) \
+	gamach.$(OBJEXT) bufrstn.$(OBJEXT) gabufr.$(OBJEXT) \
+	gabufrtbl.$(OBJEXT) gxX-stubs.$(OBJEXT) galloc.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_2) gaddes.$(OBJEXT) \
+	gaio.$(OBJEXT) gacfg.$(OBJEXT) gauser.$(OBJEXT) \
+	gasdf.$(OBJEXT) gatxt.$(OBJEXT) gaudx.$(OBJEXT) gxC.$(OBJEXT) \
+	gxprint.$(OBJEXT) gxdb.$(OBJEXT)
+sgrads_OBJECTS = $(am_sgrads_OBJECTS)
+sgrads_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_stnmap_OBJECTS = stnmap.$(OBJEXT) gamach.$(OBJEXT) galloc.$(OBJEXT)
+stnmap_OBJECTS = $(am_stnmap_OBJECTS)
+stnmap_DEPENDENCIES = gaddes.sa.o gautil.sa.o gatxt.o \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_wgrib_OBJECTS = wgrib.$(OBJEXT)
+wgrib_OBJECTS = $(am_wgrib_OBJECTS)
+wgrib_LDADD = $(LDADD)
+wgrib_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -118,32 +213,37 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
+DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp =
 am__depfiles_maybe =
-SOURCES =
-DIST_SOURCES =
-RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
-	ctags-recursive dvi-recursive html-recursive info-recursive \
-	install-data-recursive install-dvi-recursive \
-	install-exec-recursive install-html-recursive \
-	install-info-recursive install-pdf-recursive \
-	install-ps-recursive install-recursive installcheck-recursive \
-	installdirs-recursive pdf-recursive ps-recursive \
-	tags-recursive uninstall-recursive
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_@AM_V@)
+am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
+am__v_CC_0 = @echo "  CC      " $@;
+am__v_CC_1 = 
+CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_@AM_V@)
+am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
+am__v_CCLD_0 = @echo "  CCLD    " $@;
+am__v_CCLD_1 = 
+SOURCES = $(bufrscan_SOURCES) $(grads_SOURCES) $(EXTRA_grads_SOURCES) \
+	$(grib2scan_SOURCES) $(gribmap_SOURCES) $(gribscan_SOURCES) \
+	$(sgrads_SOURCES) $(EXTRA_sgrads_SOURCES) $(stnmap_SOURCES) \
+	$(wgrib_SOURCES)
+DIST_SOURCES = $(bufrscan_SOURCES) $(am__grads_SOURCES_DIST) \
+	$(EXTRA_grads_SOURCES) $(grib2scan_SOURCES) $(gribmap_SOURCES) \
+	$(gribscan_SOURCES) $(am__sgrads_SOURCES_DIST) \
+	$(EXTRA_sgrads_SOURCES) $(stnmap_SOURCES) $(wgrib_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
-  distclean-recursive maintainer-clean-recursive
-am__recursive_targets = \
-  $(RECURSIVE_TARGETS) \
-  $(RECURSIVE_CLEAN_TARGETS) \
-  $(am__extra_recursive_targets)
-AM_RECURSIVE_TARGETS = $(am__recursive_targets:-recursive=) TAGS CTAGS \
-	cscope distdir dist dist-all distcheck
-am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
+HEADERS = $(noinst_HEADERS)
+am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) \
+	$(LISP)config.h.in
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
 # *not* preserved.
@@ -162,56 +262,9 @@ am__define_uniq_tagged_files = \
   done | $(am__uniquify_input)`
 ETAGS = etags
 CTAGS = ctags
-CSCOPE = cscope
-DIST_SUBDIRS = $(SUBDIRS)
-am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/etc/compile \
-	$(top_srcdir)/etc/config.guess $(top_srcdir)/etc/config.sub \
-	$(top_srcdir)/etc/install-sh $(top_srcdir)/etc/missing \
-	$(top_srcdir)/etc/mkinstalldirs AUTHORS COPYING ChangeLog \
-	INSTALL NEWS README etc/compile etc/config.guess \
-	etc/config.sub etc/install-sh etc/missing etc/mkinstalldirs
+am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
+	$(top_srcdir)/etc/mkinstalldirs
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-distdir = $(PACKAGE)-$(VERSION)
-top_distdir = $(distdir)
-am__remove_distdir = \
-  if test -d "$(distdir)"; then \
-    find "$(distdir)" -type d ! -perm -200 -exec chmod u+w {} ';' \
-      && rm -rf "$(distdir)" \
-      || { sleep 5 && rm -rf "$(distdir)"; }; \
-  else :; fi
-am__post_remove_distdir = $(am__remove_distdir)
-am__relativize = \
-  dir0=`pwd`; \
-  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
-  sed_rest='s,^[^/]*/*,,'; \
-  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
-  sed_butlast='s,/*[^/]*$$,,'; \
-  while test -n "$$dir1"; do \
-    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
-    if test "$$first" != "."; then \
-      if test "$$first" = ".."; then \
-        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
-        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
-      else \
-        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
-        if test "$$first2" = "$$first"; then \
-          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
-        else \
-          dir2="../$$dir2"; \
-        fi; \
-        dir0="$$dir0"/"$$first"; \
-      fi; \
-    fi; \
-    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
-  done; \
-  reldir="$$dir2"
-DIST_ARCHIVES = $(distdir).tar.gz
-GZIP_ENV = --best
-DIST_TARGETS = dist-gzip
-distuninstallcheck_listfiles = find . -type f -print
-am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
-  | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
-distcleancheck_listfiles = find . -type f -print
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
@@ -361,109 +414,310 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ACLOCAL_AMFLAGS = -I m4 
+
+######################################################################
+#
+# Compiler and linker settings
+#
+
+# Paths to external headers and libraries
+supp_include_dir = $(SUPPLIBS)/include
+supp_lib_dir = $(SUPPLIBS)/lib
+
+# Settings used for all binaries
+LDADD = -L$(supp_lib_dir) 
+AM_CPPFLAGS = -DOPENGRADS \
+                          $(readline_inc) $(printim_inc) $(grib2_inc) $(gui_inc) $(nc_inc) \
+			  $(hdf_inc) $(hdf5_inc) $(geotiff_inc) $(shp_inc) $(gadap_inc) \
+                          $(X_CFLAGS) $(XAW_CFLAGS) $(GD_CFLAGS) $(HDF4_CFLAGS) $(cairo_inc)
+
+
+# Settings used for all GrADS binaries
+common_ldadd = $(LDADD) $(X_LIBS) $(host_ldadd) -lX11
+
+######################################################################
+#
+# Headers and data
+#
+
+# Headers must be listed here to be included in the distribution.  The
+# "noinst_" prefix prevents "make install" from trying to do anything
+# with them
+hdr_core = gagmap.h grads.h gs.h gatypes.h \
+		      gvt.h gx.h gxmap.h wx.h
+
+hdr_bufr = gabufr.h
+hdr_x11 = gx.h bitmaps.h
+hdr_sdf = gasdf.h gasdf_std_time.h 
+hdr_gui = gagui.h
+hdr_png = mtables.c
+hdr_cairo = gxC.h
+noinst_HEADERS = $(hdr_core) $(hdr_x11) $(hdr_sdf) $(hdr_png) $(hdr_gui) $(hdr_bufr) $(hdr_cairo)
+
+# Get rid of buildinfo.h on "make distclean"
+DISTCLEANFILES = buildinfo.h
+
+######################################################################
+#
+# Configuration-dependent sources & headers
+#
+@USEGADAP_TRUE@src_gadap = dodstn.c
+@USEGADAP_TRUE@obj_gadap = dodstn.o
+@USEGUI_TRUE@src_gui = gagui.c gsgui.c
 
 ##############################################################
 #
-# Subdirectories with Makefiles
+# Sources for GrADS binary
+
+# Source files to be compiled
+grads_SOURCES = main.c grads.c gxsubs.c gxmeta.c gxchpl.c gxcntr.c gxstrm.c \
+			 gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
+			 gscrpt.c gamach.c bufrstn.c gabufr.c gabufrtbl.c \
+			 gxX.c gxdxwd.c galloc.c $(src_gui) $(src_gadap) \
+                         gaddes.c gaio.c gacfg.c gauser.c gasdf.c gatxt.c gaudx.c \
+                         gxC.c gxprint.c gxdb.c
+
+
+# Sources that will not always be compiled
+# Since gradsc is the only GrADS binary that is not conditionally compiled,
+# any source file that we want to go in the distribution must be listed.
+#EXTRA_grads_SOURCES    = gagmap.c gagui.c gsgui.c gxhpng.c dodstn.c
+EXTRA_grads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c
+
+# libraries needed 
+grads_LDADD = $(common_ldadd) $(readline_libs) $(printim_libs) \
+			 $(grib2_libs) $(hdf_libs) $(hdf5_libs) $(nc_libs) \
+			 $(gui_libs) $(geotiff_libs) $(shp_libs) $(dap_libs) $(cairo_libs)
+
+
+# Custom compilation for object files specific to this GrADS binary
+COMPILE_C = $(COMPILE) 
+
+##############################################################
 #
-SUBDIRS = src pytests
-BINDISTFILES = COPYING INSTALL NEWS README
-DATADISTFILES = data
-DOCDISTFILES = doc
-EXTRA_DIST = $(BINDISTFILES) $(DATADISTFILES) $(DOCDISTFILES)
-all: all-recursive
+# Sources for Secure GrADS binary
+
+# Source files to be compiled
+sgrads_SOURCES = smain.c grads.c gxsubs.c gxmeta.c gxchpl.c gxcntr.c gxstrm.c \
+			 gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
+			 gscrpt.c gamach.c bufrstn.c gabufr.c gabufrtbl.c \
+			 gxX-stubs.c galloc.c $(src_gui) $(src_gadap) \
+                         gaddes.c gaio.c gacfg.c gauser.c gasdf.c gatxt.c gaudx.c \
+                         gxC.c gxprint.c gxdb.c
+
+
+# Sources that will not always be compiled
+# Since gradsc is the only GrADS binary that is not conditionally compiled,
+# any source file that we want to go in the distribution must be listed.
+#EXTRA_grads_SOURCES    = gagmap.c gagui.c gsgui.c gxhpng.c dodstn.c
+EXTRA_sgrads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c
+
+# libraries needed 
+sgrads_LDADD = $(common_ldadd) $(readline_libs) $(printim_libs) \
+			 $(grib2_libs) $(hdf_libs) $(hdf5_libs) $(nc_libs) \
+			 $(gui_libs) $(geotiff_libs) $(shp_libs) $(dap_libs) $(cairo_libs)
+
+@USEGADAP_FALSE@grads_LINK = $(CC) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+
+##############################################################
+#
+# gradsdap
+#
+
+# If gadap is enabled, use C++ linker instead of C linker
+@USEGADAP_TRUE@grads_LINK = $(CXX) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+@USEGADAP_FALSE@sgrads_LINK = $(CC) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+@USEGADAP_TRUE@sgrads_LINK = $(CXX) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+
+# Object files that should not be reused by the other GrADS binaries,
+# plus libraries needed by this GrADS binary
+
+# Custom compilation for object files specific to this GrADS binary
+COMPILE_DAP = $(COMPILE) 
+
+##############################################################
+#
+# stnmap
+#
+stnmap_SOURCES = stnmap.c gamach.c galloc.c
+stnmap_LDADD = gaddes.sa.o gautil.sa.o gatxt.o $(LDADD) $(readline_libs)
+
+##############################################################
+#
+# gribmap
+#
+gribmap_SOURCES = gribmap.c gagmap.c gamach.c galloc.c
+gribmap_LDADD = gaddes.sa.o gautil.sa.o gatxt.o $(LDADD) $(readline_libs) $(grib2_libs)
+
+##############################################################
+#
+# wgrib
+#
+wgrib_SOURCES = wgrib.c
+
+##############################################################
+#
+# gribscan
+#
+gribscan_SOURCES = gribscan.c gamach.c galloc.c
+gribscan_LDADD = gautil.sa.o gatxt.o $(LDADD) $(readline_libs)
+
+##############################################################
+#
+# grib2scan
+#
+grib2scan_SOURCES = grib2scan.c gamach.c galloc.c
+grib2scan_LDADD = gautil.sa.o gatxt.o $(LDADD) $(grib2_libs) $(readline_libs)
+
+##############################################################
+#
+# bufrscan
+#
+bufrscan_SOURCES = bufrscan.c gabufr.c gabufrtbl.c gamach.c
+all: config.h
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-am--refresh: Makefile
-	@:
+.SUFFIXES: .c .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --gnu --ignore-deps'; \
-	      $(am__cd) $(srcdir) && $(AUTOMAKE) --gnu --ignore-deps \
-		&& exit 0; \
+	      ( cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh ) \
+	        && { if test -f $@; then exit 0; else break; fi; }; \
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu --ignore-deps Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu --ignore-deps src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu --ignore-deps Makefile
+	  $(AUTOMAKE) --gnu --ignore-deps src/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
-	    echo ' $(SHELL) ./config.status'; \
-	    $(SHELL) ./config.status;; \
+	    cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh;; \
 	  *) \
-	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
-	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
+	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe)'; \
+	    cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe);; \
 	esac;
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
-	$(SHELL) ./config.status --recheck
+	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
 $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
-	$(am__cd) $(srcdir) && $(AUTOCONF)
+	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
-	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
+	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-# This directory's subdirectories are mostly independent; you can cd
-# into them and run 'make' without going through this Makefile.
-# To change the values of 'make' variables: instead of editing Makefiles,
-# (1) if the variable is set in 'config.status', edit 'config.status'
-#     (which will cause the Makefiles to be regenerated when you run 'make');
-# (2) otherwise, pass the desired values on the 'make' command line.
-$(am__recursive_targets):
-	@fail=; \
-	if $(am__make_keepgoing); then \
-	  failcom='fail=yes'; \
-	else \
-	  failcom='exit 1'; \
+config.h: stamp-h1
+	@test -f $@ || rm -f stamp-h1
+	@test -f $@ || $(MAKE) $(AM_MAKEFLAGS) stamp-h1
+
+stamp-h1: $(srcdir)/config.h.in $(top_builddir)/config.status
+	@rm -f stamp-h1
+	cd $(top_builddir) && $(SHELL) ./config.status src/config.h
+$(srcdir)/config.h.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps) 
+	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
+	rm -f stamp-h1
+	touch $@
+
+distclean-hdr:
+	-rm -f config.h stamp-h1
+install-binPROGRAMS: $(bin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
 	fi; \
-	dot_seen=no; \
-	target=`echo $@ | sed s/-recursive//`; \
-	case "$@" in \
-	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
-	  *) list='$(SUBDIRS)' ;; \
-	esac; \
-	for subdir in $$list; do \
-	  echo "Making $$target in $$subdir"; \
-	  if test "$$subdir" = "."; then \
-	    dot_seen=yes; \
-	    local_target="$$target-am"; \
-	  else \
-	    local_target="$$target"; \
-	  fi; \
-	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
-	  || eval $$failcom; \
-	done; \
-	if test "$$dot_seen" = "no"; then \
-	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
-	fi; test -z "$$fail"
+	for p in $$list; do echo "$$p $$p"; done | \
+	sed 's/$(EXEEXT)$$//' | \
+	while read p p1; do if test -f $$p \
+	  ; then echo "$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n;h' \
+	    -e 's|.*|.|' \
+	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
+	sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
+	    else { print "f", $$3 "/" $$4, $$1; } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	    test -z "$$files" || { \
+	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	    } \
+	; done
+
+uninstall-binPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
+	      -e 's/$$/$(EXEEXT)/' \
+	`; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(bindir)" && rm -f $$files
+
+clean-binPROGRAMS:
+	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+
+bufrscan$(EXEEXT): $(bufrscan_OBJECTS) $(bufrscan_DEPENDENCIES) $(EXTRA_bufrscan_DEPENDENCIES) 
+	@rm -f bufrscan$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(bufrscan_OBJECTS) $(bufrscan_LDADD) $(LIBS)
+
+grads$(EXEEXT): $(grads_OBJECTS) $(grads_DEPENDENCIES) $(EXTRA_grads_DEPENDENCIES) 
+	@rm -f grads$(EXEEXT)
+	$(AM_V_GEN)$(grads_LINK) $(grads_OBJECTS) $(grads_LDADD) $(LIBS)
+
+grib2scan$(EXEEXT): $(grib2scan_OBJECTS) $(grib2scan_DEPENDENCIES) $(EXTRA_grib2scan_DEPENDENCIES) 
+	@rm -f grib2scan$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(grib2scan_OBJECTS) $(grib2scan_LDADD) $(LIBS)
+
+gribmap$(EXEEXT): $(gribmap_OBJECTS) $(gribmap_DEPENDENCIES) $(EXTRA_gribmap_DEPENDENCIES) 
+	@rm -f gribmap$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gribmap_OBJECTS) $(gribmap_LDADD) $(LIBS)
+
+gribscan$(EXEEXT): $(gribscan_OBJECTS) $(gribscan_DEPENDENCIES) $(EXTRA_gribscan_DEPENDENCIES) 
+	@rm -f gribscan$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(gribscan_OBJECTS) $(gribscan_LDADD) $(LIBS)
+
+sgrads$(EXEEXT): $(sgrads_OBJECTS) $(sgrads_DEPENDENCIES) $(EXTRA_sgrads_DEPENDENCIES) 
+	@rm -f sgrads$(EXEEXT)
+	$(AM_V_GEN)$(sgrads_LINK) $(sgrads_OBJECTS) $(sgrads_LDADD) $(LIBS)
+
+stnmap$(EXEEXT): $(stnmap_OBJECTS) $(stnmap_DEPENDENCIES) $(EXTRA_stnmap_DEPENDENCIES) 
+	@rm -f stnmap$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(stnmap_OBJECTS) $(stnmap_LDADD) $(LIBS)
+
+wgrib$(EXEEXT): $(wgrib_OBJECTS) $(wgrib_DEPENDENCIES) $(EXTRA_wgrib_DEPENDENCIES) 
+	@rm -f wgrib$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(wgrib_OBJECTS) $(wgrib_LDADD) $(LIBS)
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+
+distclean-compile:
+	-rm -f *.tab.c
+
+.c.o:
+	$(AM_V_CC)$(COMPILE) -c -o $@ $<
+
+.c.obj:
+	$(AM_V_CC)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
-tags: tags-recursive
+tags: tags-am
 TAGS: tags
 
 tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	set x; \
 	here=`pwd`; \
-	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
-	  include_option=--etags-include; \
-	  empty_fix=.; \
-	else \
-	  include_option=--include; \
-	  empty_fix=; \
-	fi; \
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    test ! -f $$subdir/TAGS || \
-	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
-	  fi; \
-	done; \
 	$(am__define_uniq_tagged_files); \
 	shift; \
 	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
@@ -476,7 +730,7 @@ tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	      $$unique; \
 	  fi; \
 	fi
-ctags: ctags-recursive
+ctags: ctags-am
 
 CTAGS: ctags
 ctags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
@@ -489,13 +743,7 @@ GTAGS:
 	here=`$(am__cd) $(top_builddir) && pwd` \
 	  && $(am__cd) $(top_srcdir) \
 	  && gtags -i $(GTAGS_ARGS) "$$here"
-cscope: cscope.files
-	test ! -s cscope.files \
-	  || $(CSCOPE) -b -q $(AM_CSCOPEFLAGS) $(CSCOPEFLAGS) -i cscope.files $(CSCOPE_ARGS)
-clean-cscope:
-	-rm -f cscope.files
-cscope.files: clean-cscope cscopelist
-cscopelist: cscopelist-recursive
+cscopelist: cscopelist-am
 
 cscopelist-am: $(am__tagged_files)
 	list='$(am__tagged_files)'; \
@@ -513,11 +761,8 @@ cscopelist-am: $(am__tagged_files)
 
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
-	-rm -f cscope.out cscope.in.out cscope.po.out cscope.files
 
 distdir: $(DISTFILES)
-	$(am__remove_distdir)
-	test -d "$(distdir)" || mkdir "$(distdir)"
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
 	list='$(DISTFILES)'; \
@@ -547,176 +792,22 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
-	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    $(am__make_dryrun) \
-	      || test -d "$(distdir)/$$subdir" \
-	      || $(MKDIR_P) "$(distdir)/$$subdir" \
-	      || exit 1; \
-	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
-	    $(am__relativize); \
-	    new_distdir=$$reldir; \
-	    dir1=$$subdir; dir2="$(top_distdir)"; \
-	    $(am__relativize); \
-	    new_top_distdir=$$reldir; \
-	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
-	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
-	    ($(am__cd) $$subdir && \
-	      $(MAKE) $(AM_MAKEFLAGS) \
-	        top_distdir="$$new_top_distdir" \
-	        distdir="$$new_distdir" \
-		am__remove_distdir=: \
-		am__skip_length_check=: \
-		am__skip_mode_fix=: \
-	        distdir) \
-	      || exit 1; \
-	  fi; \
-	done
-	-test -n "$(am__skip_mode_fix)" \
-	|| find "$(distdir)" -type d ! -perm -755 \
-		-exec chmod u+rwx,go+rx {} \; -o \
-	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
-	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
-	  ! -type d ! -perm -444 -exec $(install_sh) -c -m a+r {} {} \; \
-	|| chmod -R a+r "$(distdir)"
-dist-gzip: distdir
-	tardir=$(distdir) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(distdir).tar.gz
-	$(am__post_remove_distdir)
-
-dist-bzip2: distdir
-	tardir=$(distdir) && $(am__tar) | BZIP2=$${BZIP2--9} bzip2 -c >$(distdir).tar.bz2
-	$(am__post_remove_distdir)
-
-dist-lzip: distdir
-	tardir=$(distdir) && $(am__tar) | lzip -c $${LZIP_OPT--9} >$(distdir).tar.lz
-	$(am__post_remove_distdir)
-
-dist-xz: distdir
-	tardir=$(distdir) && $(am__tar) | XZ_OPT=$${XZ_OPT--e} xz -c >$(distdir).tar.xz
-	$(am__post_remove_distdir)
-
-dist-tarZ: distdir
-	@echo WARNING: "Support for distribution archives compressed with" \
-		       "legacy program 'compress' is deprecated." >&2
-	@echo WARNING: "It will be removed altogether in Automake 2.0" >&2
-	tardir=$(distdir) && $(am__tar) | compress -c >$(distdir).tar.Z
-	$(am__post_remove_distdir)
-
-dist-shar: distdir
-	@echo WARNING: "Support for shar distribution archives is" \
-	               "deprecated." >&2
-	@echo WARNING: "It will be removed altogether in Automake 2.0" >&2
-	shar $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir).shar.gz
-	$(am__post_remove_distdir)
-
-dist-zip: distdir
-	-rm -f $(distdir).zip
-	zip -rq $(distdir).zip $(distdir)
-	$(am__post_remove_distdir)
-
-dist dist-all:
-	$(MAKE) $(AM_MAKEFLAGS) $(DIST_TARGETS) am__post_remove_distdir='@:'
-	$(am__post_remove_distdir)
-
-# This target untars the dist file and tries a VPATH configuration.  Then
-# it guarantees that the distribution is self-contained by making another
-# tarfile.
-distcheck: dist
-	case '$(DIST_ARCHIVES)' in \
-	*.tar.gz*) \
-	  GZIP=$(GZIP_ENV) gzip -dc $(distdir).tar.gz | $(am__untar) ;;\
-	*.tar.bz2*) \
-	  bzip2 -dc $(distdir).tar.bz2 | $(am__untar) ;;\
-	*.tar.lz*) \
-	  lzip -dc $(distdir).tar.lz | $(am__untar) ;;\
-	*.tar.xz*) \
-	  xz -dc $(distdir).tar.xz | $(am__untar) ;;\
-	*.tar.Z*) \
-	  uncompress -c $(distdir).tar.Z | $(am__untar) ;;\
-	*.shar.gz*) \
-	  GZIP=$(GZIP_ENV) gzip -dc $(distdir).shar.gz | unshar ;;\
-	*.zip*) \
-	  unzip $(distdir).zip ;;\
-	esac
-	chmod -R a-w $(distdir)
-	chmod u+w $(distdir)
-	mkdir $(distdir)/_build $(distdir)/_build/sub $(distdir)/_inst
-	chmod a-w $(distdir)
-	test -d $(distdir)/_build || exit 0; \
-	dc_install_base=`$(am__cd) $(distdir)/_inst && pwd | sed -e 's,^[^:\\/]:[\\/],/,'` \
-	  && dc_destdir="$${TMPDIR-/tmp}/am-dc-$$$$/" \
-	  && am__cwd=`pwd` \
-	  && $(am__cd) $(distdir)/_build/sub \
-	  && ../../configure \
-	    $(AM_DISTCHECK_CONFIGURE_FLAGS) \
-	    $(DISTCHECK_CONFIGURE_FLAGS) \
-	    --srcdir=../.. --prefix="$$dc_install_base" \
-	  && $(MAKE) $(AM_MAKEFLAGS) \
-	  && $(MAKE) $(AM_MAKEFLAGS) dvi \
-	  && $(MAKE) $(AM_MAKEFLAGS) check \
-	  && $(MAKE) $(AM_MAKEFLAGS) install \
-	  && $(MAKE) $(AM_MAKEFLAGS) installcheck \
-	  && $(MAKE) $(AM_MAKEFLAGS) uninstall \
-	  && $(MAKE) $(AM_MAKEFLAGS) distuninstallcheck_dir="$$dc_install_base" \
-	        distuninstallcheck \
-	  && chmod -R a-w "$$dc_install_base" \
-	  && ({ \
-	       (cd ../.. && umask 077 && mkdir "$$dc_destdir") \
-	       && $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$dc_destdir" install \
-	       && $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$dc_destdir" uninstall \
-	       && $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$dc_destdir" \
-	            distuninstallcheck_dir="$$dc_destdir" distuninstallcheck; \
-	      } || { rm -rf "$$dc_destdir"; exit 1; }) \
-	  && rm -rf "$$dc_destdir" \
-	  && $(MAKE) $(AM_MAKEFLAGS) dist \
-	  && rm -rf $(DIST_ARCHIVES) \
-	  && $(MAKE) $(AM_MAKEFLAGS) distcleancheck \
-	  && cd "$$am__cwd" \
-	  || exit 1
-	$(am__post_remove_distdir)
-	@(echo "$(distdir) archives ready for distribution: "; \
-	  list='$(DIST_ARCHIVES)'; for i in $$list; do echo $$i; done) | \
-	  sed -e 1h -e 1s/./=/g -e 1p -e 1x -e '$$p' -e '$$x'
-distuninstallcheck:
-	@test -n '$(distuninstallcheck_dir)' || { \
-	  echo 'ERROR: trying to run $@ with an empty' \
-	       '$$(distuninstallcheck_dir)' >&2; \
-	  exit 1; \
-	}; \
-	$(am__cd) '$(distuninstallcheck_dir)' || { \
-	  echo 'ERROR: cannot chdir into $(distuninstallcheck_dir)' >&2; \
-	  exit 1; \
-	}; \
-	test `$(am__distuninstallcheck_listfiles) | wc -l` -eq 0 \
-	   || { echo "ERROR: files left after uninstall:" ; \
-	        if test -n "$(DESTDIR)"; then \
-	          echo "  (check DESTDIR support)"; \
-	        fi ; \
-	        $(distuninstallcheck_listfiles) ; \
-	        exit 1; } >&2
-distcleancheck: distclean
-	@if test '$(srcdir)' = . ; then \
-	  echo "ERROR: distcleancheck can only run from a VPATH build" ; \
-	  exit 1 ; \
-	fi
-	@test `$(distcleancheck_listfiles) | wc -l` -eq 0 \
-	  || { echo "ERROR: files left in build directory after distclean:" ; \
-	       $(distcleancheck_listfiles) ; \
-	       exit 1; } >&2
 check-am: all-am
-check: check-recursive
-all-am: Makefile
-installdirs: installdirs-recursive
-installdirs-am:
-install: install-recursive
-install-exec: install-exec-recursive
-install-data: install-data-recursive
-uninstall: uninstall-recursive
+check: check-am
+all-am: Makefile $(PROGRAMS) $(HEADERS) config.h
+installdirs:
+	for dir in "$(DESTDIR)$(bindir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
+install: install-am
+install-exec: install-exec-am
+install-data: install-data-am
+uninstall: uninstall-am
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-recursive
+installcheck: installcheck-am
 install-strip:
 	if test -z '$(STRIP)'; then \
 	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
@@ -734,226 +825,111 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-clean: clean-recursive
+clean: clean-am
 
-clean-am: clean-generic mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
-distclean: distclean-recursive
-	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
+distclean: distclean-am
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic distclean-tags
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-hdr distclean-tags
 
-dvi: dvi-recursive
+dvi: dvi-am
 
 dvi-am:
 
-html: html-recursive
+html: html-am
 
 html-am:
 
-info: info-recursive
+info: info-am
 
 info-am:
 
 install-data-am:
 
-install-dvi: install-dvi-recursive
+install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-binPROGRAMS
 
-install-html: install-html-recursive
+install-html: install-html-am
 
 install-html-am:
 
-install-info: install-info-recursive
+install-info: install-info-am
 
 install-info-am:
 
 install-man:
 
-install-pdf: install-pdf-recursive
+install-pdf: install-pdf-am
 
 install-pdf-am:
 
-install-ps: install-ps-recursive
+install-ps: install-ps-am
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-recursive
-	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf $(top_srcdir)/autom4te.cache
+maintainer-clean: maintainer-clean-am
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-recursive
+mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic
 
-pdf: pdf-recursive
+pdf: pdf-am
 
 pdf-am:
 
-ps: ps-recursive
+ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-binPROGRAMS
 
-.MAKE: $(am__recursive_targets) install-am install-strip
+.MAKE: all install-am install-strip
 
-.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
-	am--refresh check check-am clean clean-cscope clean-generic \
-	cscope cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
-	dist-gzip dist-lzip dist-shar dist-tarZ dist-xz dist-zip \
-	distcheck distclean distclean-generic distclean-tags \
-	distcleancheck distdir distuninstallcheck dvi dvi-am html \
-	html-am info info-am install install-am install-data \
+.PHONY: CTAGS GTAGS TAGS all all-am check check-am clean \
+	clean-binPROGRAMS clean-generic cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic distclean-hdr \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-binPROGRAMS install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
 	install-info-am install-man install-pdf install-pdf-am \
 	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs installdirs-am maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
-	pdf-am ps ps-am tags tags-am uninstall uninstall-am
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-binPROGRAMS
 
 .PRECIOUS: Makefile
 
 
-# Indicate that these targets are not the names of files
-.PHONY: nobin-dists all-dists snapshot-dist bin-dist snapshot-bin-dist \
-	data-dist doc-dist
+# Convenience target
+utils: bufrscan gribscan gribmap stnmap wgrib $(extra_utils)
 
-dist-all: dist data-dist doc-dist
-
-src-dist:
-	@echo 
-	@echo "Creating tarball with sources"
-	@echo "-----------------------------"
-	$(CVS) export -r $(CVSTAG) -kk -d $(distdir) Grads
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-bundle.tar.gz; \
-	$(am__remove_distdir)
-
-bin-dist: all-am
-	$(MAKE) $(AM_MAKE_FLAGS) prefix=$(prefix)/$(distdir) install-exec; \
-	for file in $(BINDISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-bin-$(host_triplet).tar.gz; \
-	$(am__remove_distdir)
-
-gex-dist: 
-	mkdir -p $(distdir)/bin/gex
-	cd extensions; $(MAKE) $(AM_MAKE_FLAGS) bindir=$(prefix)/$(distdir)/bin install
-	for file in $(BINDISTFILES) ; do \
-	  cp -pR extensions/$$file $(distdir)/$$file-gex ; \
-	done; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-gex-$(host_triplet).tar.gz; \
-	$(am__remove_distdir)
-
-gex-check: binstall
-	cd extensions; $(MAKE) check
-
-bundle-dist: 
-	@bundle/bundle_create.sh $(distdir)
-	$(AMTAR) cvfz $(distdir)-bundle-$(host_triplet).tar.gz $(distdir) 
-	$(am__remove_distdir)
-
-data-dist:
-	mkdir -p $(distdir); \
-	for file in $(DATADISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-data.tar.gz; \
-	$(am__remove_distdir)
-
-doc-dist:
-	mkdir -p $(distdir); \
-	for file in $(DOCDISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-doc.tar.gz; \
-	$(am__remove_distdir)
-
-snapshot: distdir
-	mkdir -p $(distdir); \
-        cp -pR pytests $(distdir);\
-	rm -rf `find $(distdir) -name CVS`;\
-	rm -rf `find $(distdir) -name '*.pyc'`;\
-	date_str=`date '+%Y%m%d-%H%M'`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-snapshot-$${date_str}.tar.gz; \
-	$(am__remove_distdir)
-
-bin-snapshot: all-am
-	$(MAKE) $(AM_MAKE_FLAGS) prefix=$(prefix)/$(distdir) install-exec; \
-	for file in $(BINDISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`; \
-	date_str=`date '+%Y%m%d-%H%M'`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-bin-snapshot-$${date_str}.tar.gz; \
-	$(am__remove_distdir)
-
+##############################################################
 #
-# Bundle, gex installation targets
+# Utilities
 #
 
-Documentation.html: Documentation.php
-	php Documentation.php > Documentation.html
+# Object files that need to be recompiled for standalone utilities
+gaddes.sa.o: $(srcdir)/gaddes.c
+	$(COMPILE) -DSTNDALN -o gaddes.sa.o -c $(srcdir)/gaddes.c
 
-#
-# Bundle installation under local dir
-#
-binstall: 
-	@bundle/bundle_create.sh 
-
-#
-# Bundle installation under prefix
-#
-bundle-install: 
-	@bundle/bundle_create.sh 
-	@mkdir -p $(prefix)
-	@rm -rf .opengrads
-	@mv opengrads .opengrads
-	@mv .opengrads/Contents $(prefix)/OpenGrADS
-	@rm -rf .opengrads
-	@echo "Make sure to put $(prefix)/OpenGrADS in your path"
-
-#
-# Just binaries and gex
-#
-full-install: install
-	@mkdir -p $(prefix)/bin/gex
-	@cd extensions; $(MAKE) $(AM_MAKE_FLAGS) bindir=$(prefix)/bin install
-
-#
-#                                J A V A
-#                                -------
-
-java-dist: all-am
-	$(MAKE)
-	(cd Java; $(MAKE) grads.jar)
-	cp -p Java/grads.jar $(distdir).jar
-
-java-clean:
-	(cd Java; make clean)
-
-java-distclean:
-	(cd Java; make distclean)
-
-reallyclean:
-	$(MAKE) distclean
-	$(MAKE) java-distclean
+gautil.sa.o: $(srcdir)/gautil.c
+	$(COMPILE) -DSTNDALN -o gautil.sa.o -c $(srcdir)/gautil.c
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
