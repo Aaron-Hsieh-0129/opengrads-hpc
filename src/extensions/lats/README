@@ -1,0 +1,28 @@
+LATS4D
+------
+
+LATS4D (LATS for Dummies) is a minimum fuss gs script for writing
+NetCDF, HDF-SDS or GRIB files from GrADS using the PCMDI LATS
+interface. This script can serve as a general purpose file conversion
+and subsetting utility. Any GrADS readable file (GrADS IEEE, GSFC
+Phoenix, GRIB, NetCDF or HDF-SDS) can be subset and converted to GRIB,
+NetCDF, HDF-SDS or binary using a single command line. By using one of
+the regridding functions available to GrADS the output file can also
+be converted to a different horizontal grid resolution.
+
+When invoked without arguments from within GrADS this script will
+create a COARDS compliant NetCDF or file named .grads.lats.nc,
+with all the contents of the default file (all variables, levels,
+times). The file name and several other attributes can be customized
+at the command line, see the OPTIONS section in the manual page.
+
+LATS4D is included in the OpenGrADS Bundle 2.0.a7.oga.3 and later, with
+no additional installation neccesary. For manual installation
+instructions in other versions of GrADS see file INSTALL.
+
+SEE ALSO
+
+  Wiki page:    http://opengrads.org/wiki/index.php?title=LATS4D
+  Manual page:  http://opengrads.org/doc/scripts/lats4d/
+
+

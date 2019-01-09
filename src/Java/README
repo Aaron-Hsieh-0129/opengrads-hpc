@@ -1,0 +1,47 @@
+GrADS/VM
+========
+
+GrADS/VM is an EXPERIMENTAL version of GrADS that runs entirely under
+the Java Virtual Machine. GrADS/VM is based on the same C source code
+used in the other versions of GrADS and uses NestedVM for binary
+translation into Java Bytecode. This is done by having GCC compile to
+a MIPS binary which is then translated to a Java class file. Hence any
+application written in C, C++, Fortran, or any other language
+supported by GCC can be run in 100% pure Java with no source changes.
+
+Running it
+==========
+
+On the command line enter:
+
+% java -jar grads-x.y.z-superpack.jar
+
+where "x.y.z" is the version.  In order to run grads you need to
+separately download the support data (fonts, map datasets, etc.) and
+set the GADDIR and GASCRP enviroment variables as described in
+
+    http://grads.iges.org/grads/downloads.html
+
+Limitations
+===========
+
+So far we have been able to build a somewhat limitted version of grads
+which can read GRIB-1/2, HDF-4 and NetCDF-3; enter "q config" for a
+desriptions of the available features. Any attempt to build it more
+complex libraries (like DAP, HDF-5 and NetCDF-4) ran into a limitation
+of NestedVM engine: too many symbols. This may be circumveted by
+tinkering with the NestVM code but it requires a deeper undertanding
+of it. Another possibility (which I have not explored) is to use the
+NetCDF Java package and build interfaces to GrADS under NestVM. This
+runs contrary to the philosophy of building java byte code com C
+sources, but it may represented a more promising avenue as the NetCDF
+Java package is feature rich and stable. In any event, the graphics
+engine is already done in pure Java, so there is some precedence for
+mixing C/NestedVM code and Java already. If anyone would like to
+volunteer to further develop this concept please get in touch with the
+developers.
+
+Additional Information
+======================
+
+ http://opengrads.org/wiki/index.php?title=Building_GrADS_under_NestedVM_from_Sources

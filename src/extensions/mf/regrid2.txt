@@ -1,0 +1,875 @@
+		 openGrADS User-Defined Extenion 're2'
+	       http://sourceforge.net/projects/opengrads/
+ 		  				
+				 a.k.a.
+			       'REGRID2'
+
+			      Mike Fiorino
+				    
+			michael.fiorino@noaa.gov
+                                                      
+			    17 January, 1995
+			   23 November, 2009
+				
+
+*****************************************************************************
+    're2' is the opengrads user-defined extension (udx) version of my
+    grads user-defined function 'regrid2.'
+
+    functionally, re2 = regrid2
+
+    the original code was developed at NASA Goddard in 1994 and new
+    methods were added in 1995.  in 2009 a couple of minor bugs were
+    removewd and the code was made functionally consistent with Ben-Jei
+    Tsuang's <btsuang@yahoo.com> .c version of regrid2 're'
+
+    the original regrid2 documentation belows has been updated in the
+    following ways:
+
+      * installation is done during the build/installation of opengrads
+        versions 1.10 and 2.0 from http://opengrads.org
+
+      * regrid2 -> re2 and comments follow the '#' sign
+*****************************************************************************
+
+
+PREFACE:
+========
+
+re2 (f.n.a. regrid2) is a Grid Analysis and Display System (GrADS)
+user-defined extension originally implemented at the Development
+Division of the National Meteorological Center, but substantially
+improved and now features a simpler invocation syntax.  I have tested
+re2 extensively but undoubtedly (minor) bugs remain.  Please report
+problem to my email address above.
+
+This document only assumes you have a basic knowledge of GrADS and does
+not require experience with the original version regrid...
+
+
+GrADS USER DEFINED FUNCTIONS/EXTENSIONS:
+========================================
+
+A user-defined function/extension works like any other GrADS function
+(e.g., hcurl(u,v) ), but is external to GrADS itself.  In essence, the
+user-defined function capability is an interface specification between
+GrADS and codes developed by users in potentially other languages (e.g.,
+C and FORTRAN).
+
+NB: user-defined functions only operate in grads versions from COLA
+<=1.9 and in opengrads versions <=1.10
+
+NB: user-defined extensions are similar udfs except no disk i/o is used
+
+The re2 (regrid2) user-defined extension solves a common problem --
+transforming HORIZONTAL 2-D gridded fields from/to different
+resolutions/grid types for quantitative intercomparison.  For example, a
+model monthly mean precipitation field on a T126 gaussian grid can be
+compared to an observed climatology on a 2.5x2.5 grid using re2.
+re2 offers many transform options ranging from simple bilinear
+interpolation to box averaging with "voting."  Additional methods can be
+added to re2 as needed.
+
+
+DESCRIPTION:
+============
+
+re2 transforms two-dimensional (2-D) lat/lon GrADS grids from
+one grid type/resolution to another.  The input is any 2-D
+lat/lon grid defined by the current GrADS lat/lon dimension
+environment.  re2 handles input grids which are cyclically
+continuous in longitude and excludes undefined input grid values
+from participation in the transform.  If a valid transform cannot
+be made (i.e., insufficient defined data points), the output grid
+is set to undefined.  re2 supports two output grid types: 1)
+lat/lon with fixed increments; and 2) gaussian.  Four transforms
+are available: 1) box averaging for regridding fine to coarse
+grids; 2) box averaging with "voting" for noncontinuous/index
+data such, as soil type; 3) bilinear interpolation; and 4)
+4-point bessel interpolation.
+
+
+INSTALLATION:
+=============
+
+part of opengrads, but there are two environmental variables:
+
+GA1UDXT -- path of the 'udx table file' for opengrads 1.10, e.g.,
+
+setenv GA1UDXT /w21/app/opengrads1.10/bin/gex/udxt
+
+GA2UDXT -- path of udxt for opengrads version >= 2.0, e.g.,
+
+setenv GA2UDXT /w21/app/opengrads2.0/bin/gex/udxt
+
+the current udxt for v2.0 is given in appendix A
+
+
+
+USAGE:
+=====
+
+
+re2(G1,X1,X2,C1,X3,X4,X5,X6)
+
+G? = a GrADS grid expression (e.g., z or ave(z.3(t+0,t=120,1yr))
+X? = a float parameter
+C? = a character string parameter
+
+REQUIRED params:  G1, X1
+
+where:
+
+   G1     =  any valid GrADS grid expression  
+
+   X1     =  delta longitude (dlon) or # of gaussian longitudes on the
+	     GLOBE
+
+   X2     =  delta latitude (dlat) or # of gaussian latitudes on the GLOBE  
+
+   C1     =  character option string
+ 
+   X3     =  special case options #1
+
+   X4     =  special case options #2
+
+   X5 	  =  special case options #3
+
+   X6     =  special case options #4
+
+
+OPTION STRING:
+
+C1 consists of a sequence of up to four options separated by the
+underscore (_).  They are:
+
+ba	-	box averaging (the default does NOT have to be set)
+vt	-	"vote" interpolation or box averaging with voting
+bl	- 	bi-linear interpolation
+bs	-	3rd order Bessel interpolation
+
+igXXX   -	input grid is gaussian with XXX the number of
+		gaussian latitudes (e.g., ig92 for the NMC T62
+		grid).  XXX must be >= 8 and a multiple of four.
+		This param is used to invoke a more precise
+		calculation of the boundary between gaussian grid boxes
+
+
+maXXX  	- 
+
+minimum % (XXX) area which must be covered with DEFINED
+data boxes to be considered a valid interpolation.  Applies ONLY
+to box averaging without voting when the input grid has undefined
+points.  regrid v1.0 assumed ma was 0 or that if ANY input grid
+boxes contained defined data which intersected the output grid
+produced a box average.  This was clearly too liberal and ma is
+now set by default to 50% or that half the output grid box must
+be covered with defined data to produced a defined output grid
+point
+
+gg - 
+
+tells re2 that X1 and X2 are the number of GLOBAL gaussian
+longitudes and latitudes on the output grid, even if the output
+grid is a non global.  X1 and X2 define the gaussian grid.
+
+p1 	-
+
+special option which forces the (1,1) point of the output grid to
+be anchored to a specific lon,lat defined by the pair (X3,X4) or
+(X5,X6).  See special cases below:
+
+
+SPECIAL CASES:
+
+There are two pairs of special case params: (X3,X4) and (X5,X6).
+The ordering depends on the order that the options are specified
+in C1.  The example will make it clear how this works
+
+
+Case 1:		Box averaging with voting (C1 = vt) 
+
+	(X3,X4) or (X5,X6) set the fraction (called VT1 and VT2)
+of an output grid box which must be covered by defined input grid
+data for a "winner" to be chosen in the election.  The default is
+VT1=VT@=0.5.
+
+	VT1 = 0.0 - 1.0; minimum fraction of an output grid
+point when there is only one candidate
+
+   	VT2 = 0.0 - 1.0; same as VT1 except for three or more
+candidates.  The fraction for two candidates is midway between X4
+and X5.
+   
+   X4, X5 = 1.0 would require that 100% of the output grid box
+must be covered by a single, unique value from the input grid
+whereas X4,X5 = 0.0 would allow a winner to be chosen if ANY
+candidates where running.  The default value of 0.5 means that a
+simple majority is required to have a winner.
+   
+Case 2:      	Set the beginning lat/lon (the (1,1) point) of
+		the output grid by overriding the automatic
+		lat/lon bounds setting of re2 for LON-LAT
+		output grids
+   
+   P1 = beginning longitude (lower left hand corner or the point
+(1,1) on the grid) of the output grid
+
+   P2 = beginning latitude of the output grid
+
+          The number of points in longitude is then calculated
+as:
+ 
+   (eastward-most longitude of the input grid - X4)/abs(X1)+1
+    
+   and for latitude:
+
+   (northward-most latitude of the input grid - X5)/abs(X2)+1
+  
+See the METHODOLOGY section for a description of the transforms  
+
+
+EXAMPLES:
+
+1) Regrid a global T62 gaussian grid (192x94) to a 2.5 deg lat/lon by box
+   averaging,
+ 
+   open /reanl1/pilot20/fluxgrb8508.ctl
+   set x 1 192
+   set y 1 94
+   define p25=re2(p,2.5,2.5,1)
+
+Note: The lat/lon dimension environment is set using grid
+coordinates (x,y) to make the input and output grids global. To
+minimize future graphics/analysis calculations with the regridded
+field, we use the GrADS define function to store the grid in
+memory where it can be referenced as any other GrADS grid.
+
+
+2) Regrid a 4x5 SiB vegetation type to a R15 (48x40) gaussian
+grid using box averaging with "voting."  Require that at least
+60% of the output grid box must be covered with a single
+candidate value from the input grid for an election to occur.
+Otherwise the output grid box is set to undefined.  Relax the
+one-candidate election requirement to 20% when there are three or
+more candidates,
+ 
+   open /export/sgi18/fiorino/data/sib/sib.param.annual.ctl  
+  set lon 0 360
+  set lat -90 90
+  define i21=re2(index,48,40,12,0.60,0.20)
+  set gxout grfill
+  d index
+  d i21
+
+Note: During candidate selection, undefined input grid points do
+not contribute to the fraction of the output grid box covered
+with input grid boxes.  The best way to display index type data
+in GrADS is to use the "grid fill" display option (set gxout
+grfill).  GrADS will draw the grid box and color it according to
+the grid value.
+
+3) Regrid 1x1 Aviation run 500 mb z to 2.5x2.5 grid using bessel interpolation,
+ 
+   open /export/sgi39/wd22sl/grads/avn/avn.93092800.fcst.ctl  
+  set lev 500
+  set lat 20 70
+  set lon -140 -40
+  d re2(z,2.5,2.5,4)
+
+Note: Box averaging would be more appropriate when regridding to a coarser
+grid.
+
+4) Regrid 1x1 Aviation run 500 mb z to 2.5x2.5 grid using box averaging and
+   setting the    grid to start at a specific lat/lon,
+   
+  open /export/sgi39/wd22sl/grads/avn/avn.93092800.fcst.ctl  
+  set lev 500
+  set lat 20 70
+  set lon -140 -40
+  d re2(z,-2.5,-2.5,1,-141.0,21.0)
+
+Note: the -2.5 for dlat/dlon tells re2 that the fourth and fifth
+parameters will be setting the beginning lat/lon of the output grid.
+The grid spacing of the output grid is abs(-2.5) deg.
+
+
+RESTRICTIONS:
+============
+
+# no longer true in the udx form.....
+# 1) regrid currently is limited to input/output grids of dimension
+# 730x380 (~T225), but this can be easily changed by modifying the
+# nimax,njmax parameters in FORTRAN source in regrid2beta.f
+
+# still true
+2) Any valid GrADS grid can be regridded.  However, GrADS (V1.5)
+currently only supports lat/lon grids where the mapping between
+grid and world coordinates is one dimensional, i.e.,
+longitude(i,j)=f(i) vice longitude(i,j)=f(i,j).
+ 
+3) Only two output grid types have been implemented: 1) lat/lon
+(dlat does NOT have to equal dlon); and 2) gaussian grids.
+Mercator output grids could be added as lon(i,j)=f(i) and
+lat(i,j)=f(j) in this projection.
+
+4) The lat/lon bounds of the output grid are calculated within re2 to
+encompass as much of the input grid as possible.  For uniform lat/lon
+output grids, the number of grid points and the starting lat/lon are
+based on fitting the input grid within a "template" global grid with the
+following properties: 1) a grid spacing specified by X1 (dlon) and X2
+(dlat); 2) starts at 0W with a grid point on the equator; and 3) is
+cyclically continuous in longitude.  The lat/lon bound setting algorithm
+can be overridden by setting X1 and/or X2 to the negative of the
+required output grid spacing.
+
+
+SUPPORT:
+========
+
+The FORTRAN source code is ftn_re2.f90 and for regrid2: regrid2.f
+
+you are free to use the re2 routines in other programs or to modify the
+algorithms.  However, I would prefer that you send bug reports, comments
+and suggestions for improvements directly to me (email is best) so that
+I can maintain a single "standard" version at opengrads.sf.net
+
+
+METHODOLOGY:
+============
+
+The first step in the re2 transform is to define a relationship
+between the input and output grids within a common frame of reference or
+coordinate system.  re2 bases the inter-grid relationship on "world"
+coordinates, and the GrADS map between grid coordinates (i,j) and world
+coordinates (lon, lat).  As noted above, the world-grid mapping in GrADS
+is one-dimensional.  Thus, the world-grid map of an input GrADS grid
+takes the form,
+
+   lat(i,j)=f(j) and lon(i,j)=g(i).
+
+By specifying a similar mapping for an output GrADS grid of the form
+ 
+   LAT(I,J)=F(J) and LON(I,J)=G(I), 
+
+as defined by the input parameters X1, X2 and X3-6, re2 calculates,
+
+   X(I)=i(G(I)) and Y(J)=j(F(J)),
+
+where i(G(I)) is the location of the output grid with respect to the
+input grid dimension i and j(F(J)) for j.
+
+For simplicity, and greater generality, re2 assumes that the grid
+point is at the center of a rectangular grid box and maps the location
+of the boundaries of the output grid box to that of the input grid box.
+By default the boundaries are assumed to lie midway between grid points
+and while this is not strictly true for a gaussian grid near the poles,
+it is close nonetheless.  The boundaries for gaussian grids can be
+calculated by specifying igXXX in C1.  The reason why this cannot be
+automatic is that GrADS does not directly support gaussian grids (i.e.,
+there is no ydef gauss 40 option in the data descriptor .ctl file, just
+linear and levels).
+
+Given the inter-grid map X(I) and Y(J), re2 uses two basic methods
+for doing the transform: 1) box averaging; or 2) interpolation.  Box
+averaging is simply the area-weighted integral of all input grid boxes
+which intersect an output grid box, divided by the area of the output
+grid box.  This approach is most appropriate: 1) for transforming from
+fine (e.g., dlon = 1 deg) to coarse grids (e.g., dlon = 2.5 deg); and 2)
+when approximate conservation of an integral quantity (e.g., global
+average) is desired.
+
+Box averaging is also useful for regridding noncontinuous, parametric or
+"index" data.  For example, suppose you have been given a 0.5x0.5 deg
+global grid of vegetation type and want to use these data in an R43
+global model.  The intuitive solution is to assign the output grid the
+value of the intersecting input grid box(es) which account(s) for the
+greatest percentage of the output grid box surface area.  In the example
+of vegetation data, if 70% of the output grid box is covered by
+deciduous forest, then it might be reasonable to call the output grid
+deciduous forest.  However, if there were 5 distinct vegetation types or
+"candidates" available, then re2, being an American function, holds
+an "election" and select a "winner" based on the candidate covering the
+greatest percentage of the total surface area in the output grid box.
+Of course, coming from an imperfect democracy, the election can be
+"rigged" for a desired effect....
+
+This grid transform strategy is invoked using the "vote" option in box
+averaging (vt in C1).  Conditions on the percentage of the output grid
+box (number of candidates and what it takes to get elected) can be
+finely controlled by the X4 and X5 parameters.
+
+Perhaps the most conventional way of regridding meteorological data
+(e.g., 500 mb geopotential heights) is interpolation because weather
+data tend to be continuous .  re2 features a 4x4 point bessel
+interpolation routine developed at Fleet Numerical Meteorology and
+Oceanography Center (courtesy of D. Hensen, FNMOC).  While this routine
+is in wide use at FNMOC, the re2 implementation has been
+substantially improved to handle more general input grids.
+
+First, bilinear interpolation is performed at all points to produce a
+"first guess."  Improvements to the bilinear "first guess" are made
+using the higher-order terms in the bessel interpolator, but only if the
+bessel option is set (i.e., bs in C1).  Second, an undefined value in
+the 2x2 bilinear stencil causes the output grid to be undefined.  If the
+bilinear value is defined, but any of the points in the larger 4x4
+bessel stencil are undefined, the output grid is assigned the bilinear
+value.  The third improvement is that the routine handles grids which
+are cyclically continuous in longitude.
+
+It is generally recommended that you use the bessel option when
+interpolating because the higher-order terms in the polynomial
+interpolation function produce a closer fit to the original data in
+regions of rapid changes (e.g., large gradients of the gradient around
+low pressure centers).
+
+
+ADDITIONAL NOTES:
+=================
+
+
+#------------------------------- only important in COLA grads < v1.9
+# 1) Where to run GrADS
+# There is normally no problem firing up GrADS from ANY directory because
+# GrADS typically only READS data, but with user-defined functions and
+# re2, you'll need to start GrADS from a directory where you have write
+# permission.  The reason is that when a user-defined function is invoked
+# within GrADS, a file with the grid data is written out by GrADS and then
+# a file written by your function is read back into GrADS for further
+# processing.  Although this restriction could be modified by changing the
+# code and the user-defined function table, the default is for regrid2 to
+# read/write from the directory where GrADS was first invoked.  You will
+# notice when exiting GrADS that regrid2 leaves behind three files: 1)
+# udf.regrid2.gfi (input to regrid2 from GrADS); 2) udf.regrid2.gfo (output
+# from regrid2 returned to GrADS); and 3) udf.regrid2.out (diagnostic print
+# file).  Use the GrADS shell escape in a script to remove these regrid2
+# "droppings" (e.g., !rm udf.regrid2.*).  Future user-defined functions
+# will the prefix "udf." so that the rm command will take out all
+# droppings from other user-defined functions.
+
+
+2) Using regridded fields in other GrADS functions
+--------------------------------------------------
+
+The only down side to a regridded field is that its dimension
+environment cannot be controlled by its "grid" coordinate system.  The
+best way to understand this is by an example.  Suppose you regrid a T62
+global Gaussian grid (192x94) to a uniform 2.5 deg grid (144x73) using
+box averaging and the GrADS define capability, e.g.,
+
+define p25=re2(p,2.5,2.5,ba) 
+
+You now want to calculate the global average of the original field p and
+the defined regridded field p25.  The only unambiguous way (using all
+grid boxes) of doing this calculation for p would be,
+
+d aave(p,x=1,x=192,y=1,y=94)
+
+and not,
+
+d aave(p,lon=0,lon=360,lat=-90,lat=90)
+ 
+This is because the cyclic continuity feature in GrADS would count grid
+boxes at the prime meridian twice, i.e., GrADS would really be doing,
+
+d aave(p,x=1,x=193,y=1,y=94)
+
+Trying to find the global average of the 2.5 deg regridded field p25
+using,
+
+d aave(p25,x=1,x=144,y=1,y=73)
+
+would not yield a global average even though p25 IS 144x73!  However,
+
+d aave(p25,x=1,x=192,y=1,y=94)
+
+would because GrADS converts the grid coordinate range to (x=1,x=192) to
+world coordinates (lon=0,lon=360-1.875) and grabs all grid boxes in p25
+within that range when putting together the data for the areal averaging
+calculation.  Despite this restriction on grid coordinates, you can
+access specific chunks of a regridded defined variable using world
+coordinates.  Suppose you want to look at the latitudinal variation of
+the u wind component at 180 deg and 500 mb on a 1 deg grid, e.g.,
+
+set lev 500
+set lon 180
+set lat -90 90
+d u
+
+if the you had,
+
+define u5=re2(u,5)
+
+you could then,
+
+d u5(lon=175)
+
+but not,
+
+d u5(x=1)
+
+
+3) Diagnostic messages from re2
+-------------------------------
+
+re2 sends information on the transform process (starting/ending lat/lon,
+number of grid points and the regridding method) to the terminal window
+where you are running GrADS.  Additionally, errors during the call to
+re2 (e.g., trying to regrid a two-dimensional longitude-pressure cross
+section) will be displayed, the process terminated, and control returned
+back to GrADS.
+
+sample diagnostics: (script var 'result'):
+
+
+ga-> d re2(psl,1,1,bl)
+the output grid is UNIFORM lat/lon:                                                                                     
+dx =  1.00 deg and dy =  1.00 deg                                                                                       
+# points in i(lon) =  360  # points j(lat) =  181                                                                       
+lon extent =    0.00 to  359.00 lat extend = -90.00 to  90.00                                                           
+                                                                               
+
+
+#--------------- re2 does return info to the standard script variable 'result'
+#
+# Future releases of regrid will allow this diagnostic information to be
+# passed back to a script for additional control of GrADS processing.
+# However, this requires a change to the specification of the user-defined
+# function interface and GrADS itself.
+
+
+
+APPENDIX A  - opengrads v2.0 GA2UDXT as of November 2009:
+=========================================================
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This implementation requires GrADS v2.0.a4.oga.3 or later
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library              Short
+# Type I  Function   Function      Path              Description
+# ---- - ---------- ---------- ------------ ------------------------------  
+  udc  0  " "        " "        " "    "Environment Variables"
+  udc  0  printenv   c_xenv     ^env.gex    "Expand environment variables"
+  udc  0  runenv     c_env      ^env.gex    "Expand env vars and run command"
+  udc  0  @          c_env      ^env.gex    "Expand env vars and run command"
+  udc  0  getenv     c_getenv   ^env.gex    "Get value of environment variable"
+  udc  0  setenv     c_setenv   ^env.gex    "Set value of environment variable"
+
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udf  0  " "        " "        " "    "Ben-Jei Tsuang's Extensions"
+  udf  0  lt         f_bjt      ^libbjt.gex   "Local time"
+  udf  0  jd         f_bjt      ^libbjt.gex   "Julian day"
+  udf  0  cosz       f_bjt      ^libbjt.gex   "Cosine solar zenith angle"
+  udf  0  dayratio   f_bjt      ^libbjt.gex   "Daylight ratio"
+  udf  0  if         f_bjt      ^libbjt.gex   "Conditional function"
+  udf  0  maxv       f_bjt      ^libbjt.gex   "Maximum value"
+  udf  0  minv       f_bjt      ^libbjt.gex   "Minimum value"
+  udf  0  which      f_bjt      ^libbjt.gex   "Label gridpoints"
+  udf  0  ftest      f_bjt      ^libbjt.gex   "F-test"
+  udf  0  ttest      f_bjt      ^libbjt.gex   "T-test"
+  udf  0  tfit       f_bjt      ^libbjt.gex   "Point  linear regression"
+  udf  0  fit        f_bjt      ^libbjt.gex   "Global linear regression"
+  udf  0  tcorr2     f_bjt      ^libbjt.gex   "Time correlation"
+  udf  0  tregr2     f_bjt      ^libbjt.gex   "Point linear regression"
+  udf  0  tmave2     f_bjt      ^libbjt.gex   "Time averaging w/masking"
+  udf  0  madvu      f_bjt      ^libbjt.gex   "Calculates -d(u*EXPR)/dx"
+  udf  0  madvv      f_bjt      ^libbjt.gex   "Calculates -d(V*EXPR)/dy"
+  udf  0  madvw      f_bjt      ^libbjt.gex   "Calculates -d(W*EXPR)/dp"
+  udf  0  muadv      f_bjt      ^libbjt.gex   "Zonal advection"
+  udf  0  mvadv      f_bjt      ^libbjt.gex   "Meridional advection"
+  udf  0  mwadv      f_bjt      ^libbjt.gex   "Vertical advection"
+  udf  0  satvap     f_bjt      ^libbjt.gex   "Saturated vapor pressure"
+  udf  0  dew        f_bjt      ^libbjt.gex   "Dew point temperature"
+  udf  0  lw         f_bjt      ^libbjt.gex   "Thermal infrared fluxes"
+  udf  0  lw2        f_bjt      ^libbjt.gex   "Thermal infrared fluxes v2"
+  udf  0  pinterp    f_bjt      ^libbjt.gex   "Pressure interpolation"
+  udf  0  zinterp    f_bjt      ^libbjt.gex   "Height interpolation"
+  udf  0  line       f_bjt      ^libbjt.gex   "Draws a line"
+  udf  0  vint2      f_bjt      ^libbjt.gex   "Mass-weighted vertical integral"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udf  0  " "        " "        " "    "Streamfunction & Velocity Potential" 
+  udf  0  fish       f_fish     ^fish.gex     "Poisson solver"
+  udf  0  fish_psi   f_psichi   ^fish.gex     "Compute streamfunction"
+  udf  0  fish_chi   f_psichi   ^fish.gex     "Compute velocity potential"
+  udf  0  fish_vor   f_psichi   ^fish.gex     "Compute vorticity"
+  udf  0  fish_div   f_psichi   ^fish.gex     "Compute divergence"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires GrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+# udf  0   x_cdiff   f_gsudf    ^gsudf.gex    "Like cdiff() with larger domain"
+# udf  0   speed     f_gsudf    ^gsudf.gex    "The mag() function as gsUDF"
+  udf  0   " "       " "        " "           "Saakeskus Wx Function Collection"
+  udf  0   dewpt     f_gsudf    ^gsudf.gex    "Dew-point temperature"
+  udf  0   ept       f_gsudf    ^gsudf.gex    "Equivalent potential temperature"
+  udf  0   epi       f_gsudf    ^gsudf.gex    "Potential Instability"
+  udf  0   plcl      f_gsudf    ^gsudf.gex    "Pressure at LCL"
+  udf  0   shear     f_gsudf    ^gsudf.gex    "Wind Shear"
+  udf  0   srh1km    f_gsudf    ^gsudf.gex    "Storm-relative Helicity 0-1km'
+  udf  0   srh3km    f_gsudf    ^gsudf.gex    "Storm-relative Helicity 0-3km'
+  udf  0   tlcl      f_gsudf    ^gsudf.gex    "Temperature at LCL"#
+  udf  0   tsindex   f_gsudf    ^gsudf.gex    "Chance of T-storm Initiation"
+  udf  0   ttindex   f_gsudf    ^gsudf.gex    "Total Totals Index"
+  udf  0   wchill    f_gsudf    ^gsudf.gex    "Wind Chill Index (New)"
+#.............................................................................
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "GxYAT: Image Generation"
+  udc  0   gxyat     c_gxyat     ^gxyat.gex   "Save images in PNG/SVG/PDF/PS"
+  udc  0   set_rgba  c_rgba      ^gxyat.gex   "Set color red/green/blue/alpha"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library              Short
+# Type I  Function   Function      Path              Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "Simple Extension Example"
+  udc  0   hello     c_hello   ^libhello.gex  "Hello, World! sample command"
+  udf  0  " "        " "        " "    "Simple Extension Example"
+  udf  0   hello     f_hello   ^libhello.gex  "Hello, World! sample function"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "Interprocess Communication"
+  udc  0  ipc_verb   c_Verb     ^libipc.gex   "IPC verbose toggle"
+  udc  0  ipc_open   c_Open     ^libipc.gex   "Open stream for save/load"
+  udc  0  ipc_close  c_Close    ^libipc.gex   "Close stream"
+  udc  0  ipc_save   c_Save     ^libipc.gex   "Save expression to stream"
+  udc  0  ipc_define c_Define   ^libipc.gex   "Define variable (obsolete)"
+  udc  0  ipc_error  c_Error    ^libipc.gex   "Print IPC error message"
+# 
+  udf  0  " "        " "        " "    "Interprocess Communication"
+  udf  0  ipc_save   f_Save     ^libipc.gex   "Save expression to stream"
+  udf  0  ipc_load   f_Load     ^libipc.gex   "Load variable from file"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "LATS: File Reformatting and Subsetting" 
+  udc  0  set_lats   c_lats_set    ^liblats.gex  "Set LATS parameters"
+  udc  0  query_lats c_lats_query  ^liblats.gex  "Query LATS parameters"
+  udc  0  lats_grid  c_lats_grid   ^liblats.gex  "Define LATS grid"
+  udc  0  lats_data  c_lats_data   ^liblats.gex  "Write data to LATS file"
+  udc  0  reinit_lats c_lats_reinit  ^liblats.gex  "Re-init LATS parameters"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- ------------------------------- 
+   udc 0  " "        " "        " "    "Mike Fiorino's Extensions"
+   udc 0   mfhilo    c_mfhilo   ^libmf.gex    "Find max/min or H/L in 2D field"
+   udc 0   tcprop    c_tcprop   ^libmf.gex    "Properties radinf from central lon/lat"
+   udc 0   grhist    c_grhist   ^libmf.gex    "histogram of expr"
+#
+   udf  0  " "        " "        " "    "Mike Fiorino's Extensions"
+   udf 0   smth2d    f_smth2d   ^libmf.gex    "Shuman smoother/de-smoother"
+   udf 0   uv2trw    f_uv2trw   ^libmf.gex    "Find radial/tangential velocity"
+   udf 0   re2       f_re2      ^libmf.gex    "General interpolator (regrid2)"
+   udf 0   esmrf     f_esmrf    ^libmf.gex    "Saturation vapor pressure (old MRF)"
+   udf 0   linreg    f_linreg   ^libmf.gex    "Linear regression: mx + b"
+#..............................................................................
+
+
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "Satellite Orbit Extensions"
+  udc  0  set_orb    c_set      ^orb.gex      "Set ORB parameters"
+  udc  0  orb_track  c_track    ^orb.gex      "Satellite ground tracks"
+  udf  0  " "        " "        " "    "Satellite Orbit Extensions"
+  udf  0  orb_mask   f_mask     ^orb.gex      "Satellite orbit masking"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires GrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udf  0  " "        " "        " "    "Regridding Functions"
+  udf  0   re        ffre       ^re.gex       "General interpolator"
+  udf  0   re_       ffre_dbg   ^re.gex       "General interpolator (verbose)"
+  udf  0   regrid2   f_gsudf    ^gsudf.gex    "regrid2-like wrapper for re()"
+  udf  0   geos      f_gsudf    ^gsudf.gex    "Interpolation to GEOS-5 Grids"
+  udf  0   reimg     f_gsudf    ^gsudf.gex    "Interpolation for Image Generation'
+#.............................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires GrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udc  0  " "        " "        " "    "Shapefile Extensions"
+  udc  0  shp_lines  c_lines    ^shape.gex    "Draw lines    from shapefile"
+  udc  0  shp_polyf  c_polyf    ^shape.gex    "Draw polygons from shapefile"
+# udc  0  shp_print  c_print    ^shape.gex    "Print graphics as shapefile"
+#..........................................................................
+
+
+#
+# Sample GrADS table for Dynamic User Defined Commands/Functions.
+# There are 2 types of extensions: 
+#
+#    udc   user defined commands
+#    udf   user defined functions
+#
+# This feature requires OpenGrADS v2.0.a4.oga.3 or later.
+#.................................................................
+
+#      A
+#      P   GrADS     Library      Library                 Short
+# Type I  Function   Function      Path                Description
+# ---- - ---------- ---------- -------------- -------------------------------  
+  udf  0  " "        " "        " "    "Spherical Harmonic Analysis"
+  udf  0  sh_filt    f_shfilt   ^shfilt.gex   "Spherical harmonic filter"
+  udf  0  sh_power   f_shpowr   ^shfilt.gex   "Spherical harmonic spectra"
+#..........................................................................
+
+

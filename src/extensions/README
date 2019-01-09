@@ -1,0 +1,12 @@
+                    OpenGrADS User Contributed Extensions
+
+
+The OpenGrADS User Defined Extensions (UDXTs) are a collection of
+dynamically linker user defined commends (UDCs) and User Defined
+Functions (UDFs) that complements the Grid Analysis and Display System
+(GrADS).
+
+For installation instructions consult file INSTALL. For additional
+documentation visit
+
+ http://opengrads.org/wiki/index.php?title=User_Defined_Extensions

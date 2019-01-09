@@ -1,0 +1,13 @@
+LATS4D Installation Notes
+-------------------------
+
+LATS4D is included in the OpenGrADS Bundle 2.0.a7.oga.3 and later,
+with no additional installation neccesary. Follow these instructions
+with other versions of GrADS see file INSTALL.
+
+The installation is simple: simply place lats4d.gs along with your
+other GrADS scripts (under /usr/local/lib/grads by default or on any
+directory pointed to by the environment variable GASCRP, or even in
+your local directory). The shell script lats4d.sh is a wrapper for
+using LATS4D from the shell command line and should be place anywhere
+in your path.

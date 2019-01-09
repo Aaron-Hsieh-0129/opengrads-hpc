@@ -1,0 +1,73 @@
+	       GrADS - Grid Analysis and Display System
+        	           Version 2.0
+
+  		     http://cola.gmu.edu/grads
+
+               GrADS Executables for Microsoft(tm) Windows
+                   distributed by http://opengrads.org/	
+
+GrADS is distributed freely and is copyrighted under the GNU Public
+License.  Please read the COPYRIGHT file for more complete
+information.  Versions of GrADS are available for several flavors of
+UNIX, PCs running Windows, Linux, and MacIntosh computers.
+
+Standard Installation
+---------------------
+
+Installing the Windows version of GrADS is very easy. If you
+downloaded a file with the "exe" extension, say
+"grads-2.0.x.win32_superpack.exe", simply run it, answer a few simple
+questions, and you are good to go (the installer will also
+automatically set your PATH so that you can run GrADS from the command
+line window).
+
+Installing from a ZIP file
+--------------------------
+If your distribution came in the form of a ZIP file, simply unzip the
+distribution file, e.g. "grads-2.0.x.win32.zip", to a place of your
+choice (e.g., under C:\ or C:\Program Files\) and you are ready to go.
+Then open Windows Explorer and click on any of the executables under
+"\whatever\you\installed\it\PCGrADS\win32" (say "grads") and start using it.
+
+You may find convenient adding the GrADS binary directory (e.g.,
+C:\GrADS20\win32) to your path. For changing your path click on
+
+                [Start]/[Control Panel]/[System]
+
+Then select the [Advanced] tab and click on the 
+[Environment Variables] button on the lower left. Select "Path" under
+-System Variables- and click on the [Edit] button. Do not delete the
+current contents of your path; simply append a ";" followed by the
+name of the directory where your GrADS binaries reside.
+
+Getting more fonts
+------------------
+
+The Xming server bundled with Win32 GrADS comes with a minimal number
+of built-in fonts, plus whatever Windows fonts it may find. This is
+usually fine since GrADS draws its own fonts and does not rely on the
+X server for writing strings. The only exception is if you are using
+the Athena Widgets feature, which does make use of X Window fonts. You
+can install additional Xming fonts from their sf.net download page:
+
+   http://sourceforge.net/project/showfiles.php?group_id=156984
+
+When installing the fonts make sure you install them with the Xming
+that came with your Win32 GrADS distribution, not the suggested
+default "C:\Program Files\Xming". For example, if you installed GrADS
+under C:\GrADS20, you will want to install the extra fonts under
+"C:\Grads20\Xming".
+
+
+See Also
+--------
+
+For information on the contents of this distribution consult the
+document "Getting_Started.html" included with your Win32 binaries.
+Their you will find also important information on Xming, the bundled X
+server contributed by Colin Harrison.
+
+For additional information on this Win32 distribution consult:
+
+  http://opengrads.org/wiki/index.php?title=OpenGrADS_Documentation
+    

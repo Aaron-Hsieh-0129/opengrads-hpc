@@ -1,0 +1,44 @@
+function const
+_monamel='jan feb mar apr may jun jul aug sep oct nov dec'
+_monameu='JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'
+_monday='31 28 31 30 31 30 31 31 30 31 30 31'
+_dayweek='Mon Tue Wed Thu Fri Sat Sun'
+
+_pi=3.141592654
+_d2r=_pi/180.0
+_r2d=180.0/_pi
+
+_rearth=6371.0e3
+_gravity=9.80665
+
+_m2ft=3.2808
+_km2nm=0.5396
+_nm2km=1.853
+_kt2ms=1000/(_km2nm*3600)
+_ms2kt=1/_kt2ms
+
+_ndymon.1=31
+_ndymon.2=28
+_ndymon.3=31
+_ndymon.4=30
+_ndymon.5=31
+_ndymon.6=30
+_ndymon.7=31
+_ndymon.8=31
+_ndymon.9=30
+_ndymon.10=31
+_ndymon.11=30
+_ndymon.12=31
+
+
+'!echo $GASCRP > /tmp/grads.polydir.txt'
+
+ret=read('/tmp/grads.polydir.txt')
+rc1=sublin(ret,1)
+rc2=sublin(ret,2)
+
+_polydir=rc2
+
+_author='CDR M. Fiorino, USN'
+return
+

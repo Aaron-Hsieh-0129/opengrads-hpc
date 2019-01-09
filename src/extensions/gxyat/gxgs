@@ -1,0 +1,152 @@
+#!/bin/csh -f
+#
+# Pipes gx metafile thru gxeps then gs
+#
+
+if ( $#argv < 1 ) goto USAGE
+
+set device = pngalpha
+set cmode  = 0
+set res = ""
+set geom = ""
+set size = ""
+set pmode = 0
+set app = "ggv"
+set verb_ = ""
+
+set lines = "/tmp/.$USER.lines.$$.png"
+set fills = "/tmp/.$USER.fills.$$.png"
+
+foreach arg ( $argv )
+
+    if ( "$1" == "-d" ) then
+      shift
+      if ( $#argv < 1 ) goto ERROR
+      set device = $1
+      shift
+    else if ( "$1" == "-o" ) then
+      shift
+      if ( $#argv < 1 ) goto ERROR
+      set outfile = $1
+      shift
+    else if ( "$1" == "-g" ) then
+      shift
+      if ( $#argv < 1 ) goto ERROR
+      set geom = "-g$1"
+      shift
+    else if ( "$1" == "-r" ) then
+      shift
+      if ( $#argv < 1 ) goto ERROR
+      set res = "-r$1"
+      shift
+    else if ( "$1" == "-s" ) then
+      shift
+      if ( $#argv < 1 ) goto ERROR
+      set size = "-resize $1"
+      shift
+    else if ( "$1" == "-C" ) then
+      shift
+      set cmode = 1
+      set app = "eog"
+    else if ( "$1" == "-p" ) then
+      shift
+      set pmode = 1
+    else if ( "$1" == "-P" ) then
+      shift
+      set pmode = 1
+      shift
+      set app = $1
+    else if ( "$1" == "-v" ) then
+      shift
+      set set verb_ = "-v"
+    endif
+
+end
+
+set GS = "/usr/bin/gs -q -dNOPAUSE -dBATCH -dSAFER -dNOPLATFONTS $res $geom"
+set GXEPS = "gxeps $verb_"
+
+if ( $#argv < 1 ) goto ERROR
+set gxfilen = $1
+
+if ( ! $?outfile ) then
+    set base = $gxfilen:r
+    set outfile = $base.png
+endif
+
+# Run gxeps, pile to gs
+# ---------------------
+  if ( $cmode ) then
+
+    set pipe = "|$GS -sDEVICE=pngalpha -sOutputFile=$lines -"
+    eval $GXEPS -X -o \'$pipe\' $gxfilen  
+    set pipe = "|$GS -sDEVICE=png16m   -sOutputFile=$fills -"
+    eval $GXEPS -x -o \'$pipe\' $gxfilen  
+
+    composite -rotate 90 $size -gravity center $lines $fills $outfile
+
+    /bin/rm -rf $lines $fills
+
+    if ( $pmode ) $app $outfile 
+
+  else 
+
+    if ( $pmode ) then
+         set pipe = "|$app -"
+    else
+         set pipe = "|$GS -sDEVICE=$device -sOutputFile=$outfile -"
+    endif
+
+    eval $GXEPS -o \'$pipe\' $gxfilen  
+
+  endif
+
+# All done
+# --------
+  exit 0
+
+#........................................................................
+
+ERROR:
+
+    cat <<EOF
+gxgs: not enough argument
+EOF
+
+USAGE:
+    cat <<EOF
+
+NAME
+       gxgs - GrADS metafile translator based on Ghostscript
+
+SYNOPSIS
+       gxgs.csh [OPTIONS] gx_filename
+
+DESCRIPTION
+       Converts a GrADS metafile to encapsulated postscript and
+       pipes the results thru Ghostscript. There is also a composite
+       mode that allows one to generated anti-aliases lines with "streaks"
+       in the color filled areas.
+
+OPTIONS
+       -C         Composite mode: renders lines with antialiasing but
+                  keeps color fills aliased to avoid artificial horizontal 
+                  lines
+       -d device  Ghostscript devicew; default is pngalpha
+       -g geom    X style geometry; useful for cropping
+       -o filen   Output image file name; default is same as input
+                  with extension .png
+       -p         Pipe output of gxeps to "ggv" or "eog" (if -C); use
+                  -P to choose your own application
+       -P app     Pipe output of gxeps to your application of choice
+       -r N 
+       -r NxM     Specifies device resolution, usually pixels/inch. This
+                  is *not* the image size, it is more like a density. A good
+                  value is "90". This controls the image quality.
+       -s NxM     Size of the composite image (requires -C); for better
+                  results coordinate with the -r option above
+       -v         verbose mode
+AUTHOR
+       Arlindo da Silva
+EOF
+exit 1

@@ -1,0 +1,115 @@
+ChangeLog for LATS4D
+
+2009-12-14 <dasilva@opengrads.org>, Version 2.1.2
+	* Support for -osset511, revise jrat.
+ 
+2009-10-29 <dasilva@opengrads.org>, Version 2.1.1
+	* Support of satellite orbits
+ 
+2009-10-24 <dasilva@opengrads.org>, Version 2.1.0
+	* Support of LATS extension in GrADS 2.0
+	* LATS4D distribution now under lats/extension
+ 
+2009-09-03 <dasilva@opengrads.org>, Version 2.0.4
+	* lats4d.gs:
+	  - Replaced getfreq() with a more robust version based on 
+	    'q ctlinfo'
+	  - Bug: Initial time does not include minutes
+
+2009-07-30 <dasilva@opengrads.org>, Version 2.0.3
+	* lats4d.gs:
+	  - Added -ncept126 opton
+	  - Added "voting" option for built-in interpolations
+	    (e.g., -ncept62v)
+	
+2009-01-12 <dasilva@opengrads.org>, Version 2.0.2
+	* lats4d.gs:
+	  - Added -ctlinfo opton
+	  - Added -sw2x25, iw2x25 and lw2x25 options for
+	     spectral filtering at GEOS 2x2.5 deg grid.
+ 	
+2009-01-12 <dasilva@opengrads.org>, Version 2.0.1
+	* lats4d.gs: removed Revision History from sources and moed it here
+        * Added standard files: ChangeLog, NEWS, INSTALL, README
+	* GNUmakefile: target for maing documentation in HTML
+	* mkhtml.pl: script to create HTML from "lats4d -h" 
+	* ChangeLog: created, previous Revision History follows in
+	  original formatting
+
+	
+21dec1998   da Silva   First crack.
+24dec1998   da Silva   Further development: options -lat -lon -cal -mean,
+                       better error trapping.
+31dec1998   da Silva   First beta version; automatic generation of
+                       LATS parameter table; now variables with 1 vertical
+                       level are identified as sfc variables.
+04jan1999   da Silva   Added -ftype option, automatic detection of
+                       file types, removed -sdf/-xdf options.
+05jan1999   da Silva   Cosmetic changes in man page.
+06jan1999   da Silva   Added -precision option.
+08jan1999   da Silva   Added -precision as valid option in
+                       parsecmd(), small other changes
+11jan1999   da Silva   now file name can have 3 tokens, so SDFopen
+                       can use templates.
+17jan1999   da Silva   Added -func and -freq options, fixed bug when
+                       there was only 1 time step on file; -func is
+                       currently undocumented.
+22Jan1999   da Silva   Fixed bug with -time option: now 0Z15dec1991
+                       works.
+09Feb1999   da Silva   Added -grid option; added detection of invalid
+                       time frequency in minutes (1.0.Beta.8)
+17Mar1999   da Silva   Fixed parsing bug in -freq; fixed bug in the
+                       evaluation of -func arguments; increased
+                       long name column size in parm table to 70
+                       to accomodate files going to ECS; removed FUNCTION
+                       from variable long name - this information is
+                       now part of the global attribute "comments"
+                       (1.0.Beta.9)
+18Mar1999   da Silva   Fixed another -func related bug in getgid().
+19Mar1999   da Silva   Added -func to options to avoid parsing error; 
+                       revised documentation + small mod in -freq.
+29Mar1999   da Silva   Added -zrev option
+28Apr1999   da Silva   Added "-de" option (1.0.beta.13); now we
+                       can regrid; also added undocumented options
+                       -geos1x1, -geos1x1a, -geos1x1s, and same for
+                       2x2.5, 4x5; these are DAO specific.
+04May1999   da Silva   Fixed small bug in -levs; now -levs 0.4 is
+                       possible. 
+30Jun1999   da Silva   Added CPTEC to list of centers, fixed -vars
+                       to allow variables starting with 'e'.
+13Jul1999   da Silva   Fixed "-i" bug: now file names can start with "e".
+16Jul1999   da Silva   Changed order of upper-air var/level. This
+                       way the data is written in the same order they
+                       come in a standard IEEE grads file. Implemented
+                       stream (fwrite) output; no automatic ctl generation
+                       yet.
+23Jul1999   da Silva   Added -title option.
+22Nov1999   da Silva   Made v1.0.beta.18 the first stable version: v1.0.
+23Feb2000   da Silva   Special handling for grib output and p<1; now it
+                       uses hybrid level number for vertical coordinate
+                       in such cases.
+01Jun2000   da Silva   Added -xvars option.
+16Jun2000   da Silva   Added -xsfc/xupper options.
+10Oct2001   Owens      Added -tmean option to allow the user to specify
+                       a date for mean file other than tmid
+17dec2002   da Silva   Bug fix in getgid for pre-projected data; change
+                       in openf() to detect URLs.
+12dec2003   da Silva   Added undocumented -fv1x125, etc., options.
+13jul2005   da Silva   Change variable name size from 8 to 12 in
+                        LATS parameter table.
+10May2006   da Silva   Added sequential format, -be/-le switches
+08Dec2006   da Silva   Added "-format stats" for printing summary stats
+                       Introduced "-j fname" for a secondary input file
+                       to be used for differences, etc
+22Dec2006   da Silva   Uses math_format for stats output; default to
+                       using re() for regridding, added -geos0.5 and
+                       -geos0.25 undocumented options, including the
+                       "a" and "s" variants. Old regrid2 can still be
+                       used specifying -regrid2.
+27Dec2006   da Silva   Added "-tmean" description to man page and
+                       introduced missing -geos1x125.
+20Nov2007   da Silva   Added -format script.gs option
+29Nov2007   da Silva   Added -format script.gsf option
+01Feb2008   da Silva   LATS no longer required
+07Jan2009   da Silva   Added auto interpolation for MERRA/NCEP reanalyses,
+                       -ntimes, -mxtimes options. 

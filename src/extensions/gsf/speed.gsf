@@ -1,0 +1,15 @@
+*
+* Returns wind speed from u and v; meant as a simple example of a
+* gs UDF function.
+*
+*       This script has been placed in the Public Domain.
+*
+
+function speed ( in_u, in_v )
+
+  if (in_v='in_v')
+     say 'usage:  speed(u,v)' 
+     return
+  else
+     return 'sqrt(pow('in_u',2)+pow('in_v',2))'
+  endif

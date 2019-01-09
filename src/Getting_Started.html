@@ -1,0 +1,1159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="generator" content="HTML Tidy, see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=windows-1252">
+<meta name="Generator" content="Microsoft Word 10 (filtered)">
+<title>Getting Started with Win32 GrADS</title>
+<style type="text/css">
+<!--
+ /* Font Definitions */
+ @font-face
+    {font-family:Verdana;
+    panose-1:2 11 6 4 3 5 4 4 2 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+    {margin:0in;
+    margin-bottom:.0001pt;
+    font-size:12.0pt;
+    font-family:"Verdana";
+    color:black;}
+h1
+    {margin-right:0in;
+    margin-left:0in;
+    font-size:24.0pt;
+    font-family:"Verdana";
+    color:black;
+    font-weight:bold;}
+h2
+    {margin-right:0in;
+    margin-left:0in;
+    font-size:18.0pt;
+    font-family:"Verdana";
+    color:black;
+    font-weight:bold;}
+h3
+    {margin-right:0in;
+    margin-left:0in;
+    font-size:13.5pt;
+    font-family:"Verdana";
+    color:black;
+    font-weight:bold;}
+a:link, span.MsoHyperlink
+    {font-family:"Verdana";
+    color:blue;
+    text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+    {font-family:"Verdana";
+    color:fuchsia;
+    text-decoration:underline;}
+p.MsoPlainText, li.MsoPlainText, div.MsoPlainText
+    {margin:0in;
+    margin-bottom:.0001pt;
+    font-size:10.0pt;
+    font-family:"Courier New";
+    color:windowtext;}
+p
+    {margin-right:0in;
+    margin-left:0in;
+    font-size:12.0pt;
+    font-family:"Verdana";
+    color:black;}
+address
+    {margin:0in;
+    margin-bottom:.0001pt;
+    font-size:12.0pt;
+    font-family:"Verdana";
+    color:black;
+    font-style:italic;}
+tt
+    {font-family:"Courier New";}
+span.plaintext
+    {font-family:"Verdana";}
+@page Section1
+    {size:8.5in 11.0in;
+    margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+    {page:Section1;}
+ /* List Definitions */
+ ol
+    {margin-bottom:0in;}
+ul
+    {margin-bottom:0in;}
+-->
+</style>
+
+<style type="text/css">
+ body {
+  background-color: white;
+ }
+ :link { color: blue }
+ :visited { color: fuchsia }
+ p.c40 {margin-bottom:12.0pt}
+ ol.c39 {margin-top:0in}
+ span.c38 {font-family:"Courier New"}
+ p.c37 {margin-left:.5in}
+ span.c36 {font-family:Verdana;color:windowtext}
+ table.c35 {width:6.75in; margin-left:-.4pt}
+ div.c34 {margin-left:.5in;margin-top:5.0pt;margin-right:.5in;margin-bottom: 5.0pt}
+ table.c33 {width:6.75in; border:outset 2.25pt}
+ span.c32 {font-family:Verdana;color:red}
+ td.c31 {padding:.75pt .75pt .75pt .75pt}
+ td.c30 {background:#FFFF80;padding:.75pt .75pt .75pt .75pt}
+ p.c29 {font-weight: bold}
+ span.c28 {font-size:12.0pt; font-family:"Courier New";font-weight:normal}
+ span.c27 {font-size: 12.0pt;font-family:Verdana;font-weight:normal}
+ span.c26 {font-size: 12.0pt;font-family:Verdana}
+ span.c25 {font-size:12.0pt;font-family:Verdana;font-weight: normal}
+ span.c24 {font-size:12.0pt; font-family:Verdana}
+ span.c23 {font-size:12.0pt; font-family:Verdana;font-weight:normal}
+ span.c22 {font-size:12.0pt;font-family:Verdana; font-weight:normal}
+ span.c21 {font-size:12.0pt;font-family:"Courier New"; font-weight:normal}
+ span.c20 {font-size:12.0pt;font-family:"Courier New";font-weight:normal}
+ span.c19 {font-size:12.0pt;font-family:Verdana}
+ span.c18 {font-size:12.0pt;font-family:Verdana;font-weight:normal}
+ p.c17 {text-indent:.5in}
+ p.c16 {margin-left:.75in;text-indent:-.25in}
+ span.c15 {font-family:Symbol}
+ span.c14 {font:7.0pt "Verdana"}
+ p.c13 {margin-left:.25in}
+ span.c12 {font-family:Verdana}
+ div.c11 {text-align: center}
+ hr.c10 {text-align: center}
+ p.c9 {font-weight: bold; text-align: center}
+ span.c8 {font-size:10.0pt; font-family:Verdana}
+ p.c7 {text-align: center}
+ span.c6 {color:black;text-decoration:none}
+ span.c5 {color:black;text-decoration: none}
+ h2.c4 {text-align: center}
+ span.c3 {font-family:Verdana; color:blue}
+ h1.c2 {text-align: center}
+ span.c1 {font-family:Verdana; color:red}
+</style>
+</head>
+<body lang="EN-US">
+<div class="Section1">
+<h1 class='c2'><span class='c1'>Getting Started with Win32
+GrADS</span></h1>
+
+<h2 class='c4'><span class='c3'>Version 2.1.0.oga.1</span></h2>
+
+<p class="MsoNormal c7"><a href="http://cola.gmu.edu/grads/">
+<span class='c5'><img border="0" width="98" height="98" src=
+"Contents/Resources/Icons//gradball.gif"></span></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="http://opengrads.org/"><span class='c6'><img border="0"
+width="144" height="60" src="Contents/Resources/Icons/ollie.gif"></span></a></p>
+
+<p class='c9'><span class='c8'>Last Update: 9 October 2016</span></p>
+
+<div class="MsoNormal c11">
+<hr size="2" width="100%" class="c10">
+</div>
+
+<h1><span class='c12'>Contents</span></h1>
+
+<ul type="disc">
+<li class="MsoNormal"><span class='c12'><a href="#intro">
+Introduction</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#sysreq">System
+Requirements</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#dist">This
+Distribution</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#xserver">
+Batteries Included</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#Install">
+Installation</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#usage">Using
+Win32 GrADS</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#doc">
+Documentation</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#interfaces">
+OpenGrADS Interfaces and Extensions</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#troubleshooting">
+Troubleshooting</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#help">Getting
+Help</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#thanks">
+Credits</a></span></li>
+
+<li class="MsoNormal"><span class='c12'><a href="#License">
+Licensing Terms</a></span></li>
+</ul>
+
+<h1><a name="intro"></a><span class='c12'>Introduction</span></h1>
+
+<p class="MsoNormal"><span class='c12'>Win32 GrADS is a port of <a
+href="mailto:doty@cola.iges.org">Brian Doty</a> 's popular <a href=
+"http://cola.gmu.edu/grads/">Grid Analysis and Display System
+(GrADS)</a> to the x86 PC running 32-bit MS Windows operating
+systems. Starting with v1.9 Win32 GrADS is now bundled with the <a
+href="http://www.straightrunning.com/XmingNotes/">Xming</a> X
+Windows server, so there is no need to install a separate X
+server.</span></p>
+
+<p><span class='c12'>This implementation of Win32 GrADS is
+functionally equivalent to all Unix/Linux versions. Supported
+features include:</span></p>
+
+<ul type="disc">
+<li class="MsoNormal"><span class='c12'>Command line editing
+("readline")</span></li>
+
+<li class="MsoNormal"><span class='c12'>Animation, mouse and X
+Window widgets</span></li>
+
+<li class="MsoNormal"><span class='c12'>Scriptable Graphical User
+Interface (GUI) with <a href="http://opengrads.org/doc/gagui/index.php">Athena
+widget support</a></span></li>
+
+<li class="MsoNormal"><span class='c12'>Input of binary IEEE, GRIB-1, GRIB-2,
+HDF-4, NetCDF-3, NetCDF-4/HDF-5, and  remote files
+through the OPeNDAP interface.
+It includes support for <a href="Contents/Resources/Documentation/gradcomdsdfopen.html">
+self-describing
+NetCDF/HDF-SDS files</a> conforming to the <a href=
+"http://www.cdc.noaa.gov/~jac/coop/">COARDS</a> conventions, and <a
+href="Contents/Resources/Documentation/gradcomdxdfopen.html">
+eXternally defined
+NetCDF-SDS files</a> which do not conform to the COARDS
+conventions</span></li>
+
+<li class="MsoNormal"><span class='c12'>PNG, SVG, PDF and postscript image output
+using the <b>gxyat</b> user defined command.</span></li>
+
+<li class="MsoNormal"><span class='c12'>JPEG and PNG image output
+using the <b>printim</b> command.</span></li>
+
+<li class="MsoNormal"><span class='c12'>GeoTIFF and KML image output support.</span></li>
+
+<li class="MsoNormal"><span class='c12'>Support for reading shapefiles.</span></li>
+
+<li class="MsoNormal"><span class='c12'>Support for OpenGrADS (<a
+href="http://opengrads.org/">http://opengrads.org</a>) User Defined Extensions including 
+several commands and functions for regridding, computing streamfunction 
+and velocity potential, spherical harmonic filter, etc. 
+<a href="http://opengrads.org/doc/#udxt">Read more...</a></span></li>
+
+<li class="MsoNormal"><span class='c12'>Support for OpenGrADS (<a
+href="http://opengrads.org/">http://opengrads.org</a>) interfaces to Python, PHP, Perl, Java and Matlab.</span></li>
+</ul>
+
+<h2><a name="sysreq"></a><span class='c12'>Deciding which GrADS version 
+is right for you</span></h2>
+
+<p class="MsoNormal"><span class='c12'>
+The OpenGrADS project currently distributes 2 different versions of GrADS. <b>Version 2.1</b> is
+where all new development is taking place.  <b>Version 1.x</b> is a legacy distribution for those 
+users that cannot yet migrate to Version 2.1.  As of this writing, Version 2.1 has almost all 
+the features of the Version 1.x, even the output of HDF/NetCDF files through the LATS extension.
+Another important distinction is memory footprint: internally, GrADS v2.0 represents 
+all gridded/station data as double precision arrays, taking twice as
+much memory as GrADS v1.x. The implementation of the
+<b>sdfopen</b>/<b>xdfopen</b> commands differs in important ways.
+Version 1.x is known to have a memory leak that causes excessive use of
+memory when reading <b>templated</b> NetCDF/HDF files.  This memory leak
+has been fixed in GrADS v2.0, but templated NetCDF/HDF files in v2.0
+access data one longitudinal row at time with a serious performance
+penalty when dealing with compressed HDF-4/NetCDF-4 files. Also, GRIB-2
+is supported natively in GrADS v2.0 and as an extension in v1.x (you
+need a function to access GRIB-2 files); performance, however, is
+similar.  
+</span></p>
+<br>
+<p class="MsoNormal"><span class='c12'>
+If you are new to GrADS or uncertain about which version is right for you, 
+start with GrADS v2.0. Since v1.x no longer actively developed, you should
+consider  v1.x (v1.10.r2.oga or later recommended) only if v2.0 cannot 
+meet your requirements.
+</span></p>
+
+<h1><a name="sysreq"></a><span class='c12'>System
+Requirements</span></h1>
+
+<p class="MsoNormal"><span class='c12'>Win32 GrADS is a 32-bit
+application. You must have the following
+hardware/software:</span></p>
+
+<ul type="disc">
+<li class="MsoNormal"><span class='c12'>x86 processor (Pentium or
+higher recommended)</span></li>
+
+<li class="MsoNormal"><span class='c12'>Windows 2000 or better (I
+don't mean Linux :-))</span></li>
+
+<li class="MsoNormal"><span class='c12'>512 megabytes memory
+(RAM)</span></li>
+
+<li class="MsoNormal"><span class='c12'>100 megabytes hard disk
+space</span></li>
+</ul>
+
+<h1><a name="dist"></a><span class='c12'>This
+Distribution</span></h1>
+
+<p class="MsoNormal"><span class='c12'>In this installation you
+will find all that you need to run GrADS: programs, font and map datasets, 
+sample test data as well
+as extension plug-ins. Starting with v2.0.a5 the directory structure has changed 
+substantially to match the 
+<a href="http://opengrads.org/wiki/index.php?title=The_OpenGrADS_Bundle">
+OpenGrADS Bundle</a> being adopted for all platforms by the OpenGrADS project.
+</span></p>
+
+<ul type="disc">
+<li class="MsoNormal"><span class='c12'><a href="Contents">Contents/</a> 
+- GrADS executables, utilities 
+and all required support data are now under this directory. 
+   <ul type="disc">
+   <li class="MsoNormal"><span class='c12'><a href="Contents/Cygwin">Cygwin/</a>
+    Windows specific binaries and dynamic linked libraries.
+   </li></ul>
+   <ul type="disc">
+   <li class="MsoNormal"><span class='c12'><a href="Contents/Cygwin">Resources/</a>
+    Platform independent resources
+	   <ul type="disc">
+       <li class="MsoNormal"><span class='c12'><a href="Contents/Resources/SupportData">SupportData/</a>
+        - Font and map datasets, including shapefiles for 
+		 the <a href="http://opengrads.org/doc/udxt/shape/">shape</a>extension.
+       </li></ul>
+	   <ul type="disc">
+       <li class="MsoNormal"><span class='c12'><a href="Contents/Resources/Scripts">Scripts/</a>
+        - Script library: several useful GrADS scripts as well as Athena GUI scripts.
+       </li></ul>
+	   <ul type="disc">
+       <li class="MsoNormal"><span class='c12'><a href="Contents/Resources/Documentation/gadoc.html">
+	     Documentation/</a> - User's guide and reference manual.
+       </li></ul>
+	   <ul type="disc">
+       <li class="MsoNormal"><span class='c12'><a href="Contents/Resources/SampleDatasets/">
+	       SampleDatasets/</a>
+          - The classic <i>model</i> dataset used in many tutorials and examples.
+       </li></ul>
+	   <ul type="disc">
+       <li class="MsoNormal"><span class='c12'><a href="Contents/Resources/Xming">Xming/</a>
+        - The <a href=Contents/Resources/Xming>Xming</a> X Windows server.</span>
+       </li></ul>
+   </li></ul>
+<li class="MsoNormal"><span class='c12'><a href="Classic">Classic</a>/
+- shotcuts to directories under <a href="Contents">Contents</a> for those users 
+familiar with the old directory structure.
+ </span></li>
+</ul>
+
+<h1><a name="xserver"></a><span class='c12'>Batteries
+included</span></h1>
+
+<p class="MsoNormal"><span class='c12'>Because Win32 GrADS is based
+on the same code as the Unix version, it requires an <b>X
+server</b>. An <b>X server</b> is the software which processes
+instructions from "X clients" such as GrADS to do things like draw
+on the screen. Starting with Version 1.9, the excellent Xming X
+Server</span></p>
+
+<p class="MsoNormal"><span class='c12'>&nbsp;</span></p>
+
+<p class="MsoNormal c17"><span class='c12'><a href=
+"http://www.straightrunning.com/XmingNotes/">
+http://www.straightrunning.com/XmingNotes/</a>&nbsp;</span></p>
+
+<p class="MsoNormal c17"><span class='c12'><a href=
+"http://sourceforge.net/projects/xming">
+http://sourceforge.net/projects/xming</a></span></p>
+
+<p class="MsoNormal"><span class='c12'>&nbsp;</span></p>
+
+<p class="MsoNormal"><span class='c12'>is bundled and integrated
+with Win32 GrADS. There is no longer a need to install a separate X
+server. The Xming X server is developed and maintained by Colin
+Harrison, being derivative from a number of other open source
+projects. The binaries included with Win32 GrADS are based on the
+Xming Sourceforge Public Domain Release. See COPYRIGHT notice under
+<a href="Contents/Resources/Xming/">Xming</a> subdirectory and URLs above for additional
+information.</span></p>
+
+<p class="MsoNormal"><span class='c12'>&nbsp;</span></p>
+
+<p class="MsoNormal"><b><span class='c12'>Note:</span></b> <span
+class='c12'>In the past Win32 GrADS has worked with a wide variety
+of X servers. If for some reason you would like to work with your
+trusted X server simply remove or rename the Xming directory
+shipped with Win32 GrADS and set your DISPLAY environment variable
+as required by your X server (usually <b>
+DISPLAY=localhost:0.0</b>). By default, when Xming is present, the
+GrADS binaries automatically set <b>DISPLAY=localhost:7.0</b>, and
+starts Xming on Display number 7.</span></p>
+
+<h1><a name="usage"></a><a name="Install"></a><span class=
+'c12'>Installation</span></h1>
+
+<p><span class='c18'>Up to date installation information can be
+found on the <a href=
+"http://opengrads.org/wiki/index.php?title=Installing_GrADS_v2_on_Microsoft_Windows">
+OpenGrADS Wiki</a>.</span></p>
+
+<h2><span class='c19'>Using the Automatic Installer</span></h2>
+
+<p><span class='c18'>Installing the Windows version of GrADS is
+very easy. If you downloaded a file called
+<pre>         grads-2.1.x-win32_superpack.exe
+</pre> simply run it, answer a few
+simple questions, and you are good to go (the installer will also
+automatically set your PATH so that you can run GrADS from the
+command line window).</span></p>
+
+<h2><span class='c19'>Using the ZIP File</span></h2>
+
+<p><span class='c18'>If your distribution came in the form of a zip
+file, simply unzip the distribution file
+<pre>         grads-2.1.x.win32_superpack.zip
+</pre>to a place
+of your choice (e.g., under</span> <span class='c21'>C:\</span>
+<span class='c22'>or</span> <span class='c21'>C:\OpenGrADS\</span><span class='c23'>) 
+and you are ready to go. Then open
+Windows Explorer and click on any of the wrapper scripts under
+OpenGrADS (say,</span> <span class='c20'>opengrads</span><span
+class='c18'>) and start using it.</span></p>
+
+<h1><span class='c19'>Setting your PATH</span></h1>
+
+<span class='c18'>This step is only necessary if your
+distribution came in the form of a ZIP file. You may find
+convenient adding the GrADS binary directory,<i>e.g.</i>, 
+<pre>
+         C:\OpenGraDS\Cygwin\Versions\$version\i686
+</pre> to your <b>PATH</b>. In this example, <tt>$version</tt> stands for the particular 
+version of the software being installed, say,
+2.1.0.oga.1. The top directory <tt>C:\OpenGrADS</tt> has also simple VBScript wrapper scripts 
+that can be used to start the main applications. However, there are a large number of utilities 
+that would not be accessible if you do not add the full path above.
+<p>
+ For changing your <b>PATH</b> click on
+
+<h1 class='c2'><span class='c24'>[Start]/[Control
+Panel]/[System]</span></h1>
+
+<span class='c19'> Then select the 
+<b>[Advanced]</b> tab and click on the
+<b>[Environment Variables]</b>
+button on the lower left. Select 
+<i>Path</i> <span class='c23'>under</span> <i><span class=
+'c19'>-System Variables-</span></i> <span class='c18'>and click on
+the <b>[Edit]</b> 
+button. Do not delete the current contents of your path; simply
+append a "<b>;</b>"
+followed by the name of the directory where your GrADS binaries
+reside.
+
+<H1><span class='c19'>Getting more fonts</span></h1>
+
+<span class='c18'>The Xming server bundled with Win32 GrADS
+comes with a minimal number of built-in fonts, plus whatever
+Windows fonts it may find. This is usually fine since GrADS draws
+its own fonts and does not rely on the X server for writing
+strings. The only exception is if you are using the Athena Widgets
+feature, which does make use of X Window fonts. You can install
+additional Xming fonts from their Sourceforge download
+page:</span>
+<h1 class='c2'><span class='c24'><a
+href=
+"http://sourceforge.net/project/showfiles.php?group_id=156984">
+http://sourceforge.net/project/showfiles.php?group_id=156984</a></span></h1>
+
+When installing the fonts make sure you
+install them with the Xming that came with your Win32 GrADS
+distribution, not the suggested default</span> <span class='c20'>
+C:\Program Files\Xming</span><span class='c25'>. For example, if
+you installed GrADS under</span> <span class='c20'>
+C:\OpenGrADS</span><span class='c18'>, you will want to install the
+extra fonts under</span> <span class='c28'>
+C:\OpenGrADS\Xming</span><span class='c18'>.</span></h1>
+
+<h1><span class='c12'>Using Win32 GrADS</span></h1>
+
+<p><span class='c12'>The following applications are
+available.</span><br>
+&nbsp;</p>
+
+<div class="c11">
+<table class="MsoNormalTable c33" border="1" cellpadding="0" width=
+"648">
+<tr>
+<td class='c30'>
+<p class="MsoNormal c29"><span class='c12'>Application</span></p>
+</td>
+<td class='c30'>
+<p class="MsoNormal c9"><span class='c12'>Description</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Grads</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Win32 GrADS with the classic
+command line interface (<b>ga-&gt;</b> prompt).&nbsp; This version
+can read all supported GrADS formats including NetCDF-3, NetCDF-4/HDF-5, HDF-4, GRIB-1/2 and
+on-line access to data on OPeNDAP servers (both gridded and station datasets.)
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GradsGUI</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Win32 GrADS with a Graphical User Interface. This version 
+can read all supported GrADS formats including NetCDF-3, NetCDF-4/HDF-5, HDF-4, GRIB-1/2 and 
+on-line access to data on OPeNDAP servers (both gridded and station datasets.) 
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GEOS5</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Win32 GrADS with a Graphical 
+  User Interface customized to read analysis and forecasts from <a href=https://gmao.gsfc.nasa.gov/weather_prediction/>NASA's 
+  GEOS-5 model </a> through an OpenDAP server. 
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>NCEP</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Win32 GrADS with a Graphical
+  User Interface customized to read analysis and forecasts from <a href=http://www.nco.ncep.noaa.gov/pmb/products/>NOAA's
+  NCEP models </a> through an OpenDAP server. It includes forecasts from GFS, NAM, RAP and WAVE models.
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>MERRA</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Win32 GrADS with a Graphical 
+  User Interface customized to read data from the <a href=https://gmao.gsfc.nasa.gov/reanalysis/>NASA's MERRA
+  reanalysis </a> through an OpenDAP server. As of mid-2016 a
+  registration process is required to access this OpenDAP server. See
+  <a
+  href=#troubleshooting>Troubleshooting</a>
+  section below.
+</tr>
+
+
+<!--
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GradsDAP&nbsp;</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>This the same as <b>Grads</b> above. In the past you 
+needed a separate build of GrADS to access OPeNDAP servers. Starting with v2.0.a5.oga.2 
+this functionality is available in the main executable <b>Grads</b>.
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gv32&nbsp;</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Windows' based GrADS
+metafile viewer.</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gxtran</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Classic metafile viewer (Gv
+is nicer).</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GxYAT</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Converts GrADS metafiles to
+PNG, SVG, PDF and enscapsulated postscript. Images produced with <b>GxYAT</b> 
+have anti-aliased fonts which are more legible than images created with <b>printim</b>. 
+Notice that <b>GxYAT</b> also comes as a User Defined Command (UDC) and can be used 
+just like <b>printim</b> from the <b>ga-&gt;</b> command line. 
+</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gxeps</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Converts GrADS metafiles to
+enscapsulated postscript (faster). You may want to obtain the
+Windows version of Ghostview (gsview), freely available from <a
+href="http://www.cs.wisc.edu/~ghost/gsview/">
+http://www.cs.wisc.edu/~ghost/gsview/.</a> Gsview will allow you to
+preview and print PostScript documents on win95/NT. Highly
+recommended.</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gxps</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Converts GrADS metafiles to
+postscript level 1 (slower)&nbsp;</span></p>
+</td>
+</tr>
+
+-->
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gribmap</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GRIB file mapping
+utility&nbsp;</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Gribscan</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>GRIB file scan
+utility&nbsp;</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Wgrib, wgrib2 </span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Wes Ebisuzaki's GRIB-1/GRIB-2 utilities
+(it slices, dices)&nbsp;</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Stnmap</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Station mapping
+utility&nbsp;</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal">wget</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'><b>wget</b> is a command line tool
+for transferring files with URL syntax, supporting FTP, FTPS, HTTP,
+HTTPS, SCP, SFTP, TFTP, TELNET, DICT, LDAP, LDAPS and
+FILE.</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Sh, tcsh</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><b><span class='c12'>sh</span></b> <span
+class='c12'>is a win32 port of the GNU Bourne Again Shell (bash).
+This utility is needed for executing shell commands from grads,
+e.g., <b>! ls.</b> For documentation of GNU software consult <a
+href="http://www.gnu.org/doc/doc.html">
+http://www.gnu.org/doc/doc.html.</a> For source code and additional
+information, consult <a href="http://cygwin.com/">
+http://cygwin.com</a>.</span></p>
+
+<p class="MsoNormal"><b><span class='c12'>tcsh</span></b> <span
+class='c12'>is a port of the C-shell to Win32.</span></p>
+</td>
+</tr>
+
+<tr>
+<td valign="top" class='c31'>
+<p class="MsoNormal"><span class='c12'>Rxvt</span></p>
+</td>
+<td valign="top" class='c31'>
+<p class="MsoNormal"><span class='c12'>A nice terminal for
+replacing Windows COMMAND.COM. You can start Grads under <b>
+rxvt</b> by entering:&nbsp;</span></p>
+
+<p class='c9'><span class='c12'>rxvt -fn fixedsys -fg darkgreen -e
+Grads&nbsp;</span></p>
+
+<p><b><span class='c12'>NOTE:</span></b> <span class='c12'>For
+running <b>rxvt</b> as a standalone program you may need to create
+the directory <b>c:\cygwin\tmp</b> .</span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>ls, cp, rm, mv, pwd,
+cat, grep, gzip, etc. </span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>Assorted GNU file utilities
+to facilitate porting GrADS scripts from Unix to Win32. For
+documentation of GNU software consult <a href=
+"http://www.gnu.org/doc/doc.html">
+http://www.gnu.org/doc/doc.html</a> For source code and additional
+information, consult <a href="http://cygwin.com/">
+http://cygwin.com</a></span></p>
+</td>
+</tr>
+
+<tr>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>*.dll&nbsp;</span></p>
+</td>
+<td class='c31'>
+<p class="MsoNormal"><span class='c12'>These are Dynamic Link
+Libraries (DLL) needed by the applications above. If you move them
+to a different directory, make sure they remain in your PATH. The
+DLL files above are usually not visible from the <i>Win32 GrADS</i>
+Program Group. You can change this default behavior from the
+View/Properties menu of the <i>Windows
+Explorer</i>.&nbsp;</span></p>
+</td>
+</tr>
+</table>
+</div>
+
+<p><span class='c12'>You can also start Win32 GrADS or any of the
+applications above from the DOS command line, e.g.,</span></p>
+
+<div class='c34'>
+<p class="MsoNormal c29"><span class='c12'>c:\&gt;
+grads</span></p>
+</div>
+
+<p class="MsoNormal"><span class='c12'>Recall that DOS is case
+insensitive, so <b>grads</b> is the same as <b>GrADS</b>. See <b>rxvt</b> above
+for a nice terminal program for Windows.</span></p>
+
+<h1><a name="doc"></a><span class='c12'>Documentation</span></h1>
+
+
+<p class="MsoNormal"><span class='c12'>
+A directory of the off-line documentation included in this distribution can be found
+<a href=
+"Contents/Documentation.html">here.</a>  There you will find a copy of the  <a href=
+"Contents/Resources/Documentation/gadoc.html">GrADS Core Documentation</a>, 
+along with documentation for the OpenGrADS specific additions. 
+<p>
+The on-line version of the GrADS Core Documentation is available 
+from <a href="http://cola.gmu.edu/grads/gadoc/gadoc.php">COLA</a>. OpenGrADS specific
+documentation is available from the 
+<a href="http://opengrads.org/wiki/index.php?title=OpenGrADS_Documentation">
+OpenGrADS Wiki</a>. 
+<p>
+Another source of documentation is the 
+<a href="http://cookbooks.opengrads.org/index.php?title=Main_Page"> OpenGrADS Cookbooks</a>
+where you can find Recipes on a variety of topics.
+</span>
+
+<h1><a name="interfaces"></a><span class='c12'>OpenGrADS
+Interfaces and Extensions</span></h1>
+
+<p class="MsoNormal"><span class='c12'><span class='c12'>This version of GrADS fully
+supports the Python, Perl, PHP, Java and Matlab <b>interfaces</b> being developed by the <a
+href="http://opengrads.org/">OpenGrADS Project</a>. However, the
+specific Perl/PHP/Python/Java/Malab modules are not included as they need to
+be installed in the context of specific Perl/PHP/Python/Java/Malab 
+distributions.
+Please consult the <a href=
+"http://opengrads.org/wiki/index.php?title=OpenGrADS_Documentation">
+OpenGrADS Wiki</a> for additional information.</span></p>
+<p>
+This version also includes the OpenGrADS <b>Extensions</b>. 
+The same extensions previously released by the OpenGrADS project
+with GrADS 1.9.0-rc1 are now available with
+GrADS v2.1, with the addition of some new ones: <tt>libmf</tt> (from Mike
+Fiorino) and a new spherical harmonic filter, <tt>sh_filt()</tt>.
+Documentation for these user defined functions/commands can be
+found <a href="http://opengrads.org/doc/#udxt">here</a></p>.
+
+<center><h3><span class='c12'>IMPORTANT CAVEAT</span></h3>
+<pre>  ---------------------------------------------------------------
+   As COLA has not yet published the official API for User Defined
+   functions in GrADS v2.0 we have adopted here an API that is    
+   based on our work with v1.9.0-rc1. This is a very low-level    
+   API that is *not* endorsed by COLA. As such, it is *not*       
+   advisable that users adopt this API to write their own         
+   extensions.  Furthermore, the extensions as implemented here   
+   are tied to a specific version of GrADS and should always be   
+   built in the context a given GrADS source tree.                
+   --------------------------------------------------------------
+
+</pre>
+</center>
+These extensions have been tested for sometime now and believed to be
+stable. However, please report any problem you encounter to the user
+listserv below.  Use these extensions at your own risk.
+
+<h3><span class='c12'>List of User Defined Commands Included</span></h3>
+<pre>
+   Command            Environment Variables               Function@Library
+ ----------- ---------------------------------------  --------------------------
+ printenv    Expand environment variables             c_xenv@^env.gex
+ runenv      Expand env vars and run command          c_env@^env.gex
+ @           Expand env vars and run command          c_env@^env.gex
+ getenv      Get value of environment variable        c_getenv@^env.gex
+ setenv      Set value of environment variable        c_setenv@^env.gex
+
+   Command         File and Directory Utilities           Function@Library
+ ----------- ---------------------------------------  --------------------------
+ abspath     Get absolute pathname'                   c_path@^path.gex
+ basename    Extract the base portion of a pathname   c_path@^path.gex
+ cd          Change current directory                 c_path@^path.gex
+ chdir       Change current directory                 c_path@^path.gex
+ dirname     Extract the directory portion of a pathname c_path@^path.gex
+ exists      Check whether a file exists              c_path@^path.gex
+ getatime    Get access time of a file                c_path@^path.gex
+ getctime    Get status change time of a file         c_path@^path.gex
+ getmtime    Get modification time of a file          c_path@^path.gex
+ glob        Get list of files matching pattern       c_path@^path.gex
+ isfile      Check whether a file                     c_path@^path.gex
+ isdir       Check whether a directory                c_path@^path.gex
+ match       Perl-compatible matching                 c_path@^path.gex
+ sed         SED-like search & replace                c_path@^path.gex
+ wordexp     Perform word expansion on string         c_path@^path.gex
+
+   Command           GxYAT: Image Generation              Function@Library
+ ----------- ---------------------------------------  --------------------------
+ gxyat       Save images in PNG/SVG/PDF/PS            c_gxyat@^gxyat.gex
+ set_rgba    Set color red/green/blue/alpha           c_rgba@^gxyat.gex
+
+   Command           Simple Extension Example             Function@Library
+ ----------- ---------------------------------------  --------------------------
+ hello       Hello, World! sample command             c_hello@^libhello.gex
+
+   Command          Interprocess Communication            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ ipc_verb    IPC verbose toggle                       c_Verb@^libipc.gex
+ ipc_open    Open stream for save/load                c_Open@^libipc.gex
+ ipc_close   Close stream                             c_Close@^libipc.gex
+ ipc_save    Save expression to stream                c_Save@^libipc.gex
+ ipc_define  Define variable (obsolete)               c_Define@^libipc.gex
+ ipc_error   Print IPC error message                  c_Error@^libipc.gex
+
+   Command    LATS: File Reformatting and Subsetting      Function@Library
+ ----------- ---------------------------------------  --------------------------
+ set_lats    Set LATS parameters                      c_lats_set@^liblats.gex
+ query_lats  Query LATS parameters                    c_lats_query@^liblats.gex
+ lats_grid   Define LATS grid                         c_lats_grid@^liblats.gex
+ lats_data   Write data to LATS file                  c_lats_data@^liblats.gex
+ reinit_lats Re-init LATS parameters                  c_lats_reinit@^liblats.gex
+
+   Command          Mike Fiorino's Extensions             Function@Library
+ ----------- ---------------------------------------  --------------------------
+ mfhilo      Find max/min or H/L in 2D field          c_mfhilo@^libmf.gex
+ tcprop      Properties radinf from central lon/lat   c_tcprop@^libmf.gex
+ grhist      histogram of expr                        c_grhist@^libmf.gex
+
+   Command          Satellite Orbit Extensions            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ set_orb     Set ORB parameters                       c_set@^orb.gex
+ orb_track   Satellite ground tracks                  c_track@^orb.gex
+
+</pre>
+
+<h3><span class='c12'>List of User Defined Functions Included</span></h3>
+<pre>
+  Function         Ben-Jei Tsuang's Extensions            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ lt          Local time                               f_bjt@^libbjt.gex
+ jd          Julian day                               f_bjt@^libbjt.gex
+ cosz        Cosine solar zenith angle                f_bjt@^libbjt.gex
+ dayratio    Daylight ratio                           f_bjt@^libbjt.gex
+ if          Conditional function                     f_bjt@^libbjt.gex
+ maxv        Maximum value                            f_bjt@^libbjt.gex
+ minv        Minimum value                            f_bjt@^libbjt.gex
+ which       Label gridpoints                         f_bjt@^libbjt.gex
+ ftest       F-test                                   f_bjt@^libbjt.gex
+ ttest       T-test                                   f_bjt@^libbjt.gex
+ tfit        Point  linear regression                 f_bjt@^libbjt.gex
+ fit         Global linear regression                 f_bjt@^libbjt.gex
+ tcorr2      Time correlation                         f_bjt@^libbjt.gex
+ tregr2      Point linear regression                  f_bjt@^libbjt.gex
+ tmave2      Time averaging w/masking                 f_bjt@^libbjt.gex
+ madvu       Calculates -d(u*EXPR)/dx                 f_bjt@^libbjt.gex
+ madvv       Calculates -d(V*EXPR)/dy                 f_bjt@^libbjt.gex
+ madvw       Calculates -d(W*EXPR)/dp                 f_bjt@^libbjt.gex
+ muadv       Zonal advection                          f_bjt@^libbjt.gex
+ mvadv       Meridional advection                     f_bjt@^libbjt.gex
+ mwadv       Vertical advection                       f_bjt@^libbjt.gex
+ satvap      Saturated vapor pressure                 f_bjt@^libbjt.gex
+ dew         Dew point temperature                    f_bjt@^libbjt.gex
+ lw          Thermal infrared fluxes                  f_bjt@^libbjt.gex
+ lw2         Thermal infrared fluxes v2               f_bjt@^libbjt.gex
+ pinterp     Pressure interpolation                   f_bjt@^libbjt.gex
+ zinterp     Height interpolation                     f_bjt@^libbjt.gex
+ line        Draws a line                             f_bjt@^libbjt.gex
+ vint2       Mass-weighted vertical integral          f_bjt@^libbjt.gex
+
+  Function     Streamfunction & Velocity Potential        Function@Library
+ ----------- ---------------------------------------  --------------------------
+ fish        Poisson solver                           f_fish@^fish.gex
+ fish_psi    Compute streamfunction                   f_psichi@^fish.gex
+ fish_chi    Compute velocity potential               f_psichi@^fish.gex
+ fish_vor    Compute vorticity                        f_psichi@^fish.gex
+ fish_div    Compute divergence                       f_psichi@^fish.gex
+
+  Function       Saakeskus Wx Function Collection         Function@Library
+ ----------- ---------------------------------------  --------------------------
+ dewpt       Dew-point temperature                    f_gsudf@^gsudf.gex
+ ept         Equivalent potential temperature         f_gsudf@^gsudf.gex
+ epi         Potential Instability                    f_gsudf@^gsudf.gex
+ plcl        Pressure at LCL                          f_gsudf@^gsudf.gex
+ shear       Wind Shear                               f_gsudf@^gsudf.gex
+ srh1km      Storm-relative Helicity 0-1km'           f_gsudf@^gsudf.gex
+ srh3km      Storm-relative Helicity 0-3km'           f_gsudf@^gsudf.gex
+ tlcl        Temperature at LCL                       f_gsudf@^gsudf.gex
+ tsindex     Chance of T-storm Initiation             f_gsudf@^gsudf.gex
+ ttindex     Total Totals Index                       f_gsudf@^gsudf.gex
+ wchill      Wind Chill Index (New)                   f_gsudf@^gsudf.gex
+
+  Function           Simple Extension Example             Function@Library
+ ----------- ---------------------------------------  --------------------------
+ hello       Hello, World! sample function            f_hello@^libhello.gex
+
+  Function          Interprocess Communication            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ ipc_save    Save expression to stream                f_Save@^libipc.gex
+ ipc_load    Load variable from file                  f_Load@^libipc.gex
+
+  Function          Mike Fiorino's Extensions             Function@Library
+ ----------- ---------------------------------------  --------------------------
+ smth2d      Shuman smoother/de-smoother              f_smth2d@^libmf.gex
+ uv2trw      Find radial/tangential velocity          f_uv2trw@^libmf.gex
+ re2         General interpolator (regrid2)           f_re2@^libmf.gex
+ esmrf       Saturation vapor pressure (old MRF)      f_esmrf@^libmf.gex
+ linreg      Linear regression: mx + b                f_linreg@^libmf.gex
+
+  Function          Satellite Orbit Extensions            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ orb_mask    Satellite orbit masking                  f_mask@^orb.gex
+
+  Function             Regridding Functions               Function@Library
+ ----------- ---------------------------------------  --------------------------
+ re          General interpolator                     ffre@^re.gex
+ re_         General interpolator (verbose)           ffre_dbg@^re.gex
+ regrid2     regrid2-like wrapper for re()            f_gsudf@^gsudf.gex
+ geos        Interpolation to GEOS-5 Grids            f_gsudf@^gsudf.gex
+ reimg       Interpolation for Image Generation'      f_gsudf@^gsudf.gex
+
+  Function         Spherical Harmonic Analysis            Function@Library
+ ----------- ---------------------------------------  --------------------------
+ sh_filt     Spherical harmonic filter                f_shfilt@^shfilt.gex
+ sh_power    Spherical harmonic spectra               f_shpowr@^shfilt.gex
+ sh_fish     Poisson solver                           f_pssolv@^shfilt.gex
+ sh_psi      Compute streamfunction                   f_psichi@^shfilt.gex
+ sh_chi      Compute velocity potential               f_psichi@^shfilt.gex
+ sh_vor      Compute vorticity                        f_psichi@^shfilt.gex
+ sh_div      Compute divergence                       f_psichi@^shfilt.gex
+
+</pre>
+
+<b> Important:</b> The following extension has been discontinued as
+shapefile support is now built into GrADS.
+<pre>
+   Command             Shapefile Extensions               Function@Library
+ ----------- ---------------------------------------  --------------------------
+ shp_lines   Draw lines    from shapefile             c_lines@^shape.gex
+ shp_polyf   Draw polygons from shapefile             c_polyf@^shape.gex
+</pre>
+
+<h1><a name="help"></a><a name="troubleshooting"></a>Troubleshooting</h1>
+
+<ol>
+
+<li><b><i>When WiFi is turned OFF you get: Error in GXSTRT: Unable to connect to X server.</span></i></b>
+Make sure you have the loopback adapter installed, otherwise you will
+not be on a network, will have no local IP address available, and thus
+no possibility to communicate with the X server. Installing a loopback
+adapter solves the problem. This can be done from the Device Manager
+in the Control Panel. Just choose <i>Add legacy hardware</i> from the
+<i>Action</i> menu there, click on Next, then choose <i>Install the hardware
+that I manually select from the list (Advanced)</i> and click Next,
+choose <i>Network adapters</i>, then proceed to the next step and wait for
+the lists to be populated. Choose <i>Microsoft</i> as the manufacturer, and
+finally <i>Microsoft Loopback Adapter</i>. Let the newly created adapter
+initialize and that should do the trick. (Thanks to Pablo Nunez and Hernan
+  Hesala.)
+  
+<li><b><i>It says that Xming is starting up but the graphics window never comes up.</span></i></b>
+<span class='c12'>Both GrADS and the Xming server uses the local
+network to talk to each other. If your Windows Firewall or
+anti-virus software is preventing programs from accessing the
+network you will not be able to see any graphics on the screen
+(although GrADS may function OK in batch mode). The solution is to
+reconfigure your firewall/antivirus software to allow Xming/GrADS
+to access the local network.</li>
+
+<li><b><i>I have a previous
+installation of X/Win32 GrADS and there is some kind of conflict
+involving the</i></b> <b><i>
+cygwin1.dll.</i></b> <b><i>&nbsp;</i></b>
+This a common problem and of simple solution. The easiest thing to
+do is to uninstall the previous version of GrADS. Or else, make
+sure that the directory where the previous version binaries reside
+is <b>not</b> on your path. There is a good chance (test it first)
+that the previous version of GrADS will work with the newer
+cygwin1.dll. In this
+case, remove or rename the older
+<tt>cygwin1.dll</tt> and see what
+happens.
+
+<li class="MsoNormal"><b><i><span class='c12'>I am a regular <a
+href="http://cygwin.com/">cygwin</a> user and the
+included</span></i></b> <b><i><span class='c38'>
+cygwin.dll</span></i></b><b><i><span class='c12'> is conflicting
+with my cygwin installation.</span></i></b> <span class='c12'>See
+the discussion above. If you have an older cygwin installation, you
+may want to update that first. If your cygwin installation is newer
+than the version shipped with GrADS, you may want to remove
+the</span> <span class='c38'>cyg*.ddl</span> <span class='c12'>
+files included in the</span> <span class='c38'>
+OpenGrADS/win32/</span> <span class='c12'>directory and stick with
+the ones in your newer cygwin distribution. If all else fails,
+download the cygwin version of the supplibs and the GrADS sources
+and rebuild. See instructions in the <a href=
+"http://opengrads.org/wiki/index.php?title=Building_GrADS_from_Sources">
+OpenGrADS Wiki</a>.</span></li>
+
+<li> <b><i> I am no longer able to access the MERRA datasets. What to
+do I need to do to register with NASA? </b> </i> NASA's GES/DISC now requires
+registration in order to acess their OpenDAP servers. Read
+<a href=http://disc.sci.gsfc.nasa.gov/registration/registration-for-data-access>this</a>.
+Once you obtain your free account and password, do the following: 
+<ol type="a">
+<li> Make sure you are using a build of GrADS that is linked with netcdf
+   version 4.3.3 or later. Check the output from <b>q config</b> to be
+   sure. The recent release of version 2.1.0 is okay. Older releases
+   that are not linked with netcdf-4.3.3 will not work.
+
+<li> Create a file in your home directory called <b>.urs_cookies</b>. It can be
+   empty, but it must exist.
+
+<li> Create a file in your home directory called <b>.netrc</b>. Change the
+   permissions so it is only readable by you. It should contain an
+   entry like the one below with the server name and your own
+   authentication info.
+<pre>
+machine goldsmr4.sci.gsfc.nasa.gov login *YourLoginName* password *YourPassword* 
+  </pre>
+<li> If you do not already have one, create a file in your home directory
+   called <b>.dodsrc</b>. Add the following two lines, using the full path
+   for your own home directory:
+<pre>
+        HTTP.NETRC=<YourHomeDirectory>/.netrc
+        HTTP.COOKIEJAR=<YourHomeDirectory>/.urs_cookies
+  </pre>
+  
+</ol>
+This is a one time configuration. From this point on you should be
+able to access the MERRA datasets on the OpenDAP server as usual.
+
+</ol>
+
+
+
+<h1><span class='c12'>Getting Help</span></h1>
+
+<p class="MsoNormal"><span class='c12'><span class="plaintext"><span class='c12'>
+A new forum hosted by COLA has been established in March 2010 for the
+exchange of information on the use of GrADS. Users at all levels are
+encouraged to post questions and answers on the basics of getting
+started, how to handle various data formats, where to find geophysical
+data sets in the public domain that are of interest to the GrADS
+community, discovering innovative solutions to data analaysis and
+display problems, script refinements, technical build issues, details
+about new releases, development requests, etc. Additional information
+about this forum can be found at 
+<a href=http://cola.gmu.edu/grads/users.php>
+http://cola.gmu.edu/grads/users.html</a>.
+
+<h1><a name="thanks"></a><span class='c12'>Credits</span></h1>
+
+<p class="MsoNormal"><span class="plaintext"><span class='c12'>This
+Win32 port was contributed by Arlindo da Silva
+(dasilva@opengrads.org). Win32 GrADS is built with the <a href=
+"http://cygwin.com/">Cygwin</a> tools and the X Client Libraries
+provided by <a href="http://cygwin.com/xfree">Cygwin/X Project</a>.
+The Xming server is developed and maintained by Collin
+Harrison.</span></span></p>
+
+<p class="MsoNormal"><span class="plaintext"><span class='c12'>
+&nbsp;</span></span></p>
+
+<p class="MsoNormal"><span class="plaintext"><span class='c12'>Mike
+Fiorino provided invaluable help during the initial phase of this
+port. Don Hooper helped porting the SDF interface; Steve Emmerson
+provided guidance with UDUNITS. Brian Doty tested some of the grads
+widget features. Many thanks to all.</span></span> &nbsp;</p>
+
+<p class="MsoNormal">&nbsp;</p>
+
+<h1><a name="License"></a><span class='c12'>GrADS License
+Terms</span></h1>
+
+<p class="MsoPlainText"><span class='c19'>The Grid Analysis and
+Display System (GrADS) Version 2.1<br>
+<br>
+Copyright (C) 1988-2016 by George Mason University.&nbsp;</span></p>
+
+<p class="MsoPlainText"><span class='c19'>&nbsp;</span></p>
+
+<p class="MsoPlainText"><span class='c19'>This program is free
+software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software
+Foundation; using version 2 of the License.<br>
+<br>
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.&nbsp; See the
+GNU General Public License for more details.<br>
+<br>
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software&nbsp;
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA&nbsp;
+02111-1307&nbsp; USA. See file COPYRIGHT
+for additional information.</span></p>
+</div>
+</body>
+</html>
+

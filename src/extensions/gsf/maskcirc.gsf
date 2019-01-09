@@ -1,0 +1,56 @@
+*
+* Returns a mask with UNDEFs for grid points farther away than a distance R, in km.
+*
+
+function maskcirc(lon0,lat0,R)
+
+    if ( R = '' | R='R' )
+       say ''
+       say 'Function maskcirc() returns a mask with "1" inside a circle of radius R'
+       say 'centered at (lon,lat) and UNDEFs elsewhere.'
+       say ''
+       say 'Usage:'
+       say '       d maskcirc(lon,lat,R_km)'
+       say ''
+       say 'where (lon,lat) are the reference longitude/latitude in degrees and'
+       say 'R_km is the radius in kilometers. '
+       say ''
+       return
+    endif
+
+*   Circle radius in units of earth radius
+
+    R_ = R/6378.1370
+
+    'd2rmaskcirc = 3.141592653589793 / 180.'
+
+*   Cartesian coordiantes on unit sphere
+
+    'xmaskcirc =  cos(d2rmaskcirc*lat) * cos(d2rmaskcirc*lon)'
+    'ymaskcirc =  cos(d2rmaskcirc*lat) * sin(d2rmaskcirc*lon)'
+    'zmaskcirc =  sin(d2rmaskcirc*lat)'
+
+    'xmaskcirc0 =  cos(d2rmaskcirc*'lat0') * cos(d2rmaskcirc*'lon0')'
+    'ymaskcirc0 =  cos(d2rmaskcirc*'lat0') * sin(d2rmaskcirc*'lon0')'
+    'zmaskcirc0 =  sin(d2rmaskcirc*'lat0')'
+
+*   Great circle distance o (lon0,lat0)
+
+    'rmaskcirc = acos(xmaskcirc*xmaskcirc0 + ymaskcirc*ymaskcirc0 + zmaskcirc*zmaskcirc0)' 
+
+    'undefine d2rmaskcirc'
+    'undefine xmaskcirc'
+    'undefine ymaskcirc'
+    'undefine zmaskcirc'
+    'undefine xmaskcirc0'
+    'undefine ymaskcirc0'
+    'undefine zmaskcirc0'
+
+*   Mask
+
+    'rmaskcirc = maskout(1+0*lat,'R_'-rmaskcirc)'
+
+     return 'rmaskcirc'
+
+
+

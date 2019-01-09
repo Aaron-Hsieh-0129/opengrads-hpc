@@ -1,0 +1,12 @@
+Release 2.1.0 of 24 October 2009
+--------------------------------
+
+This version supports the new LATS extension in GrADS v2.0 allowing
+HDF-4, NetCDF-3 and NetCDF-4/HDF-5. Data compression is also available with the NetCDF-4 output format.
+
+LATS4D is included in the OpenGrADS Bundle 2.0.a7.oga.3 and later,
+with no additional installation neccesary. If probably do not need
+LATS4D as a separate package if using this version of GrADS.
+
+
+

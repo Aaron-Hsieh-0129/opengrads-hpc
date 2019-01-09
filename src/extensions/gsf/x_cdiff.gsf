@@ -1,0 +1,71 @@
+*
+* Like cdiff, but extends domain to avoid undefs.
+*
+*       This script has been placed in the Public Domain.
+*
+function x_cdiff(var,dim)
+
+*    Record dimen environment
+*    ------------------------
+     rc =  savexy()
+     if ( rc ); return; endif
+
+*     Enlarge the domain
+*     --------------- 
+      if ( dim='x')
+        xmin = _xmin - 1
+        xmax = _xmax + 1
+        'set x ' xmin ' ' xmax  
+        say 'got x ' xmin ' ' xmax
+      endif
+      if ( dim='y' ) 
+        ymin = _ymin - 1
+        ymax = _ymax + 1
+        'set y ' ymin ' ' ymax  
+         say 'got y ' ymin ' ' ymax
+      endif
+
+
+*    Calculate centered differences
+*    ------------------------------
+      'define gsudf = cdiff(' var ',' dim ')'
+      if (rc)
+        say 'x_cdiff: error evaluating cdiff(' var ',' dim ')'
+        restxy()
+        return
+      endif
+
+*     Return dimension environment to initial state
+*    -------------------------------------
+     restxy()
+
+return 'gsudf'
+
+function savexy()
+     rc = 0
+     'q dims'
+      tmp = sublin ( result, 2)
+      wrd = subwrd(tmp,3) 
+      if ( wrd = 'varying')
+        _xmin = subwrd(tmp,11)
+        _xmax = subwrd(tmp,13)
+      else
+        rc = 1
+      endif
+      tmp = sublin ( result, 3)
+      wrd = subwrd(tmp,3) 
+      if ( wrd = 'varying')
+        _ymin = subwrd(tmp,11)
+        _ymax = subwrd(tmp,13)
+      else
+	rc = 1
+      endif
+return rc
+
+function restxy()
+      'set x ' _xmin ' ' _xmax
+      'set y ' _ymin ' ' _ymax
+return
+
+
+

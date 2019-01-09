@@ -1,0 +1,88 @@
+                    OpenGrADS User Contributed Extensions
+
+
+The OpenGrADS User Defined Extensions (UDXTs) are a collection of
+dynamically linker user defined commends (UDCs) and User Defined
+Functions (UDFs) that complements the Grid Analysis and Display System
+(GrADS). For building from sources see file BUILD.
+
+REQUIREMENTS
+
+Either GrADS v2.0.a5.oga.5 or later, installed
+
+
+BUNDLE INSTALLATION
+
+If you are using an OpenGrADS Bundle installation, the extensions are
+pre-configured and require no extra installation. Start grads and type
+
+ga-> q udx
+
+for a list of extensions and enjoy.
+
+
+CLASSIC INSTALLATION
+
+First install GrADS. The GrADS executables are typically placed in the
+directory /usr/local/bin. The libraries contained in this tar file are
+typically placed in the directory /usr/local/bin/gex.  If you do not
+have write permission for your /usr/local/bin directory, you can put
+them in the ~/bin/gex subdirectory of your home directory or any other
+directory of your choice. Henceforth, we will refer to the GrADS
+installation directory as $GABIN, and assume that you install the
+dynamic extensions in subdirectory gex/.
+
+Whatever location you choose to install the UDXTs you must set the
+environment variable GA2UDXT (for GrADS v2.0) or GA1UDXT (for the
+legacy GrADS v1.10 series) to point to the location of your User
+Defined Extension Table. To use the one in this distribution set
+
+   export GAUDXT=$GABIN/gex/udxt    (sh, ksh, bash)
+   setenv GAUDXT $GABIN/gex/udxt    (csh, tcsh)
+
+You may want to familiarize yourself with the contents of the file
+"$GABIN/gex/udx" and comment out any function that may cause any
+conflict to you.
+
+In addition, you need to let your operating system know where to
+find these shared objects (dynamic libraries). Typically
+
+- Linux, most Unices:
+
+ export LD_LIBRARY_PATH=$GABIN/gex:$LD_LIBRARY_PATH    (sh, ksh, bash)     
+ setenv LD_LIBRARY_PATH $GABIN/gex:$LD_LIBRARY_PATH    (csh, tcsh)
+
+- IRIX64 Note:
+
+ You man want to set the environment variable LD_LIBRARYN32_PATH for
+ New 32-bit ABI and LD_LIBRARY64_PATH for 64-bit programs, in addition 
+ the good old LD_LIBRARY_PATH. If this still does not work, enter the
+ full pathnames in your "udxt" file. 
+
+- Mac OS X
+
+ export DYLD_LIBRARY_PATH=$GABIN/gex:$DYLD_LIBRARY_PATH  (sh, ksh, bash)
+ setenv DYLD_LIBRARY_PATH $GABIN/gex:$DYLD_LIBRARY_PATH  (csh, tcsh)
+
+
+VERIFYING INSTALLATION
+
+Start GrADS and enter
+
+ga-> query udc
+ga-> query udf
+
+To see a list of all your user defined commands and functions. You may
+want to try 
+
+ga-> hello
+
+which should print "Hello, World" to your screen.
+
+
+ADDITIONAL INFORMATION:
+
+ http://opengrads.org/wiki/index.php?title=User_Defined_Extensions
+ http://opengrads.org/wiki
+ http://grads.iges.org/grads
+
