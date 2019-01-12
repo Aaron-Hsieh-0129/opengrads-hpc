@@ -9,6 +9,6 @@ export GSFS=dewpt.gsf  epi.gsf  ept.gsf  plcl.gsf  shear.gsf\
             wchill.gsf tsindex.gsf # speed.gsf x_cdiff.gsf
 
 
-all %:
+%:
 	@$(MAKE) -f ../gex.mk $@
 

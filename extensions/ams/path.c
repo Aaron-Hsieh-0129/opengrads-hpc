@@ -463,7 +463,7 @@ int c_path ( int argc, char **argv, struct gacmn *pcm) {
       gaprnt(2,pout);
       snprintf(pout,511,"%s\n",result);
       gaprnt(2,pout);
-      // free(Result);
+      /* free(Result); */
     } 
     pcrs_free_job(job);
     return(0);

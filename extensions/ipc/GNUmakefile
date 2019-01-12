@@ -4,6 +4,6 @@
 
 export PODS=libipc.pod
 
-all %:
+%:
 	@$(MAKE) -f ../gex.mk $@
 

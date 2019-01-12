@@ -11,7 +11,7 @@ export FOPT=-O0 # this is needed with gfortran or else a coredump may result
 export PODS=tle.pod
 export EXTRAS=tle_mod.o sgp4_mod.o ftn_tle.o
 
-all %: 
+%: 
 ifeq ($(ARCH),AIX)
 	@$(MAKE) -f ../gex.mk $@ CSRC=tle.c FOPT=$(FOPT) LD=f95 
 else

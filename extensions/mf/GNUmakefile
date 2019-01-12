@@ -11,7 +11,7 @@ export EXTRAS=libmf_modules.o gettrk_modules.o \
               ftn_uv2trw.o ftn_tcprop.o ftn_xy2rt.o ftn_tcxy2rt.o \
               ftn_re2.o ftn_esmrf.o ftn_linreg.o ftn_grhist.o
 
-all %: $(EXTRAS)
+%: $(EXTRAS)
 	@$(MAKE) -f ../gex.mk $@  CSRC=libmf.c
 
 $(EXTRAS):

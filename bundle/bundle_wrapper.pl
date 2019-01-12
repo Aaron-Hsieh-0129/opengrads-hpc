@@ -27,7 +27,7 @@
 #
 
 # use Strict;
-use Env qw(PATH GADDIR GASCRP GAGUI GAVERSION GA2UDXT GADSET LD_LIBRARY_PATH DYLD_LIBRARY_PATH YYYYMMDD ); 
+use Env qw(PATH GADDIR GASCRP  GAGUI GAVERSION GAUDPT GA2UDXT GADSET LD_LIBRARY_PATH DYLD_LIBRARY_PATH YYYYMMDD ); 
 use FindBin;
 use File::Basename;
 use Getopt::Long qw(:config no_auto_abbrev pass_through);
@@ -47,12 +47,13 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
 
 # Command line options
 # --------------------
-  $print_gaddir = $print_gascrp = $print_ga2udxt = $print_version = ""; 
+  $print_gaddir = $print_gascrp = $print_ga2udxt = $print_gaudpt = $print_version = ""; 
   $asif = $with_version = $help = $quiet = $debug ="";
   die unless 
   GetOptions("gaddir"         => \$print_gaddir,
              "gascrp"         => \$print_gascrp,
              "ga2udxt"        => \$print_ga2udxt,
+             "gaudpt"         => \$print_gaudpt,
              "asif:s"         => \$asif,
              "with-arch:s"    => \$arch,
              "with-mach:s"    => \$mach,
@@ -135,6 +136,7 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
   }
 
   $ga2udxt = "$gabdir/gex/udxt";
+  $gaudpt  = "$gabdir/gex/udpt";
 
 
 # Set key environment variables if not set
@@ -142,6 +144,7 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
   $GADDIR  = $gaddir   unless ( $GADDIR );
   $GADSET  = $gadset   unless ( $GADSET );
   $GA2UDXT = $ga2udxt  unless ( $GA2UDXT);
+  $GAUDPT  = $gaudpt   unless ( $GAUDPT);
 
   if ( -d "$gascrp" ) {
     if ( $GASCRP ) { $GASCRP .= " $gascrp"; }
@@ -171,6 +174,7 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
   if ( $print_gaddir  or $debug ) { print "GADDIR=$GADDIR\n";     eval $exit; }
   if ( $print_gascrp  or $debug ) { print "GADDIR=$GASCRP\n";     eval $exit; }
   if ( $print_ga2udxt or $debug ) { print "GAUDXT=$GA2UDXT\n";    eval $exit; }
+  if ( $print_gaudpt  or $debug ) { print "GAUDPT=$GAUDPT\n";    eval $exit; }
   if ( $print_version or $debug ) { print "GAVERSION=$version\n"; eval $exit; }
 
 # Find appropriate binary name
@@ -354,10 +358,13 @@ OPTIONS
      --ga2udxt      print the value of the GA2UDXT variable right
                     before calling the real "$Name"
 
-     --gaddir       print the value of the GA2UDXT variable right
+     --gaudpt       print the value of the GAUDPT variable right
                     before calling the real "$Name"
 
-     --gascrp       print the value of the GA2UDXT variable right
+     --gaddir       print the value of the GADDIR variable right
+                    before calling the real "$Name"
+
+     --gascrp       print the value of the GASCRP variable right
                     before calling the real "$Name"
 
      --h            print this page
@@ -386,6 +393,11 @@ ENVIRONMENT VARIABLES
      GA2UDXT        The name of the directory where grads looks for its
                     User Denied eXtension Table; when GA2UDXT is already
                     set this wrapper will not redefine it.
+
+     GAUDPT         The name of the directory where grads looks for its
+                    Plug-in Table; when GAUDPT is already set this wrapper 
+                    will not redefine it. Note: a Plug-in is COLA's
+                    implementation of OpenGrADS Extensions.
 
      GADDIR         The name of the directory where grads looks for its
                     fonts and map database files; when GADDIR is already

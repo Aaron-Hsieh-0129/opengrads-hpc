@@ -7,7 +7,7 @@
 export PODS=fish.pod
 export EXTRAS=fishpak.o ftn_fish.o
 
-all %: 
+%: 
 	@$(MAKE) -f ../gex.mk $@ CSRC=fish.c 
 
 

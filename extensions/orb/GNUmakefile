@@ -11,7 +11,7 @@ export FOPT=-O0 # this is needed with gfortran or else a coredump may result
 export PODS=orb.pod
 export EXTRAS=orbits_mod.o ftn_orb.o
 
-all %: 
+%: 
 ifeq ($(ARCH),AIX)
 	@$(MAKE) -f ../gex.mk $@ CSRC=orb.c FOPT=$(FOPT) LD=f95 
 else

@@ -1,0 +1,29 @@
+#!/bin/csh -f
+#
+#  Wrapper around Cola's configure to make it work with the OpenGRADS supplibs
+#
+
+if ( $?SUPPLIBS ) then
+   echo Using OpenGRADS SUPPLIBS from $SUPPLIBS
+else
+   echo OpenGRADS environment variable SUPPLIBS not set
+   exit 1
+endif
+
+set here = `pwd`
+set bin = $here/bin
+set lib = $here/bin/gex
+
+mkdir -p $bin
+mkdir -p $lib
+
+(cd cola; ./configure --disable-dyn-supplibs \
+                      --with-gadap \
+		      --with-gui \
+		      --with-opengrads \
+		      --bindir=$bin \
+		      --libdir=$lib \
+)	      
+		      
+
+

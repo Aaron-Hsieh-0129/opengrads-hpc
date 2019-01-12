@@ -97,7 +97,7 @@ export XCFLAGS XLDFLAGS XDLLS
 clean:
 	@$(MAKE) -f ../gex.mk clean XBINS="gxyat $(HELPER)" 
 
-all %: gxyat $(HELPER)
+%: gxyat $(HELPER)
 	@$(MAKE) -f ../gex.mk $@ CSRC=gxyat.c XBINS="gxyat $(HELPER)" 
 
 gxyat : gxyat.c

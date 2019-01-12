@@ -38,9 +38,10 @@
    esac
 
    preserve=no
-   copy="rsync -Cax"
+   #copy="rsync -Cax"
+   copy="rsync -ax"
    std_files="ChangeLog COPYRIGHT INSTALL NEWS README"
-   version=`cat src/VERSION`
+   version=`cat cola/src/VERSION`
 }
 
 #............................................................
@@ -136,7 +137,7 @@ function compile_stuff {
 # Build and install under bin/
 # ----------------------------
   echo $0: Building GrADS
-  if ! $make install               > /dev/null; then return 1; fi
+  if ! $make cola-install          > /dev/null; then return 1; fi
   echo $0: Building Extensions
   if ! $make -C extensions install > /dev/null; then return 1; fi
 
@@ -148,8 +149,8 @@ function populate {
 
 # Populating bundle
 # ----------------
-  echo $0: Copying Files with Version `cat src/VERSION`
-  if ! $copy src/VERSION               $b_exec; then return 1; fi
+  echo $0: Copying Files with Version `cat cola/src/VERSION`
+  if ! $copy cola/src/VERSION          $b_exec; then return 1; fi
 
   if test "$arch" = Cygwin; then
      for file in $std_files
@@ -168,7 +169,7 @@ function populate {
   fi
 
   if ! $copy lib/scripts/*             $b_scrp; then return 1; fi
-  if ! $copy data/*                    $b_data; then return 1; fi
+  if ! $copy data/* cola/data/*        $b_data; then return 1; fi
   if ! $copy pytests/data/model.ctl \
              pytests/data/model.gmp \
              pytests/data/model.grb \
@@ -260,7 +261,7 @@ function liberate_unix {
       return
   else
 
-     export LD_LIBRARY_PATH="../supplibs/lib:$LD_LIBRARY_PATH"
+     export LD_LIBRARY_PATH="$SUPLLIBS/lib:$LD_LIBRARY_PATH"
      dep_libs=`ldd $xlist 2>&1 | grep '/' | grep -v -e ':' -e System | awk '{print $3}' | sort | uniq`  
 
   fi
@@ -269,8 +270,9 @@ function liberate_unix {
 # LD_LIBRARY_PATH/DYLD_LIBRARY_PATH and may cause conflict
 # -------------------------------------------------------------
   if ! mkdir -p $b_exec/libs $b_exec/gex ; then return 1; fi
-  if ! cp $dep_libs $b_exec/libs; then return 1; fi
+  if ! cp -f  $dep_libs $b_exec/libs; then return 1; fi
 
+  
 # Now put under gex/ the ones that are likely not to cause conflict
 # -----------------------------------------------------------------
   echo "$0: Adding shared libraries to gex/"

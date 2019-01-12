@@ -15,7 +15,7 @@ export GSFS=basename.gsf chdir.gsf dirname.gsf exists.gsf fexists.gsf dexists.gs
             wordexp.gsf match.gsf sed.gsf \
             setenv.gsf getenv.gsf printenv.gsf abspath.gsf
 
-all %:
+%:
 	@$(MAKE) -f ../gex.mk $@ \
         CSRC="env.c path.c"\
         EXTRAS="pcrs.o"

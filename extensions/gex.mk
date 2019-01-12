@@ -26,7 +26,7 @@ else
 ifneq ($(wildcard ../../include),)
        GAINC = ../../include
 else
-       GAINC = ../../src
+       GAINC = ../../cola/src
 endif
 endif
 
@@ -278,7 +278,7 @@ clean distclean:
 	cpp -ansi -DPOD $*.pod_ >$*.pod
 
 %.pod : %.c
-	cpp -ansi -DPOD $*.c >$*.pod
+	cpp -DPOD $*.c >$*.pod
 
 %.html : %.pod_
 	cpp -ansi -DPOD $*.pod_ | pod2html --css=/pod.css --header > $*.html

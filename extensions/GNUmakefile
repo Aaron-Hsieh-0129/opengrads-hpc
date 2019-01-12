@@ -24,9 +24,9 @@ bintype=# On windows this will be set to c, nc, nc4, dods, hdf
 # Default installation directory depends on whether this is a standalone
 # module or not
 ifneq ($(wildcard ./include),)
-   bindir := ./bin
+   bindir :=  $(shell cd ./bin; pwd)
 else
-   bindir := ../bin
+   bindir :=  $(shell cd ../bin; pwd)
 endif
 gexdir = $(bindir)/gex/$(bintype)
 
@@ -38,7 +38,7 @@ export bintype bindir gexdir
 
 SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
 
-all % :
+% :
 	@ t=$@; argv="$(SUBDIRS)" ;\
           for d in $$argv; do                    \
             ( cd $$d                            ;\

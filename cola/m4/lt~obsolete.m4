@@ -1,0 +1,1 @@
+/opt/anaconda2/share/aclocal/lt~obsolete.m4

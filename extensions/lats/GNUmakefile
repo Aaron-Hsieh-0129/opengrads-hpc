@@ -15,7 +15,7 @@ ifeq ($(ARCH),AIX)
 export XLDFLAGS = $(SUPPLIBS)/lib/libnetcdf.a $(SUPPLIBS)/lib/libmfhdf.a 
 endif
 
-all %:
+%:
 	@$(MAKE) -f ../gex.mk $@ CSRC="liblats.c"
 
 html:

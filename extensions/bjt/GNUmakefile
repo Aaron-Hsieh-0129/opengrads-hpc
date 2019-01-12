@@ -7,5 +7,5 @@
 export PODS=libbjt.pod
 export EXTRAS=nr.o ir.o
 
-all %: 
+%: 
 	@$(MAKE) -f ../gex.mk $@ CSRC=libbjt.c
