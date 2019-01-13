@@ -31,7 +31,7 @@ cola/Makefile:
 gex-build:
 	@(cd extensions; $(MAKE) --silent all)
 
-gex-install: gex-build
+gex-install gex-check: gex-build
 	@(cd extensions; $(MAKE) --silent $(subst gex-,,$@))
 
 gex-clean gex-distclean: 
@@ -41,6 +41,18 @@ gex-clean gex-distclean:
 # Bundle, docs
 #
 
+check bundle-check: cola-install gex-install bundle-create
+	echo "-------------------- Testing Core GrADS -------------------"
+	echo "Core Build ................................................"
+	@(cd pytests; $(MAKE) --silent check)
+	echo "Inside Bundle ............................................."
+	@(cd pytests; $(MAKE) --silent bundle-check)
+	echo "------------- Testing OpenGrADS Extensions  ---------------"
+	echo "Core Build ................................................"
+	@(cd extensions; $(MAKE) --silent check)
+	echo "Inside Bundle ............................................."
+	@(cd extensions; $(MAKE) --silent bundle-check)
+
 Documentation.html: Documentation.php
 	php Documentation.php > Documentation.html
 
@@ -49,13 +61,6 @@ Documentation.html: Documentation.php
 #
 bundle-create:
 	@bundle/bundle_create.sh 
-
-#
-# Bundle unit testing
-#
-
-check bundle-check: bundle-create
-	@(cd pytests; make check)
 
 #
 # Bundle installation under prefix

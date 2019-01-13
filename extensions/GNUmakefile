@@ -38,14 +38,17 @@ export bintype bindir gexdir
 
 # For pytests
 HERE := $(shell pwd)
-export PYTHONPATH := $(HERE)/lib
-export GADSET  := $(shell cd $(HERE)/../pytests/data; pwd)# where test datsets are
-export GADDIR  := $(shell cd $(HERE)/../cola/data; pwd)
-export GABDIR  := $(shell cd $(HERE)/../bin/; pwd)# where binaries for testing are
-export GA2UDXT := $(GABDIR)/gex/udxt
-export GAUDPT  := $(GABDIR)/gex/udpt
-export GASCRP  := $(GABDIR)/gex/
-export LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+
+PYTHONPATH := $(HERE)/lib
+GADSET  := $(shell cd $(HERE)/../pytests/data; pwd)# where test datsets are
+GADDIR  := $(shell cd $(HERE)/../cola/data; pwd)
+GABDIR  := $(shell cd $(HERE)/../bin/; pwd)# where binaries for testing are
+GABnDIR  := $(shell cd $(HERE)/../opengrads/Contents/; pwd)# where binaries for testing are
+GA2UDXT := $(GABDIR)/gex/udxt
+GAUDPT  := $(GABDIR)/gex/udpt
+GASCRP  := $(GABDIR)/gex/
+LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+
 
 SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
 
@@ -65,7 +68,21 @@ thisbin : install
 	$(GABDIR)/grads -bl
 
 check : install
-	$(PYTHON) ut.all.py 
+	/usr/bin/env PYTHONPATH=$(PYTHONPATH) \
+	             GADSET=$(GADSET) \
+	             GADDIR=$(GADDIR) \
+	             GABDIR=$(GABDIR) \
+	             GA2UDXT=$(GA2UDXT) \
+	             GAUDPT=$(GAUDPT) \
+	             GASCRP=$(GASCRP) \
+	             LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) \
+	             $(PYTHON) ut.all.py 
+
+bundle-check : install
+	/usr/bin/env PYTHONPATH=$(PYTHONPATH) \
+	             GADSET=$(GADSET) \
+	             GABDIR=$(GABnDIR) \
+	             $(PYTHON) ut.all.py 
 
 install : force
 	@/bin/mkdir -p $(bindir) $(gexdir)

@@ -4,12 +4,30 @@
 
 HERE := $(shell pwd)
 
-export PYTHONPATH = $(HERE)/lib
-export GASCRP = $(HERE)
-export GADDIR = $(HERE)/../cola/data
-export GAUDPT = $(HERE)/../bin/gex/udpt
-export LD_LIBRARY_PATH = $(HERE)/../bin/gex
+PYTHONPATH := $(HERE)/lib
+GADSET  := $(shell cd $(HERE)/../pytests/data; pwd)# where test datsets are
+GADDIR  := $(shell cd $(HERE)/../cola/data; pwd)
+GABDIR  := $(shell cd $(HERE)/../bin/; pwd)# where binaries for testing are
+GABnDIR  := $(shell cd $(HERE)/../opengrads/Contents/; pwd)# where binaries for testing are
+GA2UDXT := $(GABDIR)/gex/udxt
+GAUDPT  := $(GABDIR)/gex/udpt
+GASCRP  := $(GABDIR)/gex/
+LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+
 
 check:
-	@./grads_tests.py -d "$(HERE)/data/" -b "$(HERE)/../bin/"
+	/usr/bin/env PYTHONPATH=$(PYTHONPATH) \
+	             GADSET=$(GADSET) \
+	             GADDIR=$(GADDIR) \
+	             GABDIR=$(GABDIR) \
+	             GA2UDXT=$(GA2UDXT) \
+	             GAUDPT=$(GAUDPT) \
+	             GASCRP=$(GASCRP) \
+	             LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) \
+                    ./grads_tests.py -d $(GADSET)/ -b $(GABDIR)/
+
+bundle-check:
+	/usr/bin/env PYTHONPATH=$(PYTHONPATH) \
+	             GASCRP=$(GASCRP) \
+                    ./grads_tests.py -d $(GADSET)/ -b $(GABnDIR)/
 
