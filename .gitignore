@@ -1,7 +1,10 @@
 *.o
 *.a
 *~
+\#*
+.#*
 *.so
 *.lo
 *.la
+*.pyc
 autom4te.cache
