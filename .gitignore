@@ -7,4 +7,7 @@
 *.lo
 *.la
 *.pyc
+*.gex
+*.mod
+*.pod
 autom4te.cache
