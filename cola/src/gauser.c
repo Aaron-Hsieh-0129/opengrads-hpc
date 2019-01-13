@@ -39,7 +39,7 @@
 #include "grads.h"
 #include "gx.h"
 
-#ifdef OPENGRADS
+#if OPENGRADS == 1
 #include "gaudx.h"
 #endif
 
@@ -133,7 +133,7 @@ FILE *pdefid=NULL;
     }
   }
 
-#ifdef OPENGRADS
+#if OPENGRADS == 1
   /* OpenGrADS User Defined Extensions */
   savpcm = pcm;
   retcod = (int) gaudc (com);

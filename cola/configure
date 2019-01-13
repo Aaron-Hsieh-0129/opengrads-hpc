@@ -23339,9 +23339,33 @@ fi
 
   fi
 fi
+if test $use_gui != "yes" ; then
+
+$as_echo "#define USEGUI 0" >>confdefs.h
+
+else
+
+$as_echo "#define USEGUI 1" >>confdefs.h
 
 
 
+fi
+
+# * * * OpenGRADS * * *
+if test $with_opengrads != "yes" ; then
+    echo
+    echo OpenGrADS Extensions
+    echo --------------------
+
+$as_echo "#define OPENGRADS 0" >>confdefs.h
+
+    echo "Disabled by default. Use --with-opengrads to enable OpenGrADS extensions"
+   echo
+  else
+
+$as_echo "#define OPENGRADS 1" >>confdefs.h
+
+  fi
 
 # ----------------------------------------------------
 # Send test results to makefile and config.h
@@ -23434,8 +23458,8 @@ else
 fi
 
 
-# Host specific linker flags
 
+# Host specific linker flags
 
 
 # ----------------------------------------------------

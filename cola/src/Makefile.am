@@ -32,6 +32,10 @@ if USEGADAP
 src_gadap = dodstn.c
 endif
 
+if OPENGRADS
+src_udx = gaudx.c
+endif
+
 if USEGUI
 src_gui = gagui.c gsgui.c
 endif
@@ -53,7 +57,7 @@ grads_SOURCES =	grads.c  gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c gxdb.c \
 		gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
 		gscrpt.c gamach.c gatxt.c   galloc.c gaddes.c gacfg.c  gaio.c \
                 gauser.c gasdf.c  bufrstn.c gabufr.c gabufrtbl.c \
-                $(src_gui) $(src_gadap) 
+                $(src_gui) $(src_gadap) $(src_udx) 
 
 ## These may not always be compiled but must be listed in order to go in the distribution 
 EXTRA_grads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c \
@@ -135,7 +139,7 @@ libgradspy_la_SOURCES  = grads.c gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c g
 		gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
 		gscrpt.c gamach.c gatxt.c   galloc.c gaddes.c gacfg.c  gaio.c \
                 gauser.c gasdf.c  bufrstn.c gabufr.c gabufrtbl.c \
-                $(src_gui) $(src_gadap) 
+                $(src_gui) $(src_gadap) $(src_udx) 
 
 ## this object file needs to be recompiled for gradspy with the SHRDOBJ flag set 
 libgradspy_la-grads.o: $(srcdir)/grads.c

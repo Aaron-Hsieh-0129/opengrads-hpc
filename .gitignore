@@ -1,0 +1,7 @@
+*.o
+*.a
+*~
+*.so
+*.lo
+*.la
+autom4te.cache

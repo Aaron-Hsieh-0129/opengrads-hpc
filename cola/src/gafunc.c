@@ -20,7 +20,7 @@
 #include <string.h>
 #include "grads.h"
 
-#ifdef OPENGRADS
+#if OPENGRADS == 1
 #include "gaudx.h"
 #endif
 
@@ -190,7 +190,7 @@ gaint (*fpntr)(struct gafunc *, struct gastat *);
   if (cmpwrd("amaxlocx",name)) fpntr = ffamaxlocx;    
   if (cmpwrd("amaxlocy",name)) fpntr = ffamaxlocy;    
 
-#ifdef OPENGRADS
+#if OPENGRADS == 1
   /* OpenGrADS User Defined Extensions */
   if (fpntr==NULL) *(void **) &fpntr = (void *) gaudf(name); 
 #endif

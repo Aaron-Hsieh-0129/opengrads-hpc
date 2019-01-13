@@ -866,9 +866,25 @@ if test "x$with_gui" != xno ; then
       GA_UNSET_FLAGS
   fi
 fi
-AC_SUBST(gui_inc)
-AC_SUBST(gui_libs)
+if test $use_gui != "yes" ; then
+    AC_DEFINE(USEGUI, 0, [Disable Athena GUI])
+else
+    AC_DEFINE(USEGUI, 1, [Enable Athena GUI])
+    AC_SUBST(gui_inc)
+    AC_SUBST(gui_libs)
+fi
 
+# * * * OpenGRADS * * *
+if test $with_opengrads != "yes" ; then
+    echo
+    echo OpenGrADS Extensions
+    echo --------------------
+    AC_DEFINE(OPENGRADS, 0, [Disable OpenGrADS Extensions])
+    echo "Disabled by default. Use --with-opengrads to enable OpenGrADS extensions"
+   echo
+  else
+    AC_DEFINE(OPENGRADS, 1, [Enable OpenGrADS Extensions])
+  fi
 
 # ----------------------------------------------------
 # Send test results to makefile and config.h
@@ -889,9 +905,9 @@ AM_CONDITIONAL(USEGD,     [ test "$use_gd" = "yes" ] )
 AM_CONDITIONAL(USECAIRO,  [ test "$use_cairo" = "yes" ] )
 AM_CONDITIONAL(OPENGRADS, [ test "$with_opengrads" = "yes" ] )
 
+
 # Host specific linker flags
 AC_SUBST(host_ldadd)
-
 
 # ----------------------------------------------------
 # Write output files

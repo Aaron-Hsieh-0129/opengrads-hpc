@@ -109,10 +109,8 @@ int gagui_main(int argc, char **argv)
   if (argc == FALSE)
     return argc;
 
-/*
   printf("Athena Widgets Support, (c) 1997 by Arlindo da Silva\n");
-  printf("Data Assimilation Office, NASA/GSFC\n\n");
-*/
+  printf("dasilva@opengrads.org\n\n");
 
   /* Default path for file loads */
   strcpy(last_path_open,"./");

@@ -48,25 +48,24 @@ void write_command_log(char *logfile);
 
 static struct gaupb *upba=NULL;     /* Anchor for user defined plug-in */
 char *gxgnam(char *);               /* This is also in gx.h */
-/*ams static struct gacmn gcmn; ams*/  
-struct gacmn gcmn;  
+#if OPENGRADS == 1
+       struct gacmn gcmn;   /* needed for GUI and OpenGrADS UDCs. */
+#else
+static struct gacmn gcmn;
+#endif
 static struct gawgds wgds; 
 extern struct gamfcmn mfcmn;
 
 /* * * * * * * * * * * * * * * * *
  * Here's where it all begins... *
  * * * * * * * * * * * * * * * * */
-#ifdef OPENGRADS
-/* For opengrads, which needs a capital M for its 'main' routine */
-int Main (int argc, char *argv[])  {
-#else
-#ifdef SHRDOBJ
-/* For the gradspy shared object, which can't have a 'main' routine */
+#if defined(SHRDOBJ) || defined(__CYGWIN32__)
+/* For the gradspy shared object, which can't have a 'main' routine.
+   The OpenGRADS Windows build also requires some house keeping before calling main. */
 int gamain (int argc, char *argv[])  {  
 #else
 /* For the stand-alone grads exectuable */
 int main (int argc, char *argv[])  {     
-#endif
 #endif
 
   void gapysavpcm(struct gacmn *pcm);
@@ -213,7 +212,7 @@ int main (int argc, char *argv[])  {
   
   gacfg(0);
  
-#ifdef OPENGRADS
+#if OPENGRADS == 1
   gaudi(&gcmn); /* Initialize OpenGrADS User Defined Extensions */
 #endif
   if (!land && !port && aspratio<-990) {
