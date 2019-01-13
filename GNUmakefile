@@ -8,6 +8,7 @@ prefix=/opt # where to install binaries
 #
 # Build core COLA binaries
 #
+
 cola-build: cola/Makefile
 	@(cd cola; $(MAKE) )
 	@cp etc/udpt bin/gex
@@ -15,6 +16,10 @@ cola-build: cola/Makefile
 cola-install cola-clean cola-distclean:
 	(cd cola; $(MAKE) $(subst cola-,,$@))
 	@cp etc/udpt bin/gex
+
+cola-check: cola-install
+	@(cd pytests; $(MAKE) check)
+
 
 cola/Makefile:
 	@oga_configure
@@ -31,8 +36,9 @@ gex-install: gex-build
 
 gex-clean gex-distclean: 
 	@(cd extensions; $(MAKE) --silent $(subst gex-,,$@))
+
 #
-# Bundle, gex installation targets
+# Bundle, docs
 #
 
 Documentation.html: Documentation.php
@@ -48,7 +54,7 @@ bundle-create:
 # Bundle unit testing
 #
 
-bundle-check: bundle-create
+check bundle-check: bundle-create
 	@(cd pytests; make check)
 
 #
@@ -98,10 +104,7 @@ reallyclean:
 	$(MAKE) distclean
 	$(MAKE) java-distclean
 
-
-
-
-# ------------------------------- TO DO ---------------------------------------
+# --------------------------- TO DO -------------------------------------
 
 dist-all: dist data-dist doc-dist
 

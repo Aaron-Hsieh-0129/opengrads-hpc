@@ -36,7 +36,20 @@ endif
 
 export bintype bindir gexdir
 
+# For pytests
+HERE := $(shell pwd)
+export PYTHONPATH := $(HERE)/lib
+export GADSET  := $(shell cd $(HERE)/../pytests/data; pwd)# where test datsets are
+export GADDIR  := $(shell cd $(HERE)/../cola/data; pwd)
+export GABDIR  := $(shell cd $(HERE)/../bin/; pwd)# where binaries for testing are
+export GA2UDXT := $(GABDIR)/gex/udxt
+export GAUDPT  := $(GABDIR)/gex/udpt
+export GASCRP  := $(GABDIR)/gex/
+export LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+
 SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
+
+#---------------------------  t a r g e ts   --------------------------------
 
 % :
 	@ t=$@; argv="$(SUBDIRS)" ;\
@@ -48,8 +61,11 @@ SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
           done
 
 # Note: it may be better to have a top ut.py for this
+thisbin : install
+	$(GABDIR)/grads -bl
+
 check : install
-	$(PYTHON) ut.all.py
+	$(PYTHON) ut.all.py 
 
 install : force
 	@/bin/mkdir -p $(bindir) $(gexdir)

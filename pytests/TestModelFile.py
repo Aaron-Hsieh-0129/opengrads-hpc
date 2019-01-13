@@ -622,32 +622,11 @@ def run_all_tests(verb=2,BinDir=None,DataDir=None):
         TestSuite.append(load(grads_grb2))
         TestSuite.append(load(grads_nc))
         TestSuite.append(load(grads_ctlnc))
-        TestSuite.append(load(grads_url))
-        TestSuite.append(load(grads_stn))
+        # TestSuite.append(load(grads_url))
+        # TestSuite.append(load(grads_stn))
         TestSuite.append(load(grads_hdf))
         TestSuite.append(load(grads_ctlhdf))
         TestSuite.append(load(grads_pdef))
-        print '+ Will test GrADS binary <%s>'%GrADSBinaryFiles[bin]
-        npass += 1
-    else:
-        print '- Not testing GrADS binary <%s>, file missing'%GrADSBinaryFiles[bin]
-        Failed.append(GrADSBinaryFiles[bin])
-
-    print ""
-    all = unittest.TestSuite(TestSuite)
-
-#   gradsdap
-#   --------
-    bin = 'gradsdap'
-    if os.path.exists(GrADSBinaryFiles[bin]):
-        TestSuite.append(load(gradsdap_grb))
-        TestSuite.append(load(gradsdap_grb2))
-        TestSuite.append(load(gradsdap_nc))
-        TestSuite.append(load(gradsdap_ctlnc))
-        TestSuite.append(load(gradsdap_url))
-        TestSuite.append(load(gradsdap_hdf))
-        TestSuite.append(load(gradsdap_ctlhdf))
-        TestSuite.append(load(gradsdap_pdef))
         print '+ Will test GrADS binary <%s>'%GrADSBinaryFiles[bin]
         npass += 1
     else:

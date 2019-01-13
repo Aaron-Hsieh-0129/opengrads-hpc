@@ -1211,7 +1211,7 @@ int ffdayratio  (struct gafunc *pfc, struct gastat *pst) {
 	return (0);
 }
 
-int ffif (struct gafunc *pfc, struct gastat *pst) {
+int ffif_ (struct gafunc *pfc, struct gastat *pst) {
 	int i,rc,rflg,returnGrid,isGridCompatible;
 	int size[5];
 	struct gagrid *pgr[5];
@@ -6417,8 +6417,8 @@ int f_bjt (struct gafunc *pfc, struct gastat *pst) {
                rc = ffcosz ( pfc, pst );
      else if ( strcmp ( "dayratio" , name) == 0 ) 
                rc = ffdayratio ( pfc, pst );
-     else if ( strcmp ( "if" , name) == 0 ) 
-               rc = ffif ( pfc, pst );
+     else if ( strcmp ( "if_" , name) == 0 ) 
+               rc = ffif_ ( pfc, pst );
      else if ( strcmp ( "maxv" , name) == 0 ) 
                rc = ffmaxv ( pfc, pst );
      else if ( strcmp ( "minv" , name) == 0 ) 

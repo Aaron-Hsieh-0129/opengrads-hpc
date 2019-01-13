@@ -17,7 +17,7 @@
   udf  0  jd         f_bjt      ^libbjt.gex   "Julian day"
   udf  0  cosz       f_bjt      ^libbjt.gex   "Cosine solar zenith angle"
   udf  0  dayratio   f_bjt      ^libbjt.gex   "Daylight ratio"
-  udf  0  if         f_bjt      ^libbjt.gex   "Conditional function"
+  udf  0  if_        f_bjt      ^libbjt.gex   "Conditional function"
   udf  0  maxv       f_bjt      ^libbjt.gex   "Maximum value"
   udf  0  minv       f_bjt      ^libbjt.gex   "Minimum value"
   udf  0  which      f_bjt      ^libbjt.gex   "Label gridpoints"

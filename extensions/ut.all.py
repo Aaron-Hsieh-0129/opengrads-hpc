@@ -8,6 +8,7 @@ Unit tests based oy PyUnit.
 # ------------------------------------------
 import os
 import sys
+from optparse      import OptionParser   # Command-line args
 
 import unittest
 
@@ -78,4 +79,12 @@ def run_all_tests(verb=2,BinDir=None,DataDir=None):
 #----------------------------------------------------------------
 
 if __name__ == "__main__":
+
+    print ""
+    print "  Welcome to OpenGrADS Extensions Unit Tests"
+    print ""
+
+    # Run all tests: BinDir and DataDir passed as environment variables
+    # GABDIR and GADSET
+    # -----------------------------------------------------------------
     run_all_tests()

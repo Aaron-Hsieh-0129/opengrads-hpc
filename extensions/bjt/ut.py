@@ -45,9 +45,9 @@ class ut(utUDX):
         self._CheckCint(0,10,1)
 
     def test_if (self):
-        self.ga("d if(ts,<,273.16,ts,-u)")
+        self.ga("d if_(ts,<,273.16,ts,-u)")
         self._CheckCint(235,270,5)
-        self.ga("d if(ua,<,0,-ua,ua) - abs(ua)")
+        self.ga("d if_(ua,<,0,-ua,ua) - abs(ua)")
         self.assertEqual("Constant",self.ga.rword(1,1))
         self.assertEqual(0,int(self.ga.rword(1,5)))
 

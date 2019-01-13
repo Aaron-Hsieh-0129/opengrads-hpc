@@ -22,7 +22,7 @@ parser.add_option("-b", "--bindir", dest="bindir", default=None,
                   help="Directory for GrADS binaries " )
                                                                                 
 parser.add_option("-d", "--datadir", dest="datadir", default=None,
-                  help="Directory for GrADS binaries " )
+                  help="Directory for GrADS data files " )
                                                                                 
 parser.add_option("-v", "--verbose", dest="level", default=2,
                   help="verbose level (default=%default)" )

@@ -25,8 +25,12 @@ class utUDX(unittest.TestCase):
         if BinDir is not None:
             bin = BinDir + 'grads'
         else:
-            if os.path.isfile('../../src/grads.c'):
-                BinDir = '../../src/'
+            if 'GABDIR' in os.environ:
+                BinDir = os.environ['GABDIR']+'/'
+            elif os.path.isfile('../../bin/grads'):
+                BinDir = '../../grads/'
+            elif os.path.isfile('../bin/grads'):
+                BinDir = '../grads/'
             elif os.path.isfile('../../opengrads/Contents/grads'):
                 BinDir = '../../opengrads/Contents/'
             elif os.path.isfile('../opengrads/Contents/grads'):
@@ -39,20 +43,23 @@ class utUDX(unittest.TestCase):
                     BinDir = ''
                     
         Binary = BinDir + 'grads' # grads binary to be used for testing extension
-###        print "- Testing with GrADS binary " + Binary
+        # print "- Testing with GrADS binary " + Binary
 
 #       Search for a reasonable default for data files
 #       ----------------------------------------------
         if DataDir is None:
-            sample = 'model.grb'
-            for dir in ( '.', '../pytests/data', '../../pytests/data'):
-                if os.path.exists(dir+'/'+sample):
-                    DataDir = dir + '/'
-                    break
+            if 'GADSET' in os.environ:
+                DataDir = os.environ['GADSET']+'/'
+            else:
+                sample = 'model.grb'
+                for dir in ( '.', '../pytests/data', '../../pytests/data'):
+                    if os.path.exists(dir+'/'+sample):
+                        DataDir = dir + '/'
+                        break
                 
         DataFile = DataDir + 'model.ctl' # to be opened during test setup
-###        print "- Testing with data file " + DataFile
-###        print ""
+        # print "- Testing with data file " + DataFile
+        # print ""
 
         self.ga = GaCore(Bin=Binary, Echo=False, Window=False)
         self.fh = self.ga.open(DataFile)
