@@ -62,7 +62,7 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
              "whereami"       => \$whereami,
              "quiet"          => \$quiet,
 	     "debug"          => \$debug,
-             "h"              => \$help);
+             "manual"         => \$help);
 
 # Key directories
 # ---------------
@@ -93,9 +93,9 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
      $GAGUI="$garoot/Resources/Scripts/merra.gui";
      $Opts = "-lC 1";
      $bkg = '&';
- } elsif ( "$Alias" eq "geos5" ) {
+ } elsif ( "$Alias" eq "geos" ) {
      $Name = "grads";
-     $GAGUI="$garoot/Resources/Scripts/geos5.gui";
+     $GAGUI="$garoot/Resources/Scripts/geos.gui";
      $Opts = "-lC 1";
      $bkg = '&';
  } elsif ( "$Alias" eq "ncep" ) {
@@ -319,13 +319,13 @@ EOF
            start *merra.gui*, an Athena Widget script implementing
            the MERRA Visualization Tool. 
 EOF
-   } elsif ( "$Alias" eq "geos5" ) {
+   } elsif ( "$Alias" eq "geos" ) {
          print <<"EOF";
 
-     NOTE: This *geos5* script is simply a wrapper for *grads* where the 
+     NOTE: This *geos* script is simply a wrapper for *grads* where the 
            additional options *$Opts* have been specified, and the
            environment variable GAGUI has been set to automatically 
-           start *geos5.gui*, an Athena Widget script implementing
+           start *geos.gui*, an Athena Widget script implementing
            the GEOS-5 Forward Processing Visualization Tool. 
 EOF
    }

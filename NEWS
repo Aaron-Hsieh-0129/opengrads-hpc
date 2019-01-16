@@ -4,29 +4,17 @@
 
                           http://opengrads.org
 
-                       GrADS Version 2.1.0.oga.1
-                  OpenGrADS Release of 9 October 2016
+                       GrADS Version 2.2.1.oga.1
+                  OpenGrADS Release of 14 January 2019
 
 This is an OpenGrADS Bundle release, a relocatable, minimum
 configuration package that has all that you need to run GrADS. See
 INSTALL for additonal information.
 
-This OpenGrADS version is based on COLA's 2.1.0 release with some
+This OpenGrADS version is based on COLA's 2.2.1 release with some
 updates in the OpenGrADS extensions. See below for additional
 information on the OpenGrADS features that extend the standard GrADS
 functionality provided by COLA, as well as the ChangeLog.
-
-As for the new functionality in the COLA release of GrADS v2.1.0
-we quote from Jennifer Adams' announcement from 20 June 2016:
-
-     New features include support for GRIB2 Product Definition
-     Templates 60 and 61 (ensemble reforecasts), and for a secondary
-     undef attribute name for NetCDF and HDF4 data types. There are
-     also two new commands: ‘pdefwrite’ and ‘set misswarn’. Bug fixes
-     include station data handling in the const() and coll2grd()
-     functions, the infinite loop in gsfpath(), a tweak to the time
-     metadata in the output from sdfwrite, and support for transparent
-     colors in KML output.
 
 Consult the ChangeLog file for detailed list of new features and bug
 fixes.
@@ -45,14 +33,33 @@ udx" commands.
                              I M P O R T A N T
                              -----------------
 
-     COLA is yet to publish the official API for User Defined
-     functions in GrADS v2.0 we have adopted here an API that is based
-     on our work with v1.9.0-rc1. This is a very low-level API that is
-     *not* endorsed by COLA. As such, it is *not* advisable that users
-     adopt this API to write their own extensions.
+     Although COLA has publishied the official API for User Defined
+     functions in GrADS v2.0 by means of dynamically loaded libraries,
+     the OpenGRADS project continues to mantain an API that is based
+     on our work with v1.9.0-rc1. This is a low-level API that is
+     *not* endorsed by COLA.
+
+Differences between COLA Plug-ins and OpenGrADS Extensions
+----------------------------------------------------------
+
+The OpenGrADS Extensions were first introduced in 2008 with version
+1.9rc1 and have beein implemented in multiple operating systems
+including linux, macOS, Windows, FreeBSD, IRIX64,and AIX. COLA
+recently introduced dynamically loaded plug-ins are very similar to
+the OpenGRADS extensions with the main differences:
+
+- COLA plug-ins allow for dynalically loaded graphics devices;
+  the  OpenGrADS extensions do not
+- COLA plug-ins do not allow user defined commands, only functions.
+
+For the time being, we will continue to support the OpenGrADS
+extensions.
+
 
 Documentation and Additional Information
 ----------------------------------------
+
+(See below for important information about the if() function.)
 
 Consult 
            OpenGrADS Website: http://opengrads.org
@@ -136,7 +143,7 @@ Consult
  jd          Julian day                               f_bjt@^libbjt.gex
  cosz        Cosine solar zenith angle                f_bjt@^libbjt.gex
  dayratio    Daylight ratio                           f_bjt@^libbjt.gex
- if          Conditional function                     f_bjt@^libbjt.gex
+ if_         Conditional function                     f_bjt@^libbjt.gex
  maxv        Maximum value                            f_bjt@^libbjt.gex
  minv        Minimum value                            f_bjt@^libbjt.gex
  which       Label gridpoints                         f_bjt@^libbjt.gex
@@ -243,4 +250,10 @@ is now built into GrADS.
  ----------- ---------------------------------------  --------------------------
  gxyat       Save images in PNG/SVG/PDF/PS            c_gxyat@^gxyat.gex
  set_rgba    Set color red/green/blue/alpha           c_rgba@^gxyat.gex
+
+
+Notice that the if() function in the Ben-Jei Tsuang's Extensions has
+been renamed if_() as it conflicts with the if() function now part of
+the main GrADS intrinsic functions. Notice that the new if() takes 3
+arguments while the previous version took 5 arguments. 
 

@@ -103,6 +103,7 @@ int gagui_main(int argc, char **argv)
 
   char *path;
 
+#ifdef NEVER
   if ( gcmn.batflg ) return 0;  /* batch mode */
 
   argc = OpenDisplay(argc, argv);
@@ -113,7 +114,9 @@ int gagui_main(int argc, char **argv)
   printf("Athena Widgets Support, (c) 1997 by Arlindo da Silva\n");
   printf("dasilva@opengrads.org\n\n");
   */
+#endif
 
+  
   /* Default path for file loads */
   strcpy(last_path_open,"./");
   strcpy(last_path_sdfopen,"./");

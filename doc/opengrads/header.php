@@ -30,12 +30,8 @@ $fav  = $root . "/images/favicon.jpg";
 		<a class="navlink" href="http://opengrads.org/wiki/index.php?title=Frequently_Asked_Questions">+ FAQ</a>
 		<a class="navlink" href="http://sourceforge.net/project/screenshots.php?group_id=161773">+ Screenshots</a>
 
-		<a class="navlink">&nbsp;</a>
-		<a class="navlink" 
-                     href="http://sourceforge.net/project/showfiles.php?group_id=161773">
-                    + Download</a>
-		<a class="navlink" 
-                    href="http://opengrads.cvs.sourceforge.net/opengrads/">+ Browse CVS</a>
+		<a class="navlink"
+		    href="https://sourceforge.net/p/opengrads/_list/git">+ Browse GIT</a>
 		<a class="navlink" 
                     href="http://sourceforge.net/projects/opengrads/">+ SF Project</a>
 

@@ -1,17 +1,17 @@
-#  geos5.gui - last revision: 1 July 2011
+#  geos.gui - last revision: 1 July 2011
 #
-#  GrADS Athena GUI script for accessing GEOS-5 datasets.
+#  GrADS Athena GUI script for accessing GEOS datasets.
 #
 #  How to invoke this script:
 #
 #  At startup. Set the enviroment variable GAGUI with the
 #  name of the script file, e.g., 
 #
-#  % setenv GAGUI geos5.gui
+#  % setenv GAGUI geos.gui
 #
 #  At the GrADS command line prompt. Simply type
 #
-#  ga> gui geos5.gui
+#  ga> gui geos.gui
 #
 #  Of course, you must have a version of GrADS built with
 #  Athena Widgets support.
@@ -35,7 +35,7 @@
 # in this case, is the name you give to the widget so that
 # you can refer to it later on
 # -------------------------------------------------------
-  MakeLabel(root,"GEOS-5")
+  MakeLabel(root,"GEOS")
   MakeLabel(mvt,"Forward Processing")
 
   MakeLabel(dsets,"Available Datasets: ")
@@ -164,8 +164,8 @@
 # A menu for gx metafile printing related commands
 # ------------------------------------------------
   MakeMenu ( print, " Print " )
-      MakeMenuItem(png,     print, "PNG",             CmdStr, "gxyat geos5.png")
-      MakeMenuItem(eps,     print, "Encapsulated PS", CmdStr, "print geos5.eps")
+      MakeMenuItem(png,     print, "PNG",             CmdStr, "gxyat geos.png")
+      MakeMenuItem(eps,     print, "Encapsulated PS", CmdStr, "print geos.eps")
       MakeMenuItem(junk,    print, "_______________",  NULL, NULL )
       MakeMenuItem(enable,  print, "Enable  Print", Load,  "enable print")
       MakeMenuItem(printit, print, "Print",         Cmd,   "print")
@@ -375,7 +375,7 @@
   SetBgColor(cbarn,gray)
   SetBgColor(quit,gold)
 
-# Special colors for GEOS5 open menus
+# Special colors for GEOS open menus
 # -----------------------------------
   SetBgColor(gfs,Steel)
   SetBgColor(nam,Steel)

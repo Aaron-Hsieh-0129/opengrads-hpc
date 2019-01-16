@@ -178,6 +178,7 @@ function populate {
 # Documentation
 # -------------
   if ! $copy doc/*         $b_docs ; then return 1; fi
+  if ! $copy cola/doc/*    $b_docs ; then return 1; fi
 # php Documentation.php >  $contents/Documentation.html
   cp Documentation.html    $contents/Documentation.html
 
@@ -357,7 +358,7 @@ function add_wrappers {
     #if ! $copy bundle/bundle_wrapper.vbs $root/gradsdap.vbs;  then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/gradsgui.vbs;  then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/merra.vbs;     then return 1;fi
-    if ! $copy bundle/bundle_wrapper.vbs $root/geos5.vbs;     then return 1;fi
+    if ! $copy bundle/bundle_wrapper.vbs $root/geos.vbs;     then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/ncep.vbs;    then return 1;fi
     #if ! $copy bundle/bundle_wrapper.vbs $root/gv32.vbs;      then return 1;fi
  fi
@@ -385,7 +386,7 @@ function add_wrappers {
       if ! $copy bundle/bundle_wrapper.pl $contents/opengrads; then return 1;fi
       # if ! $copy bundle/bundle_wrapper.pl $contents/gradsdap;  then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/merra;     then return 1;fi
-      if ! $copy bundle/bundle_wrapper.pl $contents/geos5;     then return 1;fi
+      if ! $copy bundle/bundle_wrapper.pl $contents/geos;     then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/ncep;      then return 1;fi
   fi
     

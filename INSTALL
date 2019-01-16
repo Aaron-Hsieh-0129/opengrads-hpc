@@ -77,8 +77,8 @@ The following executables are provided:
                       NB: since mid 2016 it needs authentication. See below.
      ncep             starts grads with a graphical user interface for accessing
                       NCEP analyzes and forecasts
-     geos5            starts grads with a graphical user interface for accessing
-                      NASA GEOS-5 analyses and forecasts
+     geos             starts grads with a graphical user interface for accessing
+                      NASA GEOS analyses and forecasts
      stnmap           Maps station data
      wgrib            GRIB-1 utility, see 
                         http://www.cpc.ncep.noaa.gov/products/wesley/wgrib.html

@@ -1,9 +1,25 @@
 #
-# Top Makefile for building COLA GrADS, OpenGrADS extensions and assembling 
-# an OpenGrADS Bundle.
+# Top Makefile for building COLA GrADS, OpenGrADS extensions and
+# assembling an OpenGrADS Bundle.
 #
 
-prefix=/opt # where to install binaries
+# System idenfication
+# -------------------
+  VERSION := $(shell cat cola/src/VERSION)
+  SHELL = /bin/sh
+  ROOTDIR := $(shell dirname `pwd`)
+  SYSNAME := $(shell ./config.guess)
+
+  ARCH := $(shell uname -s)
+  MACH := $(shell uname -m)
+  SITE := $(shell uname -n)
+  export ARCH MACH SITE 
+
+  HERE := $(shell pwd)
+  prefix := /opt # where to install binaries
+  distdir := $(HERE)/dist
+  host_triplet := $(shell ./config.guess)
+
 
 #
 # Build core COLA binaries
@@ -81,19 +97,39 @@ clean:
 distclean:
 	$(MAKE) cola-distclean
 	$(MAKE) gex-distclean
-	/bin/rm -rf bin opengrads
+	/bin/rm -rf bin opengrads dist
 
 #
-# Just binaries and gex
+#                  Distribution Tarballs
 #
-full-install: install
-	@mkdir -p $(prefix)/bin/gex
-	@cd extensions; $(MAKE) $(AM_MAKE_FLAGS) bindir=$(prefix)/bin install
 
+all-dist: src-dist bundle-dist
+
+SRCS_TAR = opengrads-$(VERSION)-bundle.tar.gz
+src-dist:
+	@echo 
+	@echo "Creating OpenGrADS Source Tarball"
+	@echo "---------------------------------"
+	mkdir -p $(distdir)
+	(git archive --prefix opengrads-$(VERSION)/ master | gzip > $(distdir)/$(SRCS_TAR))
+
+BUNDLE_TAR = opengrads-$(VERSION)-bundle-$(host_triplet).tar.gz
+bundle-dist: bundle-create
+	@echo 
+	@echo "Creating Binary OpenGrADS Tarball"
+	@echo "---------------------------------"
+	@mkdir -p $(distdir)
+	@bundle/bundle_create.sh $(distdir)/opengrads-$(VERSION) 
+	@(cd $(distdir); tar cvfz $(BUNDLE_TAR) opengrads-$(VERSION))
+	@/bin/rm -rf  $(distdir)/opengrads-$(VERSION)
+
+# ----------------------- No Longer Maintained ------------------- 
+#
 #
 #                                J A V A
 #                                -------
-
+#
+#
 java-dist: all-am
 	$(MAKE)
 	(cd Java; $(MAKE) grads.jar)
@@ -108,60 +144,4 @@ java-distclean:
 reallyclean:
 	$(MAKE) distclean
 	$(MAKE) java-distclean
-
-# --------------------------- TO DO -------------------------------------
-
-dist-all: dist data-dist doc-dist
-
-src-dist:
-	@echo 
-	@echo "Creating tarball with sources"
-	@echo "-----------------------------"
-	$(CVS) export -r $(CVSTAG) -kk -d $(distdir) Grads
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-bundle.tar.gz; \
-	$(am__remove_distdir)
-
-
-bin-dist: all-am
-	$(MAKE) $(AM_MAKE_FLAGS) prefix=$(prefix)/$(distdir) install-exec; \
-	for file in $(BINDISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-bin-$(host_triplet).tar.gz; \
-	$(am__remove_distdir)
-
-gex-dist: 
-	mkdir -p $(distdir)/bin/gex
-	cd extensions; $(MAKE) $(AM_MAKE_FLAGS) bindir=$(prefix)/$(distdir)/bin install
-	for file in $(BINDISTFILES) ; do \
-	  cp -pR extensions/$$file $(distdir)/$$file-gex ; \
-	done; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-gex-$(host_triplet).tar.gz; \
-	$(am__remove_distdir)
-
-bundle-dist: 
-	@bundle/bundle_create.sh $(distdir)
-	$(AMTAR) cvfz $(distdir)-bundle-$(host_triplet).tar.gz $(distdir) 
-	$(am__remove_distdir)
-
-data-dist:
-	mkdir -p $(distdir); \
-	for file in $(DATADISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`; \
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-data.tar.gz; \
-	$(am__remove_distdir)
-
-doc-dist:
-	mkdir -p $(distdir); \
-	for file in $(DOCDISTFILES) ; do \
-	  cp -pR $$file $(distdir)/ ; \
-	done; \
-	rm -rf `find $(distdir) -name CVS`
-	$(AMTAR) chof - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir)-doc.tar.gz; \
-	$(am__remove_distdir)
-
-
 

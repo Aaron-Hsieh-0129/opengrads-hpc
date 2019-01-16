@@ -91,7 +91,7 @@
 	<li><a href="#miscelaneous_functions">MISCELANEOUS FUNCTIONS</a></li>
 	<ul>
 
-		<li><a href="#if_expr1_op_expr2_true_expr_false_expr_"><strong>if</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXPR,FALSE_EXPR</em>)</a></li>
+		<li><a href="#if_expr1_op_expr2_true_expr_false_expr_"><strong>if_</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXPR,FALSE_EXPR</em>)</a></li>
 		<li><a href="#which_expr_cond1_expr1_cond2_expr2_____else_expr_"><strong>which</strong>(<em>EXPR,COND1,EXPR1,COND2,EXPR2,...,ELSE_EXPR</em>)</a></li>
 		<li><a href="#maxv_expr1_expr2_"><strong>maxv</strong>(<em>EXPR1</em>,<em>EXPR2</em>)</a></li>
 		<li><a href="#minv_expr1_expr2_"><strong>minv</strong>(<em>EXPR1</em>,<em>EXPR2</em>)</a></li>
@@ -103,7 +103,7 @@
 
 		<li><a href="#minv__displaying_the_minimum_value_between_exp1_and_exp2"><code>Minv</code>: displaying the minimum value between <em>EXP1</em> and <em>EXP2</em></a></li>
 		<li><a href="#maxv__displaying_the_maximum_value_between_exp1_and_exp2"><code>Maxv</code>: displaying the maximum value between <em>EXP1</em> and <em>EXP2</em></a></li>
-		<li><a href="#if__selectively_displaying_values_according_to_the_relationship_between_two_expressions_"><code>If</code>: selectively displaying values according to the relationship between two expressions.</a></li>
+		<li><a href="#if__selectively_displaying_values_according_to_the_relationship_between_two_expressions_"><code>If_</code>: selectively displaying values according to the relationship between two expressions.</a></li>
 		<li><a href="#which__label_gridpoints_according_to_specific_conditions"><code>Which</code>: label gridpoints according to specific conditions</a></li>
 		<li><a href="#tfit__performing_multiple_linear_regression_on_individual_gridpoints"><code>tfit</code>: performing multiple linear regression on individual gridpoints</a></li>
 		<li><a href="#fit__performing_global_multiple_linear_regression"><code>fit</code>: performing global multiple linear regression</a></li>
@@ -294,7 +294,7 @@
 <dl>
 <dt>
 <dd>
-<p>display <strong>if</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXP,FALSE_EXP</em>) - Compare expressions</p>
+<p>display <strong>if_</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXP,FALSE_EXP</em>) - Compare expressions</p>
 </dd>
 </li>
 <dt>
@@ -1346,7 +1346,7 @@ precipitable water, in mm.</p>
 <h1><a name="miscelaneous_functions">MISCELANEOUS FUNCTIONS</a></h1>
 <p>
 </p>
-<h2><a name="if_expr1_op_expr2_true_expr_false_expr_"><strong>if</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXPR,FALSE_EXPR</em>)</a></h2>
+<h2><a name="if_expr1_op_expr2_true_expr_false_expr_"><strong>if_</strong>(<em>EXPR1,OP,EXPR2,TRUE_EXPR,FALSE_EXPR</em>)</a></h2>
 <p>This function compares <em>EXPR1</em> and <em>EXPR2</em>, where 5 arguments are
 expected.  if their relation is true, <em>TRUE_EXP</em> is returned, otherwise
 expression <em>FALSE_EXPR</em> is returned.</p>
@@ -1479,11 +1479,11 @@ the line at the value <em>VAL</em> (default 1) using the template of <em>EXPR</e
   draw title d maxv(u,0)</pre>
 <p>
 </p>
-<h2><a name="if__selectively_displaying_values_according_to_the_relationship_between_two_expressions_"><code>If</code>: selectively displaying values according to the relationship between two expressions.</a></h2>
+<h2><a name="if__selectively_displaying_values_according_to_the_relationship_between_two_expressions_"><code>If_</code>: selectively displaying values according to the relationship between two expressions.</a></h2>
 <pre>
-  d if(u,&gt;,0,t,-u)
+  d if_(u,&gt;,0,t,-u)
   run cbarn.gs
-  draw title if(u,&gt;,0,t,-u)</pre>
+  draw title if_(u,&gt;,0,t,-u)</pre>
 <p>
 </p>
 <h2><a name="which__label_gridpoints_according_to_specific_conditions"><code>Which</code>: label gridpoints according to specific conditions</a></h2>
