@@ -105,6 +105,9 @@ echo -----------------------------
 
 AC_CANONICAL_HOST()
 
+host_cppflags=""
+host_ldflags=""
+
 echo Host machine: "$host"
 case "$host" in 
 
@@ -136,17 +139,17 @@ case "$host" in
   sparc-sun-solaris*)
     is_solaris="yes"
 dnl checked in AC_PATH_XTRA in X_PRE_LIBS
-    host_ldadd="-lsocket -lnsl -lw"
+    host_ldflags="-lsocket -lnsl -lw"
 dnl    guilibadd="-lSM -lICE"
   ;;
 
   *-pc-cygwin)
-    host_ldadd="-lrpclib"
+    host_ldflags="-lrpclib"
   ;;
 
   *darwin*)
-    is_darwin="yes"
-#    LDFLAGS="$LDFLAGS -lSystemStubs"
+     is_darwin="yes"
+     host_cppflags="-I/usr/X11/include"
   ;;
 
   cray-*-*)
@@ -575,7 +578,7 @@ if test "Z$ga_supplib_dir" != "Z" ; then
   if test "$have_xml2" = "yes" -a  "$have_zlib" = "yes" -a "$have_png" = "yes" ; then
     echo looking in $ga_supplib_dir 
     # check for required header files 
-    GA_SET_FLAGS([cairo freetype2])
+    GA_SET_FLAGS([cairo freetype2 pixman-1 fontconfig Xrender],[$host_cppflags])
     AC_CHECK_HEADER(cairo.h,
     [ AC_CHECK_HEADER(cairo-xlib.h,
     [ AC_CHECK_HEADER(ft2build.h,
@@ -819,7 +822,7 @@ if test "x$with_gadap" != xno ; then
             [ use_gadap="yes"
               GA_SET_INCLUDE_VAR([gadap_inc], [gadap])
 #              GA_SET_LIB_VAR(gadap_libs, [gadap dapclient dap curl xml2 z])
-              GA_SET_DYNLIB_VAR(gadap_libs, [gadap dapclient dap curl xml2 ssl crypt ssl crypto z])
+              GA_SET_DYNLIB_VAR(gadap_libs, [gadap dapclient dap curl xml2 ssl crypto ssl crypto z])
             ])
           ])
         ])
@@ -855,7 +858,7 @@ echo ---
 if test "x$with_gui" != xno ; then
   if test "Z$ga_supplib_dir" != "Z" ; then 
       echo looking in $ga_supplib_dir 
-      GA_SET_FLAGS([libsx],[],[],[-lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lXrender -lX11 -lz -lm])
+      GA_SET_FLAGS([libsx],[$host_cppflags],[],[-lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lXrender -lX11 -lz -lm ])
       AC_CHECK_HEADER(libsx.h,
       [ AC_CHECK_LIB(sx,[GetFile],
             [ use_gui="yes"
@@ -907,7 +910,8 @@ AM_CONDITIONAL(OPENGRADS, [ test "$with_opengrads" = "yes" ] )
 
 
 # Host specific linker flags
-AC_SUBST(host_ldadd)
+AC_SUBST(host_cppflags)
+AC_SUBST(host_ldflags)
 
 # ----------------------------------------------------
 # Write output files

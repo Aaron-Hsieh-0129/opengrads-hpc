@@ -16,9 +16,10 @@ AC_DEFUN([GA_CHECK_LIB_GD],
   ga_config_gd=no
 
 dnl Check for pkg-config 
-  PKG_CHECK_MODULES([GD],[gdlib],[ga_pkgconfig_gd=yes],
-  [
-    # look for gdlib-config
+  PKG_CHECK_MODULES([GD],[gdlib],[ga_pkgconfig_gd=yes])
+
+dnl If pkg-config not found, look for gdlib-config
+  if test $ga_pkgconfig_gd != 'yes'; then
     AC_PATH_PROG([GD_CONFIG],[gdlib-config],[no])
     if test "$GD_CONFIG" != "no"; then
       GD_LIBS=`$GD_CONFIG --libs`
@@ -26,8 +27,8 @@ dnl Check for pkg-config
       GD_LDFLAGS=`$GD_CONFIG --ldflags`
       ga_config_gd=yes
     fi
-  ])
-
+  fi
+  
 dnl We found something; check for the header gd.h, gdImageCreate
   if test $ga_pkgconfig_gd = 'yes' -o $ga_config_gd = 'yes'; then
      LDFLAGS="$LDFLAGS $GD_LDFLAGS"

@@ -247,14 +247,15 @@ function liberate_unix {
 # --------------------------------------------
   if test "$arch" = Darwin; then
 
-      xlist="$xlist ../supplibs/lib/libcairo*.dylib" # special handling
-      export DYLD_LIBRARY_PATH="../supplibs/lib:$DYLD_LIBRARY_PATH"
+      xlist="$xlist $SUPPLIBS/lib/libcairo*.dylib" # special handling
+      xlist="$xlist $SUPPLIBS/lib/libgeotiff*.dylib" # special handling
+      export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
       # dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e 'X11' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
       dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
 
   elif test "$arch" = Cygwin; then
 
-      export PATH="../supplibs/bin:$PATH"
+      export PATH="$SUPPLIBS/bin:$PATH"
       dep_libs=`cygcheck $xlist 2>&1 | grep '/' | grep -v -e 'WINDOWS' | awk '{print $1}' | sort | uniq`  
 
   elif test "$arch" = AIX; then

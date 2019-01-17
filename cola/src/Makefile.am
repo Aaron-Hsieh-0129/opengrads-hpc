@@ -90,11 +90,11 @@ supp_include_dir	= $(SUPPLIBS)/include
 supp_lib_dir		= $(SUPPLIBS)/lib
 LDADD			= -L$(supp_lib_dir) $(geotiff_ldflags) $(gd_ldflags)
 
-common_ldadd            = $(LDADD) $(host_ldadd) 
+common_ldadd            = $(LDADD) $(host_ldflags) 
 X11_ldadd               = $(X_LIBS) $(X_PRE_LIBS) -lX11 -lXext $(X_EXTRA_LIBS)
 
 
-AM_CPPFLAGS		= -I. -I$(supp_include_dir) $(gui_inc) $(nc_inc) $(grib2_inc)\
+AM_CPPFLAGS		= -I. $(host_cppflags) -I$(supp_include_dir) $(gui_inc) $(nc_inc) $(grib2_inc)\
 			  $(hdf_inc) $(udunits_inc) $(hdf5_inc) $(geotiff_inc) $(shp_inc) $(gadap_inc) \
                           $(X_CFLAGS) $(XAW_CFLAGS) $(HDF4_CFLAGS) 
 
@@ -105,30 +105,30 @@ grads_LDADD	      = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 
 # print with GD
 if USEGD
-libgxpGD_la_CPPFLAGS = -I. $(gd_inc)
+libgxpGD_la_CPPFLAGS = -I. $(host_cppflags) $(gd_inc)
 libgxpGD_la_LIBADD = $(LDADD) $(gd_libs)
 libgxpGD_la_LDFLAGS = -version-info $(LIBGX_VERSION)
 endif
 
 # display X11 
-libgxdX11_la_CPPFLAGS = -I. -I$(SUPPLIBS)/include
+libgxdX11_la_CPPFLAGS = -I. $(host_cppflags) -I$(SUPPLIBS)/include
 libgxdX11_la_LIBADD = $(X11_ldadd)
 libgxdX11_la_LDFLAGS = -version-info $(LIBGX_VERSION)
  
 # print with Cairo
-libgxpCairo_la_CPPFLAGS = -I. $(cairo_inc)
+libgxpCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxpCairo_la_LIBADD = $(LDADD) $(cairo_libs)
 libgxpCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
 
 ## display X11 with Cairo 
-libgxdCairo_la_CPPFLAGS = -I. $(cairo_inc)
+libgxdCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxdCairo_la_LIBADD = $(X11_ldadd) $(LDADD) $(cairo_libs)
 libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
 
 ## dummy (for display and print)
-libgxdummy_la_CPPFLAGS = -I. 
+libgxdummy_la_CPPFLAGS = -I. $(host_cppflags)  
 
 
 
@@ -146,7 +146,7 @@ libgradspy_la-grads.o: $(srcdir)/grads.c
 	$(COMPILE) -DSHRDOBJ -o libgradspy_la-grads.lo -c $(srcdir)/grads.c
 
 libgradspy_la_CFLAGS   = -DSHRDOBJ
-libgradspy_la_CPPFLAGS = -I. -I$(SUPPLIBS)/include $(gui_inc) $(geotiff_inc) \
+libgradspy_la_CPPFLAGS = -I. $(host_cppflags) -I$(SUPPLIBS)/include $(gui_inc) $(geotiff_inc) \
                          $(nc_inc) $(hdf_inc) $(hdf5_inc) $(grib2_inc) $(gui_inc)\
                          $(shp_inc) $(gadap_inc) $(udunits_inc) $(X_CFLAGS) $(XAW_CFLAGS) 
 libgradspy_la_LIBADD   = $(common_ldadd) $(readline_libs) $(grib2_libs) \

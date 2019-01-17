@@ -20,6 +20,12 @@
   distdir := $(HERE)/dist
   host_triplet := $(shell ./config.guess)
 
+  ifeq ($(ARCH),Darwin)
+     DLLEXT=dylib
+  else
+     DLLEXT=so
+  endif
+
 
 #
 # Build core COLA binaries
@@ -31,10 +37,10 @@ cola-build: cola/Makefile
 
 cola-install cola-clean cola-distclean:
 	(cd cola; $(MAKE) $(subst cola-,,$@))
-	@cp etc/udpt bin/gex
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 cola-check: cola-install
-	@(cd pytests; $(MAKE) check)
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 
 cola/Makefile:

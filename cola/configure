@@ -637,7 +637,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-host_ldadd
+host_ldflags
+host_cppflags
 OPENGRADS_FALSE
 OPENGRADS_TRUE
 USECAIRO_FALSE
@@ -805,7 +806,6 @@ infodir
 docdir
 oldincludedir
 includedir
-runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -917,7 +917,6 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
-runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1170,15 +1169,6 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -runstatedir | --runstatedir | --runstatedi | --runstated \
-  | --runstate | --runstat | --runsta | --runst | --runs \
-  | --run | --ru | --r)
-    ac_prev=runstatedir ;;
-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
-  | --run=* | --ru=* | --r=*)
-    runstatedir=$ac_optarg ;;
-
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1316,7 +1306,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir runstatedir
+		libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1469,7 +1459,6 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -2580,7 +2569,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 # Require automake 1.6 (comes with Mac OS X 10.2) or newer,
 # don't #define PACKAGE and VERSION,
 # disable dependency checking
-am__api_version='1.15'
+am__api_version='1.16'
 
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
@@ -3087,8 +3076,8 @@ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 
 # For better backward compatibility.  To be removed once Automake 1.9.x
 # dies out for good.  For more background, see:
-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
+# <https://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
+# <https://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
 mkdir_p='$(MKDIR_P)'
 
 # We need awk for the "check" target (and possibly the TAP driver).  The
@@ -3139,7 +3128,7 @@ END
 Aborting the configuration process, to ensure you take notice of the issue.
 
 You can download and install GNU coreutils to get an 'rm' implementation
-that behaves properly: <http://www.gnu.org/software/coreutils/>.
+that behaves properly: <https://www.gnu.org/software/coreutils/>.
 
 If you want to complete the configuration process using your problematic
 'rm' anyway, export the environment variable ACCEPT_INFERIOR_RM_PROGRAM
@@ -16212,6 +16201,9 @@ echo -----------------------------
 
 
 
+host_cppflags=""
+host_ldflags=""
+
 echo Host machine: "$host"
 case "$host" in
 
@@ -16242,16 +16234,16 @@ case "$host" in
 
   sparc-sun-solaris*)
     is_solaris="yes"
-    host_ldadd="-lsocket -lnsl -lw"
+    host_ldflags="-lsocket -lnsl -lw"
   ;;
 
   *-pc-cygwin)
-    host_ldadd="-lrpclib"
+    host_ldflags="-lrpclib"
   ;;
 
   *darwin*)
-    is_darwin="yes"
-#    LDFLAGS="$LDFLAGS -lSystemStubs"
+     is_darwin="yes"
+     host_cppflags="-I/usr/X11/include"
   ;;
 
   cray-*-*)
@@ -17508,7 +17500,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -17554,7 +17546,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -17578,7 +17570,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -17623,7 +17615,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -17647,7 +17639,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -19559,39 +19551,10 @@ fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$GD_PKG_ERRORS" >&5
 
-	as_fn_error $? "Package requirements (gdlib) were not met:
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
-$GD_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables GD_CFLAGS
-and GD_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-" "$LINENO" 5
-elif test $pkg_failed = untried; then
-	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables GD_CFLAGS
-and GD_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details" "$LINENO" 5; }
-else
-	GD_CFLAGS=$pkg_cv_GD_CFLAGS
-	GD_LIBS=$pkg_cv_GD_LIBS
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-	ga_pkgconfig_gd=yes
-fi
-
-  if test $ga_pkgconfig_gd != 'yes'; then
+    # look for gdlib-config
     # Extract the first word of "gdlib-config", so it can be a program name with args.
 set dummy gdlib-config; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -19639,7 +19602,65 @@ fi
       GD_LDFLAGS=`$GD_CONFIG --ldflags`
       ga_config_gd=yes
     fi
+
+elif test $pkg_failed = untried; then
+
+    # look for gdlib-config
+    # Extract the first word of "gdlib-config", so it can be a program name with args.
+set dummy gdlib-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_GD_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $GD_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_GD_CONFIG="$GD_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_GD_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
   fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_GD_CONFIG" && ac_cv_path_GD_CONFIG="no"
+  ;;
+esac
+fi
+GD_CONFIG=$ac_cv_path_GD_CONFIG
+if test -n "$GD_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GD_CONFIG" >&5
+$as_echo "$GD_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+    if test "$GD_CONFIG" != "no"; then
+      GD_LIBS=`$GD_CONFIG --libs`
+      GD_CFLAGS=`$GD_CONFIG --cflags`
+      GD_LDFLAGS=`$GD_CONFIG --ldflags`
+      ga_config_gd=yes
+    fi
+
+else
+	GD_CFLAGS=$pkg_cv_GD_CFLAGS
+	GD_LIBS=$pkg_cv_GD_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	ga_pkgconfig_gd=yes
+fi
 
   if test $ga_pkgconfig_gd = 'yes' -o $ga_config_gd = 'yes'; then
      LDFLAGS="$LDFLAGS $GD_LDFLAGS"
@@ -20061,11 +20082,11 @@ if test "Z$ga_supplib_dir" != "Z" ; then
   ga_saved_libs=$LIBS
   CPPFLAGS="-I${ga_supplib_dir}/include"
 
-    for ga_inc_name in cairo freetype2 ; do
+    for ga_inc_name in cairo freetype2 pixman-1 fontconfig Xrender ; do
       CPPFLAGS="$CPPFLAGS -I${ga_supplib_dir}/include/${ga_inc_name}"
     done
 
-  CPPFLAGS="$CPPFLAGS "
+  CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
   LIBS="$LIBS "
 
@@ -23197,7 +23218,7 @@ if test "x$ac_cv_lib_dapclient_main" = xyes; then :
 #              GA_SET_LIB_VAR(gadap_libs, [gadap dapclient dap curl xml2 z])
 
   ga_lib_prefix='-l'
-  for ga_lib_name in gadap dapclient dap curl xml2 ssl crypt ssl crypto z ; do
+  for ga_lib_name in gadap dapclient dap curl xml2 ssl crypto ssl crypto z ; do
       gadap_libs="$gadap_libs ${ga_lib_prefix}${ga_lib_name}"
   done
 
@@ -23267,9 +23288,9 @@ if test "x$with_gui" != xno ; then
       CPPFLAGS="$CPPFLAGS -I${ga_supplib_dir}/include/${ga_inc_name}"
     done
 
-  CPPFLAGS="$CPPFLAGS "
+  CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
-  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lXrender -lX11 -lz -lm"
+  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lXrender -lX11 -lz -lm "
 
       ac_fn_c_check_header_mongrel "$LINENO" "libsx.h" "ac_cv_header_libsx_h" "$ac_includes_default"
 if test "x$ac_cv_header_libsx_h" = xyes; then :
@@ -23460,6 +23481,7 @@ fi
 
 
 # Host specific linker flags
+
 
 
 # ----------------------------------------------------

@@ -3,6 +3,8 @@
 #  Wrapper around Cola's configure to make it work with the OpenGRADS supplibs
 #
 
+setenv ARCH `uname -s`
+
 if ( $?SUPPLIBS ) then
    echo Using OpenGRADS SUPPLIBS from $SUPPLIBS
 else
@@ -16,6 +18,10 @@ set lib = $here/bin/gex
 
 mkdir -p $bin
 mkdir -p $lib
+
+if ( $ARCH == 'Darwin' ) then
+      setenv LIBS '-L/usr/X11/lib -lXaw3d -lXmu -lXt -lXext -lXpm  -lSM -lICE -lX11 -liconv'
+endif
 
 (cd cola; ./configure --disable-dyn-supplibs \
                       --with-gadap \
