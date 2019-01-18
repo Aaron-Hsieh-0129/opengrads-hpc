@@ -328,9 +328,9 @@ c     wzfin must have 2*l*(nlat+1)/2 + ((l-3)*l+2)/2 locations
 c     zb must have 3*l*(nlat+1)/2 locations
 c     work must have ls*nlon locations
 c
-      dimension g(idgs,jdgs,1),a(mdab,ndab,1),b(mdab,ndab,1),
-     1          ge(idg,jdg,1),go(idg,jdg,1),zb(imid,nlat,3),wzfin(1),
-     3          whrfft(1),work(1)
+      dimension g(idgs,jdgs,*),a(mdab,ndab,*),b(mdab,ndab,*),
+     1          ge(idg,jdg,*),go(idg,jdg,*),zb(imid,nlat,3),wzfin(*),
+     3          whrfft(*),work(*)
       ls = idg
       nlon = jdg
       mmax = min0(nlat,nlon/2+1)
@@ -751,8 +751,8 @@ c
 c ****************************************************************
       subroutine shaes(nlat,nlon,isym,nt,g,idg,jdg,a,b,mdab,ndab,
      1                    wshaes,lshaes,work,lwork,ierror)
-      dimension g(idg,jdg,1),a(mdab,ndab,1),b(mdab,ndab,1),wshaes(1),
-     1          work(1)
+      dimension g(idg,jdg,*),a(mdab,ndab,*),b(mdab,ndab,*),wshaes(*),
+     1          work(*)
       ierror = 1
       if(nlat.lt.3) return
       ierror = 2
@@ -790,8 +790,8 @@ c ****************************************************************
       end
       subroutine shaes1(nlat,isym,nt,g,idgs,jdgs,a,b,mdab,ndab,z,idz,
      1                  idg,jdg,ge,go,work,whrfft)
-      dimension g(idgs,jdgs,1),a(mdab,ndab,1),b(mdab,ndab,1),z(idz,1),
-     1          ge(idg,jdg,1),go(idg,jdg,1),work(1),whrfft(1)
+      dimension g(idgs,jdgs,*),a(mdab,ndab,*),b(mdab,ndab,*),z(idz,*),
+     1          ge(idg,jdg,*),go(idg,jdg,*),work(*),whrfft(*)
       ls = idg
       nlon = jdg
       mmax = min0(nlat,nlon/2+1)
@@ -945,7 +945,7 @@ c     cp requires n/2+1 double precision locations
 c
       double precision cp,fnum,fden,fnmh,a1,b1,c1,cp2,fnnp1,fnmsq,fk,
      1       t1,t2,pm1,sc10,sc20,sc40
-      dimension       cp(1)
+      dimension       cp(*)
       parameter (sc10=1024.d0)
       parameter (sc20=sc10*sc10)
       parameter (sc40=sc20*sc20)
@@ -1093,7 +1093,7 @@ c     pb = pb+cp(k)*dsin((2*k-1)*theta)
 c
 c     computes the derivative of pmn(theta) with respect to theta
 c
-      dimension cp(1)
+      dimension cp(*)
       double precision cp,pb,theta,cdt,sdt,cth,sth,chh
       cdt = dcos(theta+theta)
       sdt = dsin(theta+theta)
@@ -1172,7 +1172,7 @@ c     the vector w contains quantities precomputed in shigc.
 c     legin must be called in the order m=0,1,...,l-1
 c     (e.g., if m=10 is sought it must be preceded by calls with
 c     m=0,1,2,...,9 in that order)
-      dimension w(1),pmn(1)
+      dimension w(*),pmn(*)
 c     set size of pole to equator gaussian grid
       late = (nlat+mod(nlat,2))/2
 c     partition w (set pointers for p0n,p1n,abel,bbel,cbel,pmn)
@@ -1188,7 +1188,7 @@ c     partition w (set pointers for p0n,p1n,abel,bbel,cbel,pmn)
       subroutine legin1(mode,l,nlat,late,m,p0n,p1n,abel,bbel,cbel,
      1                  pmn,km)
       dimension p0n(nlat,late),p1n(nlat,late)
-      dimension abel(1),bbel(1),cbel(1),pmn(nlat,late,3)
+      dimension abel(*),bbel(*),cbel(*),pmn(nlat,late,3)
       data km0,km1,km2/ 1,2,3/
       save km0,km1,km2
 c     define index function used in storing triangular
@@ -1249,7 +1249,7 @@ c     set current m index in output param km
 
 
       subroutine zfin (isym,nlat,nlon,m,z,i3,wzfin)
-      dimension       z(1)        ,wzfin(1)
+      dimension       z(*)        ,wzfin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,nlon/2+1)
@@ -1266,8 +1266,8 @@ c
       return
       end
       subroutine zfin1 (isym,nlat,m,z,imid,i3,zz,z1,a,b,c)
-      dimension       z(imid,nlat,3),zz(imid,1),z1(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       z(imid,nlat,3),zz(imid,*),z1(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -1330,7 +1330,7 @@ c     abc must have 3*((mmax-2)*(nlat+nlat-mmax-1))/2 locations
 c     where mmax = min0(nlat,nlon/2+1)
 c     cz and work must each have nlat+1 locations
 c
-      dimension z(imid,nlat,2),abc(1)
+      dimension z(imid,nlat,2),abc(*)
       double precision pi,dt,th,zh,cz(*),work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
@@ -1355,7 +1355,7 @@ c     dnzfk computes the coefficients in the trigonometric
 c     expansion of the z functions that are used in spherical
 c     harmonic analysis.
 c
-      dimension  cz(1),work(1)
+      dimension  cz(*),work(*)
 c
 c     cz and work must both have nlat/2+1 locations
 c
@@ -1432,7 +1432,7 @@ c
       return
       end
       subroutine dnzft(nlat,m,n,th,cz,zh)
-      dimension cz(1)
+      dimension cz(*)
       double precision cz,zh,th,cdt,sdt,cth,sth,chh
       zh = 0.
       cdt = dcos(th+th)
@@ -1561,7 +1561,7 @@ c     zh = zh+cz(k+1)*dsin((2*k-1)*th)
       return
       end
       subroutine alin (isym,nlat,nlon,m,p,i3,walin)
-      dimension       p(1)        ,walin(1)
+      dimension       p(*)        ,walin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,nlon/2+1)
@@ -1578,8 +1578,8 @@ c
       return
       end
       subroutine alin1 (isym,nlat,m,p,imid,i3,pz,p1,a,b,c)
-      dimension       p(imid,nlat,3),pz(imid,1),p1(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       p(imid,nlat,3),pz(imid,*),p1(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -1636,7 +1636,7 @@ c
       return
       end
       subroutine alini1 (nlat,nlon,imid,p,abc,cp)
-      dimension p(imid,nlat,2),abc(1),cp(1)
+      dimension p(imid,nlat,2),abc(*),cp(*)
       double precision pi,dt,th,cp,ph
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
@@ -1659,7 +1659,7 @@ c     subroutine rabcp computes the coefficients in the recurrence
 c     relation for the associated legendre fuctions. array abc
 c     must have 3*((mmax-2)*(nlat+nlat-mmax-1))/2 locations.
 c
-      dimension abc(1)
+      dimension abc(*)
       mmax = min0(nlat,nlon/2+1)
       labc = ((mmax-2)*(nlat+nlat-mmax-1))/2
       iw1 = labc+1
@@ -1672,7 +1672,7 @@ c
 c     coefficients a, b, and c for computing pbar(m,n,theta) are
 c     stored in location ((m-2)*(nlat+nlat-m-1))/2+n+1
 c
-      dimension a(1),b(1),c(1)
+      dimension a(*),b(*),c(*)
       mmax = min0(nlat,nlon/2+1)
       do 215 mp1=3,mmax
       m = mp1-1
@@ -1736,7 +1736,7 @@ c
       return
       end
       subroutine zvinit (nlat,nlon,wzvin,dwork)
-      dimension       wzvin(1)
+      dimension       wzvin(*)
       double precision dwork(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -1755,8 +1755,8 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     czv and work must each have nlat/2+1  locations
 c
-      dimension zv(imid,nlat,2),abc(1)
-      double precision pi,dt,czv(1),zvh,th,work(1)
+      dimension zv(imid,nlat,2),abc(*)
+      double precision pi,dt,czv(*),zvh,th,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
       mdo = min0(2,nlat,(nlon+1)/2)
@@ -1776,7 +1776,7 @@ c
       return
       end
       subroutine zwinit (nlat,nlon,wzwin,dwork)
-      dimension       wzwin(1)
+      dimension       wzwin(*)
       double precision dwork(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -1794,8 +1794,8 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     czw and work must each have nlat+1 locations
 c
-      dimension zw(imid,nlat,2),abc(1)
-      double precision  pi,dt,czw(1),zwh,th,work(1)
+      dimension zw(imid,nlat,2),abc(*)
+      double precision  pi,dt,czw(*),zwh,th,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
       mdo = min0(3,nlat,(nlon+1)/2)
@@ -1816,7 +1816,7 @@ c
       return
       end
       subroutine zvin (ityp,nlat,nlon,m,zv,i3,wzvin)
-      dimension       zv(1)        ,wzvin(1)
+      dimension       zv(*)        ,wzvin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,(nlon+1)/2)
@@ -1833,8 +1833,8 @@ c
       return
       end
       subroutine zvin1 (ityp,nlat,m,zv,imid,i3,zvz,zv1,a,b,c)
-      dimension       zv(imid,nlat,3),zvz(imid,1),zv1(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       zv(imid,nlat,3),zvz(imid,*),zv1(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -1879,7 +1879,7 @@ c
    80 return
       end
       subroutine zwin (ityp,nlat,nlon,m,zw,i3,wzwin)
-      dimension       zw(1)        ,wzwin(1)
+      dimension       zw(*)        ,wzwin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,(nlon+1)/2)
@@ -1896,8 +1896,8 @@ c
       return
       end
       subroutine zwin1 (ityp,nlat,m,zw,imid,i3,zw1,zw2,a,b,c)
-      dimension       zw(imid,nlat,3),zw1(imid,1),zw2(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       zw(imid,nlat,3),zw1(imid,*),zw2(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -1942,7 +1942,7 @@ c
    80 return
       end
       subroutine vbinit (nlat,nlon,wvbin,dwork)
-      dimension wvbin(1)
+      dimension wvbin(*)
       double precision dwork(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -1960,8 +1960,8 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     cvb and work must each have nlat+1 locations
 c
-      dimension vb(imid,nlat,2),abc(1)
-      double precision pi,dt,cvb(1),th,vbh,work(1)
+      dimension vb(imid,nlat,2),abc(*)
+      double precision pi,dt,cvb(*),th,vbh,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
       mdo = min0(2,nlat,(nlon+1)/2)
@@ -1980,7 +1980,7 @@ c
       return
       end
       subroutine wbinit (nlat,nlon,wwbin,dwork)
-      dimension       wwbin(1)
+      dimension       wwbin(*)
       double precision dwork(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -1998,8 +1998,8 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     cwb and work must each have nlat/2+1 locations
 c
-      dimension wb(imid,nlat,2),abc(1)
-      double precision pi,dt,cwb(1),wbh,th,work(1)
+      dimension wb(imid,nlat,2),abc(*)
+      double precision pi,dt,cwb(*),wbh,th,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
       mdo = min0(3,nlat,(nlon+1)/2)
@@ -2019,7 +2019,7 @@ c
       return
       end
       subroutine vbin (ityp,nlat,nlon,m,vb,i3,wvbin)
-      dimension       vb(1)        ,wvbin(1)
+      dimension       vb(*)        ,wvbin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,(nlon+1)/2)
@@ -2036,8 +2036,8 @@ c
       return
       end
       subroutine vbin1 (ityp,nlat,m,vb,imid,i3,vbz,vb1,a,b,c)
-      dimension       vb(imid,nlat,3),vbz(imid,1),vb1(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       vb(imid,nlat,3),vbz(imid,*),vb1(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -2082,7 +2082,7 @@ c
    80 return
       end
       subroutine wbin (ityp,nlat,nlon,m,wb,i3,wwbin)
-      dimension       wb(1)        ,wwbin(1)
+      dimension       wb(*)        ,wwbin(*)
       imid = (nlat+1)/2
       lim = nlat*imid
       mmax = min0(nlat,(nlon+1)/2)
@@ -2099,8 +2099,8 @@ c
       return
       end
       subroutine wbin1 (ityp,nlat,m,wb,imid,i3,wb1,wb2,a,b,c)
-      dimension       wb(imid,nlat,3),wb1(imid,1),wb2(imid,1),
-     1                a(1),b(1),c(1)
+      dimension       wb(imid,nlat,3),wb1(imid,*),wb2(imid,*),
+     1                a(*),b(*),c(*)
       save i1,i2
       ihold = i1
       i1 = i2
@@ -2163,7 +2163,7 @@ c     output parameter
 c
 c     czv     the fourier coefficients of zvbar(n,m,theta).
 c
-      dimension czv(1),work(1)
+      dimension czv(*),work(*)
       double precision czv,sc1,sum,work,t1,t2
       if(n .le. 0) return
       lc = (nlat+1)/2
@@ -2255,7 +2255,7 @@ c     output parameter
 c
 c     zvh     zvbar(m,n,theta) evaluated at theta = th
 c
-      dimension czv(1)
+      dimension czv(*)
       double precision th,czv,zvh,cth,sth,cdt,sdt,chh
       zvh = 0.
       if(n .le. 0) return
@@ -2384,7 +2384,7 @@ c     output parameter
 c
 c     czw     the fourier coefficients of zwbar(n,m,theta).
 c
-      dimension czw(1),work(1)
+      dimension czw(*),work(*)
       double precision czw,work,sc1,sum,t1,t2
       if(n .le. 0) return
       lc = (nlat+1)/2
@@ -2479,7 +2479,7 @@ c     output parameter
 c
 c     zwh     zwbar(m,n,theta) evaluated at theta = th
 c
-      dimension czw(1)
+      dimension czw(*)
       double precision czw,zwh,th,cth,sth,cdt,sdt,chh
       zwh = 0.
       if(n .le. 0) return
@@ -2590,7 +2590,7 @@ c
       return
       end
       subroutine dvbk(m,n,cv,work)
-      double precision cv(1),work(1),fn,fk,cf
+      double precision cv(*),work(*),fn,fk,cf
       cv(1) = 0.
       if(n .le. 0) return
       fn = n
@@ -2641,7 +2641,7 @@ c
       return
       end
       subroutine dwbk(m,n,cw,work)
-      double precision cw(1),work(1),fn,cf,srnp1
+      double precision cw(*),work(*),fn,cf,srnp1
       cw(1) = 0.
       if(n.le.0 .or. m.le.0) return
       fn = n
@@ -2694,7 +2694,7 @@ c
    50 return
       end
       subroutine dvbt(m,n,theta,cv,vh)
-      dimension cv(1)
+      dimension cv(*)
       double precision cv,vh,theta,cth,sth,cdt,sdt,chh
       vh = 0.
       if(n.eq.0) return
@@ -2755,7 +2755,7 @@ c
       return
       end
       subroutine dwbt(m,n,theta,cw,wh)
-      dimension cw(1)
+      dimension cw(*)
       double precision theta,cw,wh,cth,sth,cdt,sdt,chh
       wh = 0.
       if(n.le.0 .or. m.le.0) return
@@ -2823,7 +2823,7 @@ c     subroutine rabcp computes the coefficients in the recurrence
 c     relation for the functions vbar(m,n,theta). array abc
 c     must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2 locations.
 c
-      dimension abc(1)
+      dimension abc(*)
       mmax = min0(nlat,(nlon+1)/2)
       labc = (max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
       iw1 = labc+1
@@ -2836,7 +2836,7 @@ c
 c     coefficients a, b, and c for computing vbar(m,n,theta) are
 c     stored in location ((m-2)*(nlat+nlat-m-1))/2+n+1
 c
-      dimension a(1),b(1),c(1)
+      dimension a(*),b(*),c(*)
       mmax = min0(nlat,(nlon+1)/2)
       if(mmax .lt. 3) return
       do 215 mp1=3,mmax
@@ -2879,7 +2879,7 @@ c     subroutine rabcw computes the coefficients in the recurrence
 c     relation for the functions wbar(m,n,theta). array abc
 c     must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2 locations.
 c
-      dimension abc(1)
+      dimension abc(*)
       mmax = min0(nlat,(nlon+1)/2)
       labc = (max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
       iw1 = labc+1
@@ -2892,7 +2892,7 @@ c
 c     coefficients a, b, and c for computing wbar(m,n,theta) are
 c     stored in location ((m-2)*(nlat+nlat-m-1))/2+n+1
 c
-      dimension a(1),b(1),c(1)
+      dimension a(*),b(*),c(*)
       mmax = min0(nlat,(nlon+1)/2)
       if(mmax .lt. 4) return
       do 215 mp1=4,mmax
@@ -2951,7 +2951,7 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     cvb and work must each have nlat/2+1 locations
 c
-      dimension vb(imid,nlat,2),abc(1),cvb(1)
+      dimension vb(imid,nlat,2),abc(*),cvb(*)
       double precision pi,dt,cvb,th,vbh,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
@@ -2971,7 +2971,7 @@ c
       return
       end
       subroutine wtinit (nlat,nlon,wwbin,dwork)
-      dimension       wwbin(1)
+      dimension       wwbin(*)
       double precision dwork(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -2989,7 +2989,7 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     cwb and work must each have nlat/2+1 locations
 c
-      dimension wb(imid,nlat,2),abc(1)
+      dimension wb(imid,nlat,2),abc(*)
       double precision pi,dt,cwb(*),wbh,th,work(*)
       pi = 4.*datan(1.d0)
       dt = pi/(nlat-1)
@@ -3066,7 +3066,7 @@ c
 c     abc must have 3*((nlat-3)*nlat+2)/2 locations
 c     cwb and work must each have nlat/2+1 locations
 c
-      dimension wb(imid,nlat,2),abc(1)
+      dimension wb(imid,nlat,2),abc(*)
       double precision theta(*), cwb(*), work(*), wbh
       mdo = min0(3,nlat,(nlon+1)/2)
       if(mdo .lt. 2) return
@@ -3192,7 +3192,7 @@ c
    50 return
       end
       subroutine dvtt(m,n,theta,cv,vh)
-      dimension cv(1)
+      dimension cv(*)
       double precision cv,vh,theta,cth,sth,cdt,sdt,chh
       vh = 0.
       if(n.eq.0) return
@@ -3253,7 +3253,7 @@ c
       return
       end
       subroutine dwtt(m,n,theta,cw,wh)
-      dimension cw(1)
+      dimension cw(*)
       double precision theta,cw,wh,cth,sth,cdt,sdt,chh
       wh = 0.
       if(n.le.0 .or. m.le.0) return
@@ -3316,7 +3316,7 @@ c
       return
       end
       subroutine vbgint (nlat,nlon,theta,wvbin,work)
-      dimension       wvbin(1)
+      dimension       wvbin(*)
       double precision theta(*),work(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -3336,8 +3336,8 @@ c     abc must have 3*(max0(mmax-2,0)*(nlat+nlat-mmax-1))/2
 c     locations where mmax = min0(nlat,(nlon+1)/2)
 c     cvb and work must each have nlat/2+1 locations
 c
-      dimension vb(imid,nlat,2),abc(1)
-      double precision cvb(1),theta(1),vbh,work(1)
+      dimension vb(imid,nlat,2),abc(*)
+      double precision cvb(*),theta(*),vbh,work(*)
       mdo = min0(2,nlat,(nlon+1)/2)
       do 160 mp1=1,mdo
       m = mp1-1
@@ -3353,7 +3353,7 @@ c
       return
       end
       subroutine wbgint (nlat,nlon,theta,wwbin,work)
-      dimension       wwbin(1)
+      dimension       wwbin(*)
       double precision work(*),theta(*)
       imid = (nlat+1)/2
       iw1 = 2*nlat*imid+1
@@ -3372,8 +3372,8 @@ c
 c     abc must have 3*((nlat-3)*nlat+2)/2 locations
 c     cwb and work must each have nlat/2+1 locations
 c
-      dimension wb(imid,nlat,2),abc(1)
-      double precision cwb(1),theta(1),wbh,work(1)
+      dimension wb(imid,nlat,2),abc(*)
+      double precision cwb(*),theta(*),wbh,work(*)
       mdo = min0(3,nlat,(nlon+1)/2)
       if(mdo .lt. 2) return
       do 160 mp1=2,mdo
@@ -3651,7 +3651,7 @@ c
 c                      
 c     a multiple fft package for spherepack
 c                      
-      dimension       r(mdimr,n)  ,work(1)    ,whrfft(n+15)
+      dimension       r(mdimr,n)  ,work(*)    ,whrfft(n+15)
 !ams      common /hrf/ tfft
       if (n .eq. 1) return                
 c     tstart = second(dum)
@@ -4220,7 +4220,7 @@ c
 c                      
 c     a multiple fft package for spherepack
 c                      
-      dimension     r(mdimr,n)  ,work(1)    ,whrfft(n+15)
+      dimension     r(mdimr,n)  ,work(*)    ,whrfft(n+15)
 !ams      common /hrf/ tfft
       if (n .eq. 1) return                
 c     tstart = second(dum)
@@ -5019,8 +5019,8 @@ c
 c ****************************************************************
       subroutine shsec(nlat,nlon,isym,nt,g,idg,jdg,a,b,mdab,ndab,
      1                    wshsec,lshsec,work,lwork,ierror)
-      dimension g(idg,jdg,1),a(mdab,ndab,1),b(mdab,ndab,1),wshsec(1),
-     1          work(1)
+      dimension g(idg,jdg,*),a(mdab,ndab,*),b(mdab,ndab,*),wshsec(*),
+     1          work(*)
       ierror = 1
       if(nlat.lt.3) return
       ierror = 2
@@ -5064,9 +5064,9 @@ c     whrfft must have at least nlon+15 locations
 c     walin must have 3*l*imid + 3*((l-3)*l+2)/2 locations
 c     zb must have 3*l*imid locations
 c
-      dimension g(idgs,jdgs,1),a(mdab,ndab,1),b(mdab,ndab,1),
-     1          ge(idg,jdg,1),go(idg,jdg,1),pb(imid,nlat,3),walin(1),
-     3          whrfft(1),work(1)
+      dimension g(idgs,jdgs,*),a(mdab,ndab,*),b(mdab,ndab,*),
+     1          ge(idg,jdg,*),go(idg,jdg,*),pb(imid,nlat,3),walin(*),
+     3          whrfft(*),work(*)
       ls = idg
       nlon = jdg
       mmax = min0(nlat,nlon/2+1)
@@ -5319,7 +5319,7 @@ c            = 1 if nlat.le.0
 c
 c  *****************************************************************
 c
-      double precision theta(nlat),wts(nlat),w(1),
+      double precision theta(nlat),wts(nlat),w(*),
      1 x,pi,pis2,dtheta,dthalf,cmax,zprev,zlast,zero,
      2 zhold,pb,dpb,dcor,sum,cz
 c
@@ -5848,7 +5848,7 @@ c     a gaussian grid on the array(s) in g and returns the coefficients
 c     in array(s) a,b. the necessary legendre polynomials are computed
 c     as needed in this version.
 c
-      dimension g(idg,jdg,1),a(mdab,ndab,1),b(mdab,ndab,1),
+      dimension g(idg,jdg,*),a(mdab,ndab,*),b(mdab,ndab,*),
      1          wshagc(lshagc),work(lwork)
 c     check input parameters
       ierror = 1
@@ -5901,7 +5901,7 @@ c     set pointers for internal storage of g and legendre polys
      1                  ndab,w,wts,wfft,late,pmn,g)
       dimension gs(idg,jdg,nt),a(mdab,ndab,nt),
      1          b(mdab,ndab,nt),g(lat,nlon,nt)
-      dimension w(1),wts(nlat),wfft(1),pmn(nlat,late,3)
+      dimension w(*),wts(nlat),wfft(*),pmn(nlat,late,3)
 c     set gs array internally in shagc1
       do 100 k=1,nt
       do 100 j=1,nlon
@@ -6106,8 +6106,8 @@ c     set indices in temp work for double precision gaussian wts and pts
       end
       subroutine shagci1(nlat,nlon,l,late,wts,p0n,p1n,abel,bbel,cbel,
      1                  wfft,dtheta,dwts,work,ier)
-      dimension wts(nlat),p0n(nlat,late),p1n(nlat,late),abel(1),bbel(1),
-     1 cbel(1),wfft(1)
+      dimension wts(nlat),p0n(nlat,late),p1n(nlat,late),abel(*),bbel(*),
+     1 cbel(*),wfft(*)
       double precision pb,dtheta(nlat),dwts(nlat),work(*)
 c     compute the nlat  gaussian points and weights, the
 c     m=0,1 legendre polys for gaussian points and all n,
@@ -6460,7 +6460,7 @@ c     a gaussian grid using the coefficients in array(s) a,b and returns
 c     the results in array(s) g.  the legendre polynomials are computed
 c     as needed in this version.
 c
-      dimension g(idg,jdg,1),a(mdab,ndab,1),b(mdab,ndab,1),
+      dimension g(idg,jdg,*),a(mdab,ndab,*),b(mdab,ndab,*),
      1          wshsgc(lshsgc),work(lwork)
 c     check input parameters
       ierror = 1
@@ -6511,7 +6511,7 @@ c     set pointers for internal storage of g and legendre polys
       subroutine shsgc1(nlat,nlon,l,lat,mode,gs,idg,jdg,nt,a,b,mdab,
      1                  ndab,w,wfft,late,pmn,g)
       dimension gs(idg,jdg,nt),a(mdab,ndab,nt),b(mdab,ndab,nt)
-      dimension w(1),pmn(nlat,late,3),g(lat,nlon,nt),wfft(1)
+      dimension w(*),pmn(nlat,late,3),g(lat,nlon,nt),wfft(*)
 c     reconstruct fourier coefficients in g on gaussian grid
 c     using coefficients in a,b
 c     set m+1 limit for b coefficient calculation
@@ -6709,8 +6709,8 @@ c     set indices in temp work for double precision gaussian wts and pts
       end
       subroutine shsgci1(nlat,nlon,l,late,wts,p0n,p1n,abel,bbel,cbel,
      1                  wfft,dtheta,dwts,work,ier)
-      dimension wts(nlat),p0n(nlat,late),p1n(nlat,late),abel(1),bbel(1),
-     1 cbel(1),wfft(1),dtheta(nlat),dwts(nlat)
+      dimension wts(nlat),p0n(nlat,late),p1n(nlat,late),abel(*),bbel(*),
+     1 cbel(*),wfft(*),dtheta(nlat),dwts(nlat)
       double precision pb,dtheta,dwts,work(*)
 c     compute the nlat  gaussian points and weights, the
 c     m=0,1 legendre polys for gaussian points and all n,

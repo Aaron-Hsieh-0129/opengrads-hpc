@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_AIX)
+#if defined(_AIX) || defined(__APPLE_CC__)
 #include <unistd.h>  /* for getpid() */
 #else
 #include <sys/unistd.h>  /* for getpid() */
@@ -110,7 +110,7 @@ int c_getenv ( int argc, char **argv, struct gacmn *pcm) {
   retcod = 0;
   for ( i=1; i<argc; i++ ) {
 
-    if ( str = getenv(argv[i])) {
+    if ( (str = getenv(argv[i])) ) {
       snprintf(pout,511,"Environment variable %s = %s\n",argv[i],str);
       gaprnt(2,pout);
     } else {
@@ -140,8 +140,8 @@ int c_xenv ( int argc, char **argv, struct gacmn *pcm) {
         if (i>1) strncat(cmd," ",512);
         strncat(cmd,argv[i],512);
   }  
-  cmd[512] = '\0';
-  if ( str = xenv(cmd) ) {
+  cmd[511] = '\0';
+  if ( (str = xenv(cmd)) ) {
     snprintf(pout,511,"%s\n",str);
     gaprnt(2,pout);
     free(str);
@@ -170,8 +170,8 @@ int c_env ( int argc, char **argv, struct gacmn *pcm) {
         if (i>1) strncat(cmd," ",512);
         strncat(cmd,argv[i],512);
   }  
-  cmd[512] = '\0';
-  if ( str = xenv(cmd) ) {
+  cmd[511] = '\0';
+  if ( (str = xenv(cmd)) ) {
     snprintf(pout,511,"%s\n",str);
     gaprnt(2,pout);
     rc = gacmd(str,pcm,0);

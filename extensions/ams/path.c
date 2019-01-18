@@ -180,7 +180,9 @@ int c_path ( int argc, char **argv, struct gacmn *pcm) {
   wordexp_t wlist;
   regex_t re;
   pcrs_job *job;
-  int i, m, n, rc;
+  int i, n, rc;
+  size_t m;
+
 
   rc = 0;
 

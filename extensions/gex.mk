@@ -83,12 +83,7 @@ FFLAGS = $(FOPT) -I. -I$(GAINC)
 
 # FOPT = -g -fbounds-check
 
-ifeq ($(ARCH),Darwin)
-   FOPT = -O0  # turn off optimization for now
-else
-   FOPT = -O
-endif
-
+FOPT = -O
 
 # Look for F77
 # ------------
