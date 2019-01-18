@@ -149,7 +149,7 @@ class ut(utUDX):
 
     def test_pinterp (self):
         self.ga("d pinterp(ta,lev,450)")
-        self._CheckCint(220,255,5)
+        self._CheckCint(225,260,5)
 
     def test_zinterp (self):
         self.ga("d zinterp(ta,zg,5000)")

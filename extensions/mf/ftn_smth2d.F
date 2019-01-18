@@ -1,3 +1,35 @@
+C--------------------------------------------------------------------------
+C         
+
+      subroutine stat2(a,m,n,amin,amax,amean,avar,asigma)
+      USE gex
+      real(kind=iGaKind) :: dimension a(m,n)
+
+      amean = 0.0
+      amin = 9.9e25
+      amax = -9.9e25
+      avar = 0.0
+      asigma = 0.0
+      do i=1,m
+      do j=1,n
+        if(a(i,j).lt.amin) amin=a(i,j)
+        if(a(i,j).gt.amax) amax=a(i,j)
+        amean=amean+a(i,j)
+      end do
+      end do
+      amean = amean/m*n
+      do i=1,m
+      do j=1,n
+        avar = avar + (a(i,j)-amean)**2
+      end do
+      end do
+      avar = avar/(m*n-1)
+      asigma=sqrt(avar)
+      return
+      end
+
+C--------------------------------------------------------------------------
+
       subroutine ftnsmth2d(fld, undef, ni, nj, 
      $     npass,nnu,anu,dum,rc)
 
@@ -213,32 +245,3 @@ c
 c      stop
 c      end
 C
-C--------------------------------------------------------------------------
-C         
-
-      subroutine stat2(a,m,n,amin,amax,amean,avar,asigma)
-      USE gex
-      real(kind=iGaKind) :: dimension a(m,n)
-
-      amean = 0.0
-      amin = 9.9e25
-      amax = -9.9e25
-      avar = 0.0
-      asigma = 0.0
-      do i=1,m
-      do j=1,n
-        if(a(i,j).lt.amin) amin=a(i,j)
-        if(a(i,j).gt.amax) amax=a(i,j)
-        amean=amean+a(i,j)
-      end do
-      end do
-      amean = amean/m*n
-      do i=1,m
-      do j=1,n
-        avar = avar + (a(i,j)-amean)**2
-      end do
-      end do
-      avar = avar/(m*n-1)
-      asigma=sqrt(avar)
-      return
-      end

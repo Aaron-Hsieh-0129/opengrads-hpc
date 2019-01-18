@@ -18,7 +18,7 @@
 
  !...........................................................................
 
-       subroutine ftntrack2 (lons, lats, nobs, nmax, sat, nymd, nhms, dt, rc )
+       subroutine ftntrack2 (lons, lats, nobs, nmax, sat_, nymd, nhms, dt, rc )
 
        use sgp4_mod
 
@@ -28,7 +28,7 @@
 ! !INPUT PARAMETERS:
 
        integer, intent(in) :: nmax    ! size of output arrays
-       character(len=512), intent(in) :: sat ! Satellite name
+       character(len=512), intent(in) :: sat_ ! Satellite name
        integer, intent(in) :: nymd(2) ! Beginning/ending date: YYYYMMDD
        integer, intent(in) :: nhms(2) ! Beginning/ending time: HHMMSS
        integer, intent(in) :: dt      ! deltat (in secs)
@@ -51,6 +51,9 @@
        integer i
        real(dp), pointer :: tlons(:), tlats(:) ! local work space
 
+       character(len=512) :: sat ! Satellite name
+
+        sat = sat_
         call orb_fixsat(sat)
 
 !       Compute tracks
@@ -80,7 +83,7 @@
 !...........................................................................
 
        subroutine ftnmasking2 (field, im, jm, lons, lats, undef, 
-     &                        sat, nymd, nhms, dt, swath, 
+     &                        sat_, nymd, nhms, dt, swath, 
      &                        ihalo, jhalo, rc )
 
        use sgp4_mod
@@ -97,7 +100,7 @@
        real(kind=iGaKind), intent(in) :: swath(3)
        real(kind=iGaKind), intent(in) :: undef
 
-       character(len=512), intent(in) :: sat     ! Satellite name
+       character(len=512), intent(in) :: sat_     ! Satellite name
        integer, intent(in) :: dt      ! delta t in secs
        integer, intent(in) :: nymd(2) ! Beginning/ending date: YYYYMMDD
        integer, intent(in) :: nhms(2) ! Beginning/ending time: HHMMSS
@@ -124,6 +127,10 @@
        real(dp), pointer :: tlats(:)   => null()
        real(dp), pointer :: slons(:,:) => null()
        real(dp), pointer :: slats(:,:) => null()
+
+       character(len=512) :: sat ! Satellite name
+
+       sat = sat_
 
        call orb_fixsat(sat)
 

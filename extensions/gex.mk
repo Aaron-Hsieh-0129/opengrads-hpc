@@ -82,7 +82,13 @@ FC  = $(F77)
 FFLAGS = $(FOPT) -I. -I$(GAINC)
 
 # FOPT = -g -fbounds-check
-FOPT = -O
+
+ifeq ($(ARCH),Darwin)
+   FOPT = -O0  # turn off optimization for now
+else
+   FOPT = -O
+endif
+
 
 # Look for F77
 # ------------
@@ -172,6 +178,7 @@ ifeq ($(ARCH),Darwin)
 	CLIBS = 
         LD = /usr/bin/libtool
         CFLAGS := -O -fno-common -fPIC -mmacosx-version-min=10.6 
+        FFLAGS += -mmacosx-version-min=10.6 
         DLLEXT=dylib
         LDFLAGS = -dynamic -flat_namespace -undefined suppress -macosx_version_min 10.6 
         LIBS += #-lSystemStubs 

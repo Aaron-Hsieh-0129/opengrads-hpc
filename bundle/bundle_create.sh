@@ -248,10 +248,11 @@ function liberate_unix {
   if test "$arch" = Darwin; then
 
       xlist="$xlist $SUPPLIBS/lib/libcairo*.dylib" # special handling
-      xlist="$xlist $SUPPLIBS/lib/libgeotiff*.dylib" # special handling
       export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
       # dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e 'X11' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
       dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
+
+     # dep_libs="$dep_libs $SUPPLIBS/lib/libgeotiff*.dylib*" # special handling
 
   elif test "$arch" = Cygwin; then
 
@@ -278,7 +279,7 @@ function liberate_unix {
 # Now put under gex/ the ones that are likely not to cause conflict
 # -----------------------------------------------------------------
   echo "$0: Adding shared libraries to gex/"
-  for lib in freetype fontconfig pixman-1 cairo gfortran 
+  for lib in geotiff freetype fontconfig pixman-1 cairo gfortran 
   do
      if mv $b_exec/libs/lib$lib* $b_exec/gex > /dev/null 2>&1
      then

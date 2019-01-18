@@ -33,15 +33,20 @@
 
 cola-build: cola/Makefile
 	@(cd cola; $(MAKE) )
-	@cp etc/udpt bin/gex
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
-cola-install cola-clean cola-distclean:
-	(cd cola; $(MAKE) $(subst cola-,,$@))
+cola-install:
+	(cd cola; $(MAKE) install)
+	@cp $(SUPPLIBS)/lib/libgeotif* bin/gex   # macOS glitch fix
 	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 cola-check: cola-install
-	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
+	(cd pytests; $(MAKE) check)
 
+
+cola-clean cola-distclean:
+	(cd cola; $(MAKE) $(subst cola-,,$@))
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 cola/Makefile:
 	@oga_configure
@@ -64,13 +69,13 @@ gex-clean gex-distclean:
 #
 
 check bundle-check: cola-install gex-install bundle-create
-	echo "-------------------- Testing Core GrADS -------------------"
-	echo "Core Build ................................................"
+	@echo "-------------------- Testing Core GrADS -------------------"
+	@echo "Core Build ................................................"
 	@(cd pytests; $(MAKE) --silent check)
-	echo "Inside Bundle ............................................."
+	@echo "Inside Bundle ............................................."
 	@(cd pytests; $(MAKE) --silent bundle-check)
-	echo "------------- Testing OpenGrADS Extensions  ---------------"
-	echo "Core Build ................................................"
+	@echo "------------- Testing OpenGrADS Extensions  ---------------"
+	@echo "Core Build ................................................"
 	@(cd extensions; $(MAKE) --silent check)
 	echo "Inside Bundle ............................................."
 	@(cd extensions; $(MAKE) --silent bundle-check)

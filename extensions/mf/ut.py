@@ -78,9 +78,9 @@ class ut(utUDX):
 
 
     def test_linreg(self,verb=verb):
-        self.ga("""set lat 0
-        set lev 200
-        d linreg(zg*1e-5)""")
+        self.ga("set lat 0")
+        self.ga("set lev 200")
+        self.ga("d linreg(zg*1e-5)")
 
         if(verb): self._PrintResult()
         self.assertEqual("0.1244",self.ga.rword(1,4))

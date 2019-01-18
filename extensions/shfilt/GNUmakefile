@@ -8,6 +8,6 @@ export PODS=shfilt.pod
 export EXTRAS=sphere.o ftn_shf.o
 
 %: 
-	@$(MAKE) -f ../gex.mk $@ CSRC=shfilt.c 
+	@$(MAKE) -f ../gex.mk $@ CSRC=shfilt.c  
 
 

@@ -5319,7 +5319,7 @@ c            = 1 if nlat.le.0
 c
 c  *****************************************************************
 c
-      double precision theta(nlat),wts(nlat),w,
+      double precision theta(nlat),wts(nlat),w(1),
      1 x,pi,pis2,dtheta,dthalf,cmax,zprev,zlast,zero,
      2 zhold,pb,dpb,dcor,sum,cz
 c

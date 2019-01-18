@@ -2,10 +2,8 @@
 
       USE gex
 
-      implicit integer(i-n)
-      implicit real(kind=iGaKind) (a-h,o-z)
-
-      dimension x(nij),y(nij)
+      integer nij, i, rc
+      real(kind=iGaKind) :: x(nij),y(nij), undef, a, b
 
       character*120 card
 
@@ -22,7 +20,7 @@ c  fill in data values
 c
       do i=1,nij
         if(y(i).ne.undef) then
-          y(i) = a+x(i)*b
+           y(i) = a+x(i)*b
         end if
       end do
 

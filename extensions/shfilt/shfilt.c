@@ -57,6 +57,7 @@ CPAN), there are targets in the gex.mk fragment for these:
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include "grads.h"
 #include "shfilt.h"
 
@@ -141,8 +142,8 @@ int f_shfilt (struct gafunc *pfc, struct gastat *pst) {
 
     /* spherepak requires poles to be gridpoints */
     if ( grid_type == LATLON ) {
-      if ( (abs(lat[0]) -90.)>0.0001 ||
-	   (abs(lat[jm-1])-90.)>0.0001 ) {
+      if ( (fabs(lat[0]) -90.)>0.0001 ||
+	   (fabs(lat[jm-1])-90.)>0.0001 ) {
 	sprintf(pout,
     "Error from %s: first (%f) and last (%f) latitude must be at the poles\n", 
 		name, lat[0],lat[jm-1]);
@@ -246,8 +247,8 @@ int f_shpowr (struct gafunc *pfc, struct gastat *pst) {
 
     /* spherepak requires poles to be gridpoints */
     if ( grid_type == LATLON ) {
-      if ( (abs(lat[0]) -90.)>0.0001 ||
-	   (abs(lat[jm-1])-90.)>0.0001 ) {
+      if ( (fabs(lat[0]) -90.)>0.0001 ||
+	   (fabs(lat[jm-1])-90.)>0.0001 ) {
 	sprintf(pout,
 		"Error from %s: first (%f) and last (%f) latitudes must be at the poles\n", 
 		name, lat[0],lat[jm-1]);
@@ -391,8 +392,8 @@ int f_pssolv (struct gafunc *pfc, struct gastat *pst) {
 
     /* spherepak requires poles to be gridpoints */
     if ( grid_type == LATLON ) {
-      if ( (abs(lat[0]) -90.)>0.0001 ||
-	   (abs(lat[jm-1])-90.)>0.0001 ) {
+      if ( (fabs(lat[0]) -90.)>0.0001 ||
+	   (fabs(lat[jm-1])-90.)>0.0001 ) {
 	sprintf(pout,
     "Error from %s: first (%f) and last (%f) latitude must be at the poles\n", 
 		name, lat[0],lat[jm-1]);

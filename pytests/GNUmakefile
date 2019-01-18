@@ -13,6 +13,7 @@ GA2UDXT := $(GABDIR)/gex/udxt
 GAUDPT  := $(GABDIR)/gex/udpt
 GASCRP  := $(GABDIR)/gex/
 LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+DYLD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
 
 
 check:

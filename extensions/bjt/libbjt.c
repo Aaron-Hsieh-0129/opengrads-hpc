@@ -4887,8 +4887,8 @@ int lw (struct gafunc *pfc, struct gastat *pst, int sel) {
 		dp400=9.9e33;
 		dp700=9.9e33;
 		for (j =0; j <= np[i]; ++j) {
-			if(abs(pl[i+j*m]-400.)<dp400) {ict[i]=j+1;dp400=abs(pl[i+j*m]-400.);}
-			if(abs(pl[i+j*m]-700.)<dp700) {icb[i]=j+1;dp700=abs(pl[i+j*m]-700.);}
+			if(fabs(pl[i+j*m]-400.)<dp400) {ict[i]=j+1;dp400=fabs(pl[i+j*m]-400.);}
+			if(fabs(pl[i+j*m]-700.)<dp700) {icb[i]=j+1;dp700=fabs(pl[i+j*m]-700.);}
 		}
 #ifdef lDiag
 	sprintf (pout,"i=%d, m=%d, ict=%d, icb=%d\n",i,m,ict[i],icb[i]);gaprnt (0,pout);
@@ -5781,17 +5781,17 @@ int vinterp (struct gafunc *pfc, struct gastat *pst, int sel) {
 						locate(xa,n,x,&jj);
 						if(-1==jj) {
 							// left of leftmost point	
-							if(abs(xa[1]-xa[0])>0) *ptr[0]=ya[0]+(ya[1]-ya[0])/(xa[1]-xa[0])*(x-xa[0]);
+							if(fabs(xa[1]-xa[0])>0) *ptr[0]=ya[0]+(ya[1]-ya[0])/(xa[1]-xa[0])*(x-xa[0]);
 							else *ptr[0]=ya[0];
 						}
 						else if (n-1==jj) {
 							// right of the rightmost point
-							if(abs(xa[n-2]-xa[n-1])>0)*ptr[0]=ya[n-1]+(ya[n-2]-ya[n-1])/(xa[n-2]-xa[n-1])*(x-xa[n-1]);
+							if(fabs(xa[n-2]-xa[n-1])>0)*ptr[0]=ya[n-1]+(ya[n-2]-ya[n-1])/(xa[n-2]-xa[n-1])*(x-xa[n-1]);
 							else *ptr[0]=ya[n-1];
 						}
 						else {
 							// mid-point
-							if(abs(xa[jj+1]-xa[jj])>0) *ptr[0]=ya[jj]+(ya[jj+1]-ya[jj])/(xa[jj+1]-xa[jj])*(x-xa[jj]);
+							if(fabs(xa[jj+1]-xa[jj])>0) *ptr[0]=ya[jj]+(ya[jj+1]-ya[jj])/(xa[jj+1]-xa[jj])*(x-xa[jj]);
 							else *ptr[0]=(ya[jj+1]+ya[jj])/2.;
 						}
 					}

@@ -131,7 +131,7 @@ static void lines(double lons[], double lats[], int nobs,
   if ( x < xmin || x > xmax ) pendown = 0;
   else                        pendown = 1;
   for (i=1; i<nobs; i++) {
-    if ( abs(lons[i]-lons[i-1])>90. ) pendown = 0;
+    if ( fabs(lons[i]-lons[i-1])>90. ) pendown = 0;
       gxconv(lons[i]+off,lats[i],&x,&y,2);
       if ( x < xmin || x > xmax ) {
         pendown = 0;
@@ -824,8 +824,7 @@ This GrADS extension is based on SGP4 procedures for analytical propagation
 of a satellite trajectory. The code was originally released in the 1980 and 1986
 spacetrack papers. A detailed discussion of the theory and history
 may be found in the 2006 AIAA paper by Vallado, Crawford, Hujsak,
-and Kelso. Consult also the book "Fundamentals of Astrodynamics and
-Applications" (2007) by David Vallado.
+and Kelso. Consult also the book "Fundamentals of Astrodynamics and Applications" (2007) by David Vallado.
 
 GrADS datasets are given on a constant time interval. For a given
 GrADS time index I<t>, satellite orbits can be simulated for the
@@ -842,7 +841,7 @@ satellite masked variables can use considerabily less storage space.
 =head1 TLE FILES
 
 A NORAD two-line element set consists of two 69-character lines of 
-data which can be used together with NORAD's SGP4/SDP4 orbital model 
+data which can be used together with NORAD SGP4/SDP4 orbital model 
 to determine the position and velocity of
 the associated satellite.  More detailed information about TLE files,
 including description of the format, can be obtained from:

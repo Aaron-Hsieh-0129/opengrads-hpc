@@ -15,6 +15,6 @@ export EXTRAS=tle_mod.o sgp4_mod.o ftn_tle.o
 ifeq ($(ARCH),AIX)
 	@$(MAKE) -f ../gex.mk $@ CSRC=tle.c FOPT=$(FOPT) LD=f95 
 else
-	@$(MAKE) -f ../gex.mk $@ CSRC=tle.c FOPT=$(FOPT) 
+	@$(MAKE) -f ../gex.mk $@ CSRC=tle.c  
 endif
 
