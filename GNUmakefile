@@ -37,7 +37,7 @@ cola-build: cola/Makefile
 
 cola-install:
 	(cd cola; $(MAKE) install)
-	@cp $(SUPPLIBS)/lib/libgeotif* bin/gex   # macOS glitch fix
+	@cp -pr $(SUPPLIBS)/lib/*.so* bin/gex   # macOS glitch fix
 	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 cola-check: cola-install

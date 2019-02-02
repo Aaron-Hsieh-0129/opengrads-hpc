@@ -12,7 +12,7 @@ GABnDIR  := $(shell cd $(HERE)/../opengrads/Contents/; pwd)# where binaries for 
 GA2UDXT := $(GABDIR)/gex/udxt
 GAUDPT  := $(GABDIR)/gex/udpt
 GASCRP  := $(GABDIR)/gex/
-LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd):$(LD_LIBRARY_PATH)
 DYLD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
 
 

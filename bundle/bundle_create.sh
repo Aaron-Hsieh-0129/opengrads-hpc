@@ -247,6 +247,7 @@ function liberate_unix {
 # --------------------------------------------
   if test "$arch" = Darwin; then
 
+      dllext=dylib
       xlist="$xlist $SUPPLIBS/lib/libcairo*.dylib" # special handling
       export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
       # dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e 'X11' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
@@ -254,18 +255,21 @@ function liberate_unix {
 
      # dep_libs="$dep_libs $SUPPLIBS/lib/libgeotiff*.dylib*" # special handling
 
-  elif test "$arch" = Cygwin; then
-
+   elif test "$arch" = Cygwin; then
+      dllext=dll
       export PATH="$SUPPLIBS/bin:$PATH"
       dep_libs=`cygcheck $xlist 2>&1 | grep '/' | grep -v -e 'WINDOWS' | awk '{print $1}' | sort | uniq`  
 
   elif test "$arch" = AIX; then
+      dllext=so
       echo "----------- skipping -------------"
       return
   else
 
-     export LD_LIBRARY_PATH="$SUPLLIBS/lib:$LD_LIBRARY_PATH"
-     dep_libs=`ldd $xlist 2>&1 | grep '/' | grep -v -e ':' -e System | awk '{print $3}' | sort | uniq`  
+     dllext=so
+
+     # export LD_LIBRARY_PATH="$SUPLLIBS/lib:$LD_LIBRARY_PATH"
+     dep_libs=`ldd $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e $SUPPLIBS | awk '{print $3}' | sort | uniq`  
 
   fi
 
@@ -274,24 +278,33 @@ function liberate_unix {
 # -------------------------------------------------------------
   if ! mkdir -p $b_exec/libs $b_exec/gex ; then return 1; fi
   if ! cp -f  $dep_libs $b_exec/libs; then return 1; fi
-
   
 # Now put under gex/ the ones that are likely not to cause conflict
 # -----------------------------------------------------------------
-  echo "$0: Adding shared libraries to gex/"
-  for lib in geotiff freetype fontconfig pixman-1 cairo gfortran 
+  echo "$0: Adding supplibs shared libraries to gex/"
+  for lib in $SUPPLIBS/lib/*.$dllext
   do
-     if mv $b_exec/libs/lib$lib* $b_exec/gex > /dev/null 2>&1
+     if cp  $lib  $b_exec/gex > /dev/null 2>&1
      then
-        echo  "$0:   - $lib "
+        lib_=`basename $lib | sed 's/^lib//'`
+        echo  "$0:   - $lib_ "
      fi
   done
-  echo "$0: Adding shared libraries to libs/"
+  echo "$0: Adding additional shared libraries to gex/"
+  for Lib in $b_exec/libs/lib[xX]* $b_exec/libs/libICE* \
+             $b_exec/libs/libSM* $b_exec/libs/libgfortran*
+  do
+      if ! mv  $Lib $b_exec/gex; then return 1; fi
+      lib=`basename $Lib | sed -e 's/lib//'`
+      echo "$0:   - ${lib%.*}"
+  done
+  echo "$0: Adding backup shared libraries to libs/"
   for Lib in $b_exec/libs/*
   do
       lib=`basename $Lib | sed -e 's/lib//'`
       echo "$0:   - ${lib%.*}"
   done
+
 
 }
 

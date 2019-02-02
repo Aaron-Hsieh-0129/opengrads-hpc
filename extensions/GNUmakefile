@@ -51,7 +51,7 @@ GASCRP  := $(GABDIR)/gex/
 ifeq ($(ARCH),Darwin)
    DYLD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
 else
-   LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd)
+   LD_LIBRARY_PATH := $(shell cd $(HERE)/../bin/gex; pwd):$(LD_LIBRARY_PATH)
 endif
 
 SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
