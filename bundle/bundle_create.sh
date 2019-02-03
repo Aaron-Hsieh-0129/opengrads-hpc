@@ -282,26 +282,36 @@ function liberate_unix {
 # Now put under gex/ the ones that are likely not to cause conflict
 # -----------------------------------------------------------------
   echo "$0: Adding supplibs shared libraries to gex/"
-  for lib in $SUPPLIBS/lib/*.$dllext
+  for Lib in $SUPPLIBS/lib/*.$dllext*
   do
-     if cp  $lib  $b_exec/gex > /dev/null 2>&1
-     then
-        lib_=`basename $lib | sed 's/^lib//'`
-        echo  "$0:   - $lib_ "
-     fi
+     if ! cp -pr  $Lib  $b_exec/gex; then return 1; fi
+     lib=`basename $Lib | sed -e 's/^lib//' -e "s/\.$dllext//"`
+     echo  "$0:   - $lib "
   done
-  echo "$0: Adding additional shared libraries to gex/"
+  echo "$0: Adding X shared libraries to gex/"
   for Lib in $b_exec/libs/lib[xX]* $b_exec/libs/libICE* \
-             $b_exec/libs/libSM* $b_exec/libs/libgfortran*
+             $b_exec/libs/libSM* 
   do
       if ! mv  $Lib $b_exec/gex; then return 1; fi
-      lib=`basename $Lib | sed -e 's/lib//'`
+      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
       echo "$0:   - ${lib%.*}"
+  done
+  candidates="bz2 crypto gfortran lzma quadmath stdc++ uuid" 
+  echo "$0: Adding system shared libraries to gex/"
+  for Lib in $b_exec/libs/* 
+  do
+      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
+      for pat in $candidates; do
+	  if expr $lib : ^$pat >/dev/null ; then
+	      if ! mv  $Lib $b_exec/gex; then return 1; fi
+	      echo "$0:   - ${lib%.*}"
+	  fi
+      done
   done
   echo "$0: Adding backup shared libraries to libs/"
   for Lib in $b_exec/libs/*
   do
-      lib=`basename $Lib | sed -e 's/lib//'`
+      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
       echo "$0:   - ${lib%.*}"
   done
 

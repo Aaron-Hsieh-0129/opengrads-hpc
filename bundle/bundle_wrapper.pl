@@ -27,7 +27,7 @@
 #
 
 # use Strict;
-use Env qw(PATH GADDIR GASCRP  GAGUI GAVERSION GAUDPT GA2UDXT GADSET LD_LIBRARY_PATH DYLD_LIBRARY_PATH YYYYMMDD ); 
+use Env qw(PATH GADDIR GASCRP  GAGUI GAVERSION GAUDPT GA2UDXT GADSET LD_LIBRARY_PATH DYLD_LIBRARY_PATH YYYYMMDD DISPLAY); 
 use FindBin;
 use File::Basename;
 use Getopt::Long qw(:config no_auto_abbrev pass_through);
@@ -141,10 +141,11 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
 
 # Set key environment variables if not set
 # ----------------------------------------
-  $GADDIR  = $gaddir   unless ( $GADDIR );
-  $GADSET  = $gadset   unless ( $GADSET );
-  $GA2UDXT = $ga2udxt  unless ( $GA2UDXT);
-  $GAUDPT  = $gaudpt   unless ( $GAUDPT);
+  $GADDIR  = $gaddir   unless ( $GADDIR  );
+  $GADSET  = $gadset   unless ( $GADSET  );
+  $GA2UDXT = $ga2udxt  unless ( $GA2UDXT );
+  $GAUDPT  = $gaudpt   unless ( $GAUDPT  );
+  $DISPLAY = ":0"      unless ( $DISPLAY );
 
   if ( -d "$gascrp" ) {
     if ( $GASCRP ) { $GASCRP .= " $gascrp"; }
@@ -214,7 +215,7 @@ sub hello {
               Welcome to the OpenGrADS Bundle Distribution
               --------------------------------------------
 
-For additional information enter "$Alias -h".
+For additional information enter "$Alias --manual".
 $Msg
 Starting "$cmd" ...
 

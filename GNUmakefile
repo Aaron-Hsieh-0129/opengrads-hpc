@@ -9,6 +9,9 @@
   SHELL = /bin/sh
   ROOTDIR := $(shell dirname `pwd`)
   SYSNAME := $(shell ./config.guess)
+  ifeq (x$(OSTYPE),x)
+        OSTYPE := $(shell uname -o | tr '[:upper:]' '[:lower:]' )
+  endif
 
   ARCH := $(shell uname -s)
   MACH := $(shell uname -m)
@@ -20,12 +23,20 @@
   distdir := $(HERE)/dist
   host_triplet := $(shell ./config.guess)
 
+  GLIBC:=
   ifeq ($(ARCH),Darwin)
      DLLEXT=dylib
   else
+  ifeq ($(ARCH),Linux)
      DLLEXT=so
+     GLIBC := $(word 4, $(shell ldd --version | head -1))
+     host_triplet := $(host_triplet)-glibc_$(GLIBC)
+  else
+  ifeq ($(OSTYPE),cygwin)
+     DLLEXT=dll
   endif
-
+  endif
+  endif
 
 #
 # Build core COLA binaries
