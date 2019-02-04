@@ -394,7 +394,7 @@ function add_wrappers {
     if ! $copy bundle/bundle_wrapper.vbs $root/opengrads.vbs; then return 1;fi
     #if ! $copy bundle/bundle_wrapper.vbs $root/gradsdap.vbs;  then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/gradsgui.vbs;  then return 1;fi
-    if ! $copy bundle/bundle_wrapper.vbs $root/merra.vbs;     then return 1;fi
+    #if ! $copy bundle/bundle_wrapper.vbs $root/merra.vbs;     then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/geos.vbs;     then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/ncep.vbs;    then return 1;fi
     #if ! $copy bundle/bundle_wrapper.vbs $root/gv32.vbs;      then return 1;fi
@@ -422,7 +422,7 @@ function add_wrappers {
   if test "$arch" != Cygwin ; then
       if ! $copy bundle/bundle_wrapper.pl $contents/opengrads; then return 1;fi
       # if ! $copy bundle/bundle_wrapper.pl $contents/gradsdap;  then return 1;fi
-      if ! $copy bundle/bundle_wrapper.pl $contents/merra;     then return 1;fi
+      # if ! $copy bundle/bundle_wrapper.pl $contents/merra;     then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/geos;     then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/ncep;      then return 1;fi
   fi
