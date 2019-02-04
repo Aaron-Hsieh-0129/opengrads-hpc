@@ -4,6 +4,18 @@
 # the bundle creating the so-called "superpack".
 #
 
+   if test "x$SUPPLIBS" = "x"; then   
+       echo "$0: environment variable SUPPLIBS not set"
+       exit 1
+   fi
+   if test -d "$SUPPLIBS"; then
+       echo "$0: Using $SUPPLIBS for SUPPLIBS"
+   else
+       echo "$0: $SUPPLIBS not a valid SUPPLIBS directory."
+       exit 1
+   fi
+
+
 #  Command line arguments
 #  ----------------------
    if test "$1" = "-super" ; then
