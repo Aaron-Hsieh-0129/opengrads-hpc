@@ -18,13 +18,16 @@
 
 #  Command line arguments
 #  ----------------------
+   superpack=no
+   macpkg=no
    if test "$1" = "-super" ; then
       superpack=yes
-	  shift 
-   else
-	  superpack=no
+      shift 
+   elif test "$1" = "-macpkg" ; then
+       macpkg=yes
+       shift
    fi
-  
+
    if [ $#0 -lt 1 ] ; then
        prefix=./opengrads
    else
@@ -66,6 +69,7 @@ function prepare_dirs {
 # ------------------
   root=$prefix
   contents=$root/Contents
+
   b_exec=$contents/$arch/Versions/$version/$mach  # where binaries really are
 
   b_data=$contents/Resources/SupportData            # fonts & maps datasets
@@ -86,9 +90,9 @@ function prepare_dirs {
   fi
   
   r_exec=Contents/$arch/Versions/$version/$mach   # where binaries really are
-  r_data=Contents/Resources/SupportData             # fonts & maps datasets
-  r_scrp=Contents/Resources/Scripts                 # support grads scripts
-  r_dset=Contents/Resources/SampleDatasets          # support grads scripts
+  r_data=Contents/Resources/SupportData           # fonts & maps datasets
+  r_scrp=Contents/Resources/Scripts               # support grads scripts
+  r_dset=Contents/Resources/SampleDatasets        # support grads scripts
   
 # Classic directories
 # ------------------
@@ -176,7 +180,11 @@ function populate {
      if ! cp bin/*.exe                 $b_exec; then return 1; fi
      if ! $copy bin/*                  $b_exec; then return 1; fi
   else
-     if ! $copy $std_files             $root  ; then return 1; fi 
+     if test "$macpkg" = yes ; then
+        if ! $copy $std_files          $contents  ; then return 1; fi 
+     else
+        if ! $copy $std_files          $root  ; then return 1; fi 
+     fi
      if ! $copy bin/*                  $b_exec; then return 1; fi
   fi
 
@@ -260,12 +268,8 @@ function liberate_unix {
   if test "$arch" = Darwin; then
 
       dllext=dylib
-      xlist="$xlist $SUPPLIBS/lib/libcairo*.dylib" # special handling
       export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
-      # dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e 'X11' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
-      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
-
-     # dep_libs="$dep_libs $SUPPLIBS/lib/libgeotiff*.dylib*" # special handling
+      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System  | awk '{print $1}' | sort | uniq`
 
    elif test "$arch" = Cygwin; then
       dllext=dll
@@ -308,7 +312,7 @@ function liberate_unix {
       lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
       echo "$0:   - ${lib%.*}"
   done
-  candidates="bz2 crypto gfortran lzma quadmath stdc++ uuid" 
+  candidates="bz2 c++ crypto gfortran iconv lzma quadmath stdc++ uuid" 
   echo "$0: Adding system shared libraries to gex/"
   for Lib in $b_exec/libs/* 
   do
@@ -323,8 +327,13 @@ function liberate_unix {
   echo "$0: Adding backup shared libraries to libs/"
   for Lib in $b_exec/libs/*
   do
-      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
-      echo "$0:   - ${lib%.*}"
+      libfn=`basename $Lib`
+      if test -e $b_exec/gex/$libfn; then
+          /bin/rm $Lib # avoid duplication
+      else
+          lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
+          echo "$0:   - ${lib%.*}"
+      fi
   done
 
 
@@ -434,6 +443,9 @@ function add_wrappers {
  if init && prepare_dirs && compile_stuff && populate  \
          && supersize_it && liberate      && add_wrappers  
  then
+    if test "$macpkg" = yes; then
+       mv $root/Contents $root/OpenGrADS
+    fi
     echo $0: All done.
  else 
     echo $0: did not complete

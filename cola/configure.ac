@@ -148,6 +148,8 @@ dnl    guilibadd="-lSM -lICE"
   ;;
 
   *darwin*)
+     CC="$CC -mmacosx-version-min=10.9"
+     CXX="$CXX -mmacosx-version-min=10.9"
      is_darwin="yes"
      host_cppflags="-I/usr/X11/include"
   ;;

@@ -99,6 +99,9 @@ Documentation.html: Documentation.php
 bundle-create:
 	@bundle/bundle_create.sh 
 
+pkg-create:
+	@bundle/bundle_create.sh -macpkg
+
 #
 # Bundle installation under prefix
 #
@@ -118,7 +121,7 @@ clean:
 distclean:
 	$(MAKE) cola-distclean
 	$(MAKE) gex-distclean
-	/bin/rm -rf bin opengrads dist
+	/bin/rm -rf bin opengrads dist darwin/build darwin/build_debug
 
 #
 #                  Distribution Tarballs
