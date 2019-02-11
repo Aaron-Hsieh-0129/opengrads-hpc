@@ -4,7 +4,7 @@
 #
 
 setenv ARCH `uname -s`
-set GLIBC = "`ldd --version | head -1 | awk '{print $4}'`"
+set GLIBC = `ldd --version | head -1 | awk '{print $4}'`
 
 
 if ( $?SUPPLIBS ) then
