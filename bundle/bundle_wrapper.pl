@@ -193,9 +193,17 @@ use Getopt::Long qw(:config no_auto_abbrev pass_through);
         } else {
              $cmd = "$cmd " . $arg;
         }
-  }
-  $cmd = "$cmd $bkg";
+      }
 
+  # Recent security seetings in macOS no longer propagates DYLD_LIBRARY_PATH to
+  # child processes
+  # ---------------------------------------------------------------------------
+  if ( "$arch" eq "Darwin" ) {
+       $cmd = "(/usr/bin/env DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH $cmd) $bkg";
+   } else {
+       $cmd = "$cmd $bkg";
+   }
+       
 # Finally, run the poor binary
 # ----------------------------
   hello() if ( $Name =~ /grads/ );
