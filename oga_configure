@@ -26,6 +26,8 @@ if ( $ARCH == 'Darwin' ) then
 else if ( $ARCH == 'Linux' ) then
      if ( $GLIBC == "2.11.3" ) then
           setenv LIBS "-lrt"
+     else if ( $GLIBC == "2.12" ) then
+          setenv LIBS '-lrt -lz -lm'
      else
           setenv LIBS '-llzma -lz -lm'
      endif
