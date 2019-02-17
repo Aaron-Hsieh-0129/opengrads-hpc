@@ -10,6 +10,10 @@
   ROOTDIR := $(shell dirname `pwd`)
   SYSNAME := $(shell ./config.guess)
 
+  ifeq (x$(OSTYPE),x)
+        OSTYPE := $(shell uname -o | tr '[:upper:]' '[:lower:]' )
+  endif
+
   ARCH := $(shell uname -s)
   MACH := $(shell uname -m)
   SITE := $(shell uname -n)
@@ -23,7 +27,8 @@
   ifeq ($(ARCH),Darwin)
      DLLEXT=dylib
   else
-     DLLEXT=so
+  ifeq ($(OSTYPE),cygwin)
+     DLLEXT=dll
   endif
 
 

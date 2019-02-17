@@ -23,7 +23,7 @@ if ( $ARCH == 'Darwin' ) then
       setenv LIBS '-L/usr/X11/lib -lXaw3d -lXmu -lXt -lXext -lXpm  -lSM -lICE -lX11 -liconv'
 endif
 
-(cd cola; ./configure --disable-dyn-supplibs \
+(cd cola; ./configure \
                       --with-gadap \
 		      --with-gui \
 		      --with-opengrads \

@@ -686,6 +686,8 @@ HDF5_CFLAGS
 HDF5_LIBS
 cairo_libs
 cairo_inc
+CAIRO_LIBS
+CAIRO_CFLAGS
 grib2_libs
 grib2_inc
 G2_LIBS
@@ -698,6 +700,7 @@ GD_CFLAGS
 PKG_CONFIG
 shp_libs
 shp_inc
+SHP_LIBS
 geotiff_ldflags
 geotiff_libs
 geotiff_inc
@@ -806,6 +809,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -878,7 +882,9 @@ XMKMF
 SUPPLIBS
 PKG_CONFIG
 GD_CFLAGS
-GD_LIBS'
+GD_LIBS
+CAIRO_CFLAGS
+CAIRO_LIBS'
 
 
 # Initialize some variables set by options.
@@ -917,6 +923,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1169,6 +1176,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1306,7 +1322,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1459,6 +1475,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1574,6 +1591,9 @@ Some influential environment variables:
   PKG_CONFIG  path to pkg-config utility
   GD_CFLAGS   C compiler flags for GD, overriding pkg-config
   GD_LIBS     linker flags for GD, overriding pkg-config
+  CAIRO_CFLAGS
+              C compiler flags for CAIRO, overriding pkg-config
+  CAIRO_LIBS  linker flags for CAIRO, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -2569,7 +2589,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 # Require automake 1.6 (comes with Mac OS X 10.2) or newer,
 # don't #define PACKAGE and VERSION,
 # disable dependency checking
-am__api_version='1.16'
+am__api_version='1.15'
 
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
@@ -3076,8 +3096,8 @@ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 
 # For better backward compatibility.  To be removed once Automake 1.9.x
 # dies out for good.  For more background, see:
-# <https://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
-# <https://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
+# <http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
+# <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
 mkdir_p='$(MKDIR_P)'
 
 # We need awk for the "check" target (and possibly the TAP driver).  The
@@ -3128,7 +3148,7 @@ END
 Aborting the configuration process, to ensure you take notice of the issue.
 
 You can download and install GNU coreutils to get an 'rm' implementation
-that behaves properly: <https://www.gnu.org/software/coreutils/>.
+that behaves properly: <http://www.gnu.org/software/coreutils/>.
 
 If you want to complete the configuration process using your problematic
 'rm' anyway, export the environment variable ACCEPT_INFERIOR_RM_PROGRAM
@@ -16238,6 +16258,7 @@ case "$host" in
   ;;
 
   *-pc-cygwin)
+    is_cygwin="yes"
     host_ldflags="-lrpclib"
   ;;
 
@@ -18816,13 +18837,64 @@ fi
 
 
 # check in system locations
-#if test "$use_shp" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
-#  echo looking in other system locations
-#  GA_CHECK_LIB_SHP(
-#  [ use_shp=yes
-#    shp_libs=$SHP_LIBS
-#  ])
-#fi
+if test "$use_shp" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
+  echo looking in other system locations
+
+  ga_check_shp="no"
+  ac_fn_c_check_header_mongrel "$LINENO" "shapefil.h" "ac_cv_header_shapefil_h" "$ac_includes_default"
+if test "x$ac_cv_header_shapefil_h" = xyes; then :
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lshp" >&5
+$as_echo_n "checking for main in -lshp... " >&6; }
+if ${ac_cv_lib_shp_main+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lshp  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main ()
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_shp_main=yes
+else
+  ac_cv_lib_shp_main=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_shp_main" >&5
+$as_echo "$ac_cv_lib_shp_main" >&6; }
+if test "x$ac_cv_lib_shp_main" = xyes; then :
+
+      ga_check_shp="yes"
+      SHP_LIBS="-lshp"
+
+fi
+
+
+fi
+
+
+  if test $ga_check_shp = "yes" ; then
+      use_shp=yes
+    shp_libs=$SHP_LIBS
+
+  else
+     :
+  fi
+
+
+
+fi
 
 # set output variables
 if test "$use_shp" != "yes" ; then
@@ -18841,7 +18913,7 @@ fi
 if test "Z$ga_supplib_dir" != "Z" ; then
   echo looking in $ga_supplib_dir for additional dependent libs
 
-  # png15
+  # png15 or simply png
   echo
   echo png
   echo ---
@@ -18889,9 +18961,51 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_png15_main" >&5
 $as_echo "$ac_cv_lib_png15_main" >&6; }
 if test "x$ac_cv_lib_png15_main" = xyes; then :
-  have_png=yes
+
+                have_png=yes
+                this_png="png15"
+
 fi
 
+  if test "$have_png" != "yes" ; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lpng" >&5
+$as_echo_n "checking for main in -lpng... " >&6; }
+if ${ac_cv_lib_png_main+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpng  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main ()
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_png_main=yes
+else
+  ac_cv_lib_png_main=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_png_main" >&5
+$as_echo "$ac_cv_lib_png_main" >&6; }
+if test "x$ac_cv_lib_png_main" = xyes; then :
+
+                have_png=yes
+                this_png="png"
+
+fi
+
+  fi
 
   # Use to undo temporary changes to -I and -L paths
   CPPFLAGS=$ga_saved_cppflags
@@ -19043,18 +19157,12 @@ fi
   ga_saved_ldflags=$LDFLAGS
   ga_saved_libs=$LIBS
   CPPFLAGS="-I${ga_supplib_dir}/include"
-
-    for ga_inc_name in jasper ; do
-      CPPFLAGS="$CPPFLAGS -I${ga_supplib_dir}/include/${ga_inc_name}"
-    done
-
+  :
   CPPFLAGS="$CPPFLAGS "
   LDFLAGS="-L${ga_supplib_dir}/lib "
   LIBS="$LIBS "
 
-  ac_fn_c_check_header_mongrel "$LINENO" "jasper.h" "ac_cv_header_jasper_h" "$ac_includes_default"
-if test "x$ac_cv_header_jasper_h" = xyes; then :
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -ljasper" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -ljasper" >&5
 $as_echo_n "checking for main in -ljasper... " >&6; }
 if ${ac_cv_lib_jasper_main+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -19087,10 +19195,6 @@ $as_echo "$ac_cv_lib_jasper_main" >&6; }
 if test "x$ac_cv_lib_jasper_main" = xyes; then :
   have_jasper=yes
 fi
-
-
-fi
-
 
 
   # Use to undo temporary changes to -I and -L paths
@@ -19827,7 +19931,7 @@ if test "x$ac_cv_lib_grib2c_main" = xyes; then :
 #        GA_SET_LIB_VAR([grib2_libs], [grib2c jasper png15 z])
 
   ga_lib_prefix='-l'
-  for ga_lib_name in grib2c jasper png15 z ; do
+  for ga_lib_name in grib2c jasper $this_png z ; do
       grib2_libs="$grib2_libs ${ga_lib_prefix}${ga_lib_name}"
   done
 
@@ -19849,6 +19953,19 @@ fi
 # check in system locations
 if test "$use_grib2" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
   echo looking in other system locations
+
+  # Use to make temporary changes to -I and -L paths
+  # Just for use during tests, because configure and make may run
+  # from different directories.
+  ga_saved_cppflags=$CPPFLAGS
+  ga_saved_ldflags=$LDFLAGS
+  ga_saved_libs=$LIBS
+  CPPFLAGS="-I${ga_supplib_dir}/include"
+  :
+  CPPFLAGS="$CPPFLAGS "
+  LDFLAGS="-L${ga_supplib_dir}/lib "
+  LIBS="$LIBS "
+
 
   ga_check_grib2="no"
   ac_fn_c_check_header_mongrel "$LINENO" "grib2.h" "ac_cv_header_grib2_h" "$ac_includes_default"
@@ -20049,6 +20166,12 @@ fi
   fi
 
 
+
+
+  # Use to undo temporary changes to -I and -L paths
+  CPPFLAGS=$ga_saved_cppflags
+  LDFLAGS=$ga_saved_ldflags
+  LIBS=$ga_saved_libs
 
 fi
 # set output variables
@@ -20303,14 +20426,155 @@ fi
   fi
 fi
 ## check in system locations
-#if test "$use_cairo" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
-#  echo looking in other system locations
-#  GA_CHECK_LIB_CAIRO([
-#    use_cairo='yes'
-#    cairo_inc=$CAIRO_CFLAGS
-#    cairo_libs=$CAIRO_LIBS
-#  ])
-#fi
+if test "$use_cairo" != "yes" -a "$is_cygwin" = "yes" ; then
+  echo looking in other system locations without pkg-config
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lcairo" >&5
+$as_echo_n "checking for main in -lcairo... " >&6; }
+if ${ac_cv_lib_cairo_main+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcairo  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main ()
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_cairo_main=yes
+else
+  ac_cv_lib_cairo_main=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cairo_main" >&5
+$as_echo "$ac_cv_lib_cairo_main" >&6; }
+if test "x$ac_cv_lib_cairo_main" = xyes; then :
+
+    use_cairo='yes'
+    cairo_inc=-I/usr/include/cairo -I/usr/include/freetype2
+    cairo_libs=-lcairo
+
+fi
+
+fi
+if test "$use_cairo" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
+  echo looking in other system locations
+
+
+  cairo_pkgconfig=no
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for CAIRO" >&5
+$as_echo_n "checking for CAIRO... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$CAIRO_CFLAGS"; then
+        pkg_cv_CAIRO_CFLAGS="$CAIRO_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"cairo\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "cairo") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_CAIRO_CFLAGS=`$PKG_CONFIG --cflags "cairo" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$CAIRO_LIBS"; then
+        pkg_cv_CAIRO_LIBS="$CAIRO_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"cairo\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "cairo") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_CAIRO_LIBS=`$PKG_CONFIG --libs "cairo" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        CAIRO_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "cairo"`
+        else
+	        CAIRO_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "cairo"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$CAIRO_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (cairo) were not met:
+
+$CAIRO_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables CAIRO_CFLAGS
+and CAIRO_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables CAIRO_CFLAGS
+and CAIRO_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	CAIRO_CFLAGS=$pkg_cv_CAIRO_CFLAGS
+	CAIRO_LIBS=$pkg_cv_CAIRO_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	cairo_pkgconfig=yes
+fi
+
+  if test $cairo_pkgconfig = 'yes'; then
+
+    use_cairo='yes'
+    cairo_inc=$CAIRO_CFLAGS
+    cairo_libs=$CAIRO_LIBS
+
+  else
+     :
+  fi
+
+
+fi
 # set output variables
 if test "$use_cairo" != "yes" ; then
 
@@ -23290,7 +23554,7 @@ if test "x$with_gui" != xno ; then
 
   CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
-  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lXrender -lX11 -lz -lm "
+  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lX11 -lz -lm "
 
       ac_fn_c_check_header_mongrel "$LINENO" "libsx.h" "ac_cv_header_libsx_h" "$ac_includes_default"
 if test "x$ac_cv_header_libsx_h" = xyes; then :
@@ -23341,7 +23605,7 @@ if test "x$ac_cv_lib_sx_GetFile" = xyes; then :
 
 
   ga_lib_prefix='-l'
-  for ga_lib_name in sx Xaw Xpm Xmu Xt Xdmcp Xrender X11 z ; do
+  for ga_lib_name in sx Xaw Xpm Xmu Xt Xdmcp X11 z ; do
       gui_libs="$gui_libs ${ga_lib_prefix}${ga_lib_name}"
   done
 

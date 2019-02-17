@@ -3,24 +3,24 @@
 
 [Setup]
 AppName=OpenGrADS
-AppVerName=OpenGrADS Bundle Version 2.1.a2.oga.1
+AppVerName=OpenGrADS Bundle Version 2.2.1.oga.1
 AppPublisher=OpenGrADS.org
 AppPublisherURL=http://opengrads.org/
 AppSupportURL=http://opengrads.org/wiki/index.php?title=Installing_GrADS_v2_on_Microsoft_Windows
 AppUpdatesURL=http://opengrads.org/
 DefaultDirName=C:\OpenGrADS
-DefaultGroupName=OpenGrADS 2.0
-LicenseFile=C:\cygwin\home\dasilva\src\2\Grads\opengrads\COPYRIGHT.txt
-InfoBeforeFile=C:\cygwin\home\dasilva\src\2\Grads\opengrads\NEWS.txt
-InfoAfterFile=C:\cygwin\home\dasilva\src\2\Grads\opengrads\README.txt
-OutputDir=C:\cygwin\home\dasilva\src\2\Grads
-OutputBaseFilename=grads-2.1.a2.oga.1-win32_superpack
-SetupIconFile=C:\cygwin\home\dasilva\src\2\Grads\win32\ollie.ico
+DefaultGroupName=OpenGrADS 2.2
+LicenseFile=C:\cygwin\home\dasil\src\git\Grads\opengrads\COPYRIGHT.txt
+InfoBeforeFile=C:\cygwin\home\dasil\src\git\Grads\opengrads\NEWS.txt
+InfoAfterFile=C:\cygwin\home\dasil\src\git\Grads\opengrads\README.txt
+OutputDir=C:\cygwin\home\dasil\src\git\Grads
+OutputBaseFilename=grads-2.2.1.oga.1-win32_superpack
+SetupIconFile=C:\cygwin\home\dasil\src\git\Grads\win32\ollie.ico
 Compression=lzma
 SolidCompression=yes
 ChangesEnvironment=yes
 DirExistsWarning=yes
-; WizardImageFile=C:\cygwin\home\dasilva\src\2\Grads\win32\ollie...
+; WizardImageFile=C:\cygwin\home\dasil\src\git\Grads\win32\ollie...
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -45,7 +45,7 @@ Name: "slovenian"; MessagesFile: "compiler:Languages\Slovenian.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Files]
-Source: "C:\cygwin\home\dasilva\src\2\Grads\opengrads\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\cygwin\home\dasil\src\git\Grads\opengrads\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 ;[InstallDelete]
@@ -60,7 +60,7 @@ Name: modifypath; Description: &Add application directory to your system path;
 			Dir:	TArrayOfString;
 		begin
 			setArrayLength(Dir, 1)
-			Dir[0] := ExpandConstant('{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686');
+			Dir[0] := ExpandConstant('{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686');
 			Result := Dir;
 		end;
     #include "modpath.iss"
@@ -73,29 +73,29 @@ Name: "{group}\Documentation\GrADS User's Guide";                     Filename: 
 Name: "{group}\Documentation\GrADS Reference Guide (Command Index)";  Filename: "file://{app}\Contents\Resources\Documentation\gadocindex.html"; IconFilename: "{app}\Contents\Resources\Icons\documents.ico"
 Name: "{group}\Documentation\{cm:ProgramOnTheWeb,OpenGrADS}";  Filename: "http://opengrads.org/wiki/index.php?title=Installing_GrADS_v2_on_Microsoft_Windows"
 ;
-Name: "{group}\GrADS Prompt";                     Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{group}\GrADS GUI";                        Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\gradsgui.exe";  WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{group}\GrADS Metafile Viewer";            Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\gv32.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"
-Name: "{group}\MERRA Browser";                    Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\merra.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
-Name: "{group}\NOMADS Browser";                   Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\nomads.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
-Name: "{group}\GEOS-5 Browser";                   Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\geos5.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
+Name: "{group}\GrADS Prompt";                     Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+Name: "{group}\GrADS GUI";                        Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\gradsgui.exe";  WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+; Name: "{group}\GrADS Metafile Viewer";            Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\gv32.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"
+; Name: "{group}\MERRA Browser";                    Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\merra.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
+Name: "{group}\NOMADS Browser";                   Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\nomads.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
+Name: "{group}\GEOS-5 Browser";                   Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\geos5.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
 ;
 Name: "{group}\Shells\Command Prompt";            Filename: "{cmd}";                                                         WorkingDir: "{app}\Contents\Resources\SampleDatasets"
-Name: "{group}\Shells\POSIX Shell (bash)";        Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\sh.exe";        WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
-Name: "{group}\Shells\C-Shell (tcsh)";            Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\tcsh.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
-Name: "{group}\Shells\Rxvt Terminal (bash)";      Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\rxvt.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+Name: "{group}\Shells\POSIX Shell (bash)";        Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\sh.exe";        WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+Name: "{group}\Shells\C-Shell (tcsh)";            Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\tcsh.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+Name: "{group}\Shells\Rxvt Terminal (bash)";      Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\rxvt.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
 ;
 Name: "{group}\{cm:UninstallProgram,OpenGrADS}";      Filename: "{uninstallexe}"
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\OpenGrADS"; Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{commondesktop}\OpenGrADS"; Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{commondesktop}\MERRA Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\merra.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{commondesktop}\NOMADS Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\nomads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
-Name: "{commondesktop}\GEOS-5 Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\geos5.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\OpenGrADS"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+Name: "{commondesktop}\OpenGrADS"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+;Name: "{commondesktop}\MERRA Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\merra.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+Name: "{commondesktop}\NOMADS Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\nomads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
+Name: "{commondesktop}\GEOS-5 Browser"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\geos5.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"
 
 ; [Registry]
 ; Root:  HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "Path"; ValueData: "{olddata};{app}\win32"
 
 [Run]
 Filename: "file://{app}\Getting_Started.html"; Description: "View the 'Getting Started' file"; Flags: postinstall shellexec skipifsilent
-Filename: "{app}\Contents\Cygwin\Versions\2.1.a2.oga.1\i686\opengrads.exe"; Description: "Launch GrADS application"; Flags: postinstall nowait skipifsilent unchecked
+Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\opengrads.exe"; Description: "Launch GrADS application"; Flags: postinstall nowait skipifsilent unchecked
 

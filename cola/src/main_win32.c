@@ -96,6 +96,8 @@ main(int argc, char **argv)
 
     int i, ia, j, batch, slash=0, has_xming, has_udxt, has_sh, gArgc;
 
+    printf("***********\n");
+    
 //  Tell cygwinn to be quiet about MSDOS file names //
     if ( ! getenv("CYGWIN") ) 
          putenv("CYGWIN=nodosfilewarning");

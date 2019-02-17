@@ -2812,12 +2812,12 @@ long *lptr=NULL;
 gafloat *fptr=NULL;
 gadouble *dptr=NULL;
 size_t sz;
-#if (USENETCDF == 1 || USEHDF == 1)
+//ams #if (USENETCDF == 1 || USEHDF == 1)
 struct dt tdef, tdefi;
 char *tfile, *tfile2;
 gaint ncid=0, rc, error, n_atts, n_gatts;
 gaint sdid=0;
-#endif
+//ams #endif
 #if USEHDF5 == 1
 gaint h5id=-999;
 hid_t fid=0;
