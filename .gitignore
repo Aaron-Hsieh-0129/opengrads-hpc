@@ -12,4 +12,6 @@
 *.pod
 *.dll
 *.dylib
+*.exe
+*.x
 autom4te.cache
