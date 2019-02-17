@@ -4,6 +4,8 @@
 #
 
 setenv ARCH `uname -s`
+set GLIBC = `ldd --version | head -1 | awk '{print $4}'`
+
 
 if ( $?SUPPLIBS ) then
    echo Using OpenGRADS SUPPLIBS from $SUPPLIBS
@@ -21,9 +23,17 @@ mkdir -p $lib
 
 if ( $ARCH == 'Darwin' ) then
       setenv LIBS '-L/usr/X11/lib -lXaw3d -lXmu -lXt -lXext -lXpm  -lSM -lICE -lX11 -liconv'
+else if ( $ARCH == 'Linux' ) then
+     if ( $GLIBC == "2.11.3" ) then
+          setenv LIBS "-lrt"
+     else if ( $GLIBC == "2.12" ) then
+          setenv LIBS '-lrt -lz -lm'
+     else
+          setenv LIBS '-llzma -lz -lm'
+     endif
 endif
 
-(cd cola; ./configure \
+(cd cola; ./configure --disable-dyn-supplibs \
                       --with-gadap \
 		      --with-gui \
 		      --with-opengrads \

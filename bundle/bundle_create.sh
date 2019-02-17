@@ -4,15 +4,30 @@
 # the bundle creating the so-called "superpack".
 #
 
+   if test "x$SUPPLIBS" = "x"; then   
+       echo "$0: environment variable SUPPLIBS not set"
+       exit 1
+   fi
+   if test -d "$SUPPLIBS"; then
+       echo "$0: Using $SUPPLIBS for SUPPLIBS"
+   else
+       echo "$0: $SUPPLIBS not a valid SUPPLIBS directory."
+       exit 1
+   fi
+
+
 #  Command line arguments
 #  ----------------------
+   superpack=no
+   macpkg=no
    if test "$1" = "-super" ; then
       superpack=yes
-	  shift 
-   else
-	  superpack=no
+      shift 
+   elif test "$1" = "-macpkg" ; then
+       macpkg=yes
+       shift
    fi
-  
+
    if [ $#0 -lt 1 ] ; then
        prefix=./opengrads
    else
@@ -54,6 +69,7 @@ function prepare_dirs {
 # ------------------
   root=$prefix
   contents=$root/Contents
+
   b_exec=$contents/$arch/Versions/$version/$mach  # where binaries really are
 
   b_data=$contents/Resources/SupportData            # fonts & maps datasets
@@ -74,9 +90,9 @@ function prepare_dirs {
   fi
   
   r_exec=Contents/$arch/Versions/$version/$mach   # where binaries really are
-  r_data=Contents/Resources/SupportData             # fonts & maps datasets
-  r_scrp=Contents/Resources/Scripts                 # support grads scripts
-  r_dset=Contents/Resources/SampleDatasets          # support grads scripts
+  r_data=Contents/Resources/SupportData           # fonts & maps datasets
+  r_scrp=Contents/Resources/Scripts               # support grads scripts
+  r_dset=Contents/Resources/SampleDatasets        # support grads scripts
   
 # Classic directories
 # ------------------
@@ -164,7 +180,11 @@ function populate {
      if ! cp bin/*.exe                 $b_exec; then return 1; fi
      if ! $copy bin/*                  $b_exec; then return 1; fi
   else
-     if ! $copy $std_files             $root  ; then return 1; fi 
+     if test "$macpkg" = yes ; then
+        if ! $copy $std_files          $contents  ; then return 1; fi 
+     else
+        if ! $copy $std_files          $root  ; then return 1; fi 
+     fi
      if ! $copy bin/*                  $b_exec; then return 1; fi
   fi
 
@@ -247,25 +267,25 @@ function liberate_unix {
 # --------------------------------------------
   if test "$arch" = Darwin; then
 
-      xlist="$xlist $SUPPLIBS/lib/libcairo*.dylib" # special handling
+      dllext=dylib
       export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
-      # dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e 'X11' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
-      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e libgcc_s | awk '{print $1}' | sort | uniq`  
+      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System  | awk '{print $1}' | sort | uniq`
 
-     # dep_libs="$dep_libs $SUPPLIBS/lib/libgeotiff*.dylib*" # special handling
-
-  elif test "$arch" = Cygwin; then
-
+   elif test "$arch" = Cygwin; then
+      dllext=dll
       export PATH="$SUPPLIBS/bin:$PATH"
       dep_libs=`cygcheck $xlist 2>&1 | grep '/' | grep -v -e 'WINDOWS' | awk '{print $1}' | sort | uniq`  
 
   elif test "$arch" = AIX; then
+      dllext=so
       echo "----------- skipping -------------"
       return
   else
 
-     export LD_LIBRARY_PATH="$SUPLLIBS/lib:$LD_LIBRARY_PATH"
-     dep_libs=`ldd $xlist 2>&1 | grep '/' | grep -v -e ':' -e System | awk '{print $3}' | sort | uniq`  
+     dllext=so
+
+     # export LD_LIBRARY_PATH="$SUPLLIBS/lib:$LD_LIBRARY_PATH"
+     dep_libs=`ldd $xlist 2>&1 | grep '/' | grep -v -e ':' -e System -e $SUPPLIBS | awk '{print $3}' | sort | uniq`  
 
   fi
 
@@ -274,24 +294,48 @@ function liberate_unix {
 # -------------------------------------------------------------
   if ! mkdir -p $b_exec/libs $b_exec/gex ; then return 1; fi
   if ! cp -f  $dep_libs $b_exec/libs; then return 1; fi
-
   
 # Now put under gex/ the ones that are likely not to cause conflict
 # -----------------------------------------------------------------
-  echo "$0: Adding shared libraries to gex/"
-  for lib in geotiff freetype fontconfig pixman-1 cairo gfortran 
+  echo "$0: Adding supplibs shared libraries to gex/"
+  for Lib in $SUPPLIBS/lib/*.$dllext*
   do
-     if mv $b_exec/libs/lib$lib* $b_exec/gex > /dev/null 2>&1
-     then
-        echo  "$0:   - $lib "
-     fi
+     if ! cp -pr  $Lib  $b_exec/gex; then return 1; fi
+     lib=`basename $Lib | sed -e 's/^lib//' -e "s/\.$dllext//"`
+     echo  "$0:   - $lib "
   done
-  echo "$0: Adding shared libraries to libs/"
-  for Lib in $b_exec/libs/*
+  echo "$0: Adding X shared libraries to gex/"
+  for Lib in $b_exec/libs/lib[xX]* $b_exec/libs/libICE* \
+             $b_exec/libs/libSM* 
   do
-      lib=`basename $Lib | sed -e 's/lib//'`
+      if ! mv  $Lib $b_exec/gex; then return 1; fi
+      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
       echo "$0:   - ${lib%.*}"
   done
+  candidates="bz2 c++ crypto gfortran iconv lzma quadmath stdc++ uuid" 
+  echo "$0: Adding system shared libraries to gex/"
+  for Lib in $b_exec/libs/* 
+  do
+      lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
+      for pat in $candidates; do
+	  if expr $lib : ^$pat >/dev/null ; then
+	      if ! mv  $Lib $b_exec/gex; then return 1; fi
+	      echo "$0:   - ${lib%.*}"
+	  fi
+      done
+  done
+  echo "$0: Adding backup shared libraries to libs/"
+  for Lib in $b_exec/libs/*
+  do
+      libfn=`basename $Lib`
+      if test -e $b_exec/gex/$libfn; then
+          /bin/rm $Lib # avoid duplication
+      else
+          lib=`basename $Lib | sed -e 's/lib//' -e "s/\.$dllext//"`
+          echo "$0:   - ${lib%.*}"
+      fi
+  done
+
 
 }
 
@@ -359,7 +403,7 @@ function add_wrappers {
     if ! $copy bundle/bundle_wrapper.vbs $root/opengrads.vbs; then return 1;fi
     #if ! $copy bundle/bundle_wrapper.vbs $root/gradsdap.vbs;  then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/gradsgui.vbs;  then return 1;fi
-    if ! $copy bundle/bundle_wrapper.vbs $root/merra.vbs;     then return 1;fi
+    #if ! $copy bundle/bundle_wrapper.vbs $root/merra.vbs;     then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/geos.vbs;     then return 1;fi
     if ! $copy bundle/bundle_wrapper.vbs $root/ncep.vbs;    then return 1;fi
     #if ! $copy bundle/bundle_wrapper.vbs $root/gv32.vbs;      then return 1;fi
@@ -387,7 +431,7 @@ function add_wrappers {
   if test "$arch" != Cygwin ; then
       if ! $copy bundle/bundle_wrapper.pl $contents/opengrads; then return 1;fi
       # if ! $copy bundle/bundle_wrapper.pl $contents/gradsdap;  then return 1;fi
-      if ! $copy bundle/bundle_wrapper.pl $contents/merra;     then return 1;fi
+      # if ! $copy bundle/bundle_wrapper.pl $contents/merra;     then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/geos;     then return 1;fi
       if ! $copy bundle/bundle_wrapper.pl $contents/ncep;      then return 1;fi
   fi
@@ -399,6 +443,9 @@ function add_wrappers {
  if init && prepare_dirs && compile_stuff && populate  \
          && supersize_it && liberate      && add_wrappers  
  then
+    if test "$macpkg" = yes; then
+       mv $root/Contents $root/OpenGrADS
+    fi
     echo $0: All done.
  else 
     echo $0: did not complete

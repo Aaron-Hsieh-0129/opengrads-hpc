@@ -1,3 +1,18 @@
+Downloading
+-----------
+
+   URL: https://sourceforge.net/projects/opengrads/files/grads2/
+
+   On Linux, select binaries based on your glibc version. 
+   To find out your glibc version, enter onnthe command line:  
+
+                        ldd --version
+
+   Select the newest glibc version that is less or equal the
+   version you have installed on your system. For example,
+   if your system has glibc 2.17 you can install any version
+   less than 2.17 (say, 2.12) but not 2.18.
+
 Installation
 ------------
 

@@ -149,6 +149,8 @@ dnl    guilibadd="-lSM -lICE"
   ;;
 
   *darwin*)
+     CC="$CC -mmacosx-version-min=10.9"
+     CXX="$CXX -mmacosx-version-min=10.9"
      is_darwin="yes"
      host_cppflags="-I/usr/X11/include"
   ;;
@@ -717,7 +719,7 @@ echo ----
 if test "Z$ga_supplib_dir" != "Z" ; then 
   if test "$have_zlib" = "yes" -a "$have_jpeg" = "yes" -a "$have_udunits" = "yes" ; then
     echo looking in $ga_supplib_dir 
-    GA_SET_FLAGS([hdf])
+    GA_SET_FLAGS([hdf],[$host_cppflags],[],[-ldf -lcrypto -lsz -ljpeg -lz -lpthread -lm])
     AC_CHECK_HEADER([mfhdf.h],
     [ AC_CHECK_LIB([df], [main], 
       [ AC_CHECK_LIB([mfhdf], [main],
@@ -876,12 +878,12 @@ echo ---
 if test "x$with_gui" != xno ; then
   if test "Z$ga_supplib_dir" != "Z" ; then 
       echo looking in $ga_supplib_dir 
-      GA_SET_FLAGS([libsx],[$host_cppflags],[],[-lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lX11 -lz -lm ])
+      GA_SET_FLAGS([libsx],[$host_cppflags],[],[-lSM -lICE -lXaw -lXpm -lXmu -lXt -lXrender -lX11 -lz -lm ])
       AC_CHECK_HEADER(libsx.h,
-      [ AC_CHECK_LIB(sx,[GetFile],
+      [ AC_CHECK_LIB(sx,[main],
             [ use_gui="yes"
 	      GA_SET_INCLUDE_VAR([gui_inc], [libsx])
-              GA_SET_DYNLIB_VAR(gui_libs, [sx Xaw Xpm Xmu Xt Xdmcp X11 z])
+              GA_SET_DYNLIB_VAR(gui_libs, [sx Xaw Xpm Xmu Xt Xrender X11 z])
             ])
       ])
       GA_UNSET_FLAGS

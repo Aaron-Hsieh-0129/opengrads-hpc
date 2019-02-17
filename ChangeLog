@@ -1,5 +1,29 @@
 GrADS v2 at opengrads.org - ChangeLog
-
+	
+2019-02-09 <dasilva@opengrads.org>, Version GrADS 2.2.1.oga.1
+	* OpenGrADS Bundle based on GrADS 2.2.1; this is the first OpenGrADS
+	  release since 2.1.0.oga.1.
+	* supplibs: requires Supplibs v2.4.0
+	* extensions: rename if() extension if_() because GrADS now includes
+	  an if() extension with different number of arguments
+	* build: based on codebase that has been relocated to git repo 
+	  on sf.net
+	* refactored build mechanism to rely on COLA's configure, updating it
+	  to work with the opengrads supplibs
+	* New features in GrADS 2.2.1:
+	  - GrADS is officially 30 years old
+	  - New Python interface called GradsPy
+	  - Major configuration changes; all supplibs now linked dynamically
+	  - Added support for ^ and $ at the beginning of a shared object 
+	    filename in UDPT entries
+	  - Added support for an optional fourth arg in UDPT entry for 
+	    a function name alias
+	  - Added support for netcdf attributes of type STRING	
+	* Bug Fixes in GrADS 2.2.1:	
+	  - Fixed bug in gr2stn() when station expression returns a NULL result
+	  - Fixed bug in 'set misswarn' when no files are open
+	  - Prevents attempts to use non-Hershey fonts when using 
+	    the classic graphics plug-ins (X11/gd) 
 	
 2016-10-09 <dasilva@opengrads.org>, Version GrADS 2.1.0.oga.1
 	* supplibs: requires opengrads supplibs v2.3.2

@@ -16263,6 +16263,8 @@ case "$host" in
   ;;
 
   *darwin*)
+     CC="$CC -mmacosx-version-min=10.9"
+     CXX="$CXX -mmacosx-version-min=10.9"
      is_darwin="yes"
      host_cppflags="-I/usr/X11/include"
   ;;
@@ -21645,9 +21647,9 @@ if test "Z$ga_supplib_dir" != "Z" ; then
       CPPFLAGS="$CPPFLAGS -I${ga_supplib_dir}/include/${ga_inc_name}"
     done
 
-  CPPFLAGS="$CPPFLAGS "
+  CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
-  LIBS="$LIBS "
+  LIBS="$LIBS -ldf -lcrypto -lsz -ljpeg -lz -lpthread -lm"
 
     ac_fn_c_check_header_mongrel "$LINENO" "mfhdf.h" "ac_cv_header_mfhdf_h" "$ac_includes_default"
 if test "x$ac_cv_header_mfhdf_h" = xyes; then :
@@ -23554,13 +23556,13 @@ if test "x$with_gui" != xno ; then
 
   CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
-  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXdmcp -lX11 -lz -lm "
+  LIBS="$LIBS -lSM -lICE -lXaw -lXpm -lXmu -lXt -lXrender -lX11 -lz -lm "
 
       ac_fn_c_check_header_mongrel "$LINENO" "libsx.h" "ac_cv_header_libsx_h" "$ac_includes_default"
 if test "x$ac_cv_header_libsx_h" = xyes; then :
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for GetFile in -lsx" >&5
-$as_echo_n "checking for GetFile in -lsx... " >&6; }
-if ${ac_cv_lib_sx_GetFile+:} false; then :
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lsx" >&5
+$as_echo_n "checking for main in -lsx... " >&6; }
+if ${ac_cv_lib_sx_main+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -23568,33 +23570,27 @@ LIBS="-lsx  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char GetFile ();
+
 int
 main ()
 {
-return GetFile ();
+return main ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_sx_GetFile=yes
+  ac_cv_lib_sx_main=yes
 else
-  ac_cv_lib_sx_GetFile=no
+  ac_cv_lib_sx_main=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_sx_GetFile" >&5
-$as_echo "$ac_cv_lib_sx_GetFile" >&6; }
-if test "x$ac_cv_lib_sx_GetFile" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_sx_main" >&5
+$as_echo "$ac_cv_lib_sx_main" >&6; }
+if test "x$ac_cv_lib_sx_main" = xyes; then :
    use_gui="yes"
 
   ga_include_prefix='-I$(supp_include_dir)'
@@ -23605,7 +23601,7 @@ if test "x$ac_cv_lib_sx_GetFile" = xyes; then :
 
 
   ga_lib_prefix='-l'
-  for ga_lib_name in sx Xaw Xpm Xmu Xt Xdmcp X11 z ; do
+  for ga_lib_name in sx Xaw Xpm Xmu Xt Xrender X11 z ; do
       gui_libs="$gui_libs ${ga_lib_prefix}${ga_lib_name}"
   done
 

@@ -9,6 +9,9 @@
   SHELL = /bin/sh
   ROOTDIR := $(shell dirname `pwd`)
   SYSNAME := $(shell ./config.guess)
+  ifeq (x$(OSTYPE),x)
+        OSTYPE := $(shell uname -o | tr '[:upper:]' '[:lower:]' )
+  endif
 
   ifeq (x$(OSTYPE),x)
         OSTYPE := $(shell uname -o | tr '[:upper:]' '[:lower:]' )
@@ -24,13 +27,23 @@
   distdir := $(HERE)/dist
   host_triplet := $(shell ./config.guess)
 
+  GLIBC:=
   ifeq ($(ARCH),Darwin)
      DLLEXT=dylib
   else
   ifeq ($(OSTYPE),cygwin)
      DLLEXT=dll
+  ifeq ($(ARCH),Linux)
+     DLLEXT=so
+     GLIBC := $(word 4, $(shell ldd --version | head -1))
+     host_triplet := $(host_triplet)-glibc_$(GLIBC)
+  else
+  ifeq ($(OSTYPE),cygwin)
+     DLLEXT=dll
   endif
-
+  endif
+  endif
+  endif
 
 #
 # Build core COLA binaries
@@ -42,7 +55,6 @@ cola-build: cola/Makefile
 
 cola-install:
 	(cd cola; $(MAKE) install)
-	@cp $(SUPPLIBS)/lib/libgeotif* bin/gex   # macOS glitch fix
 	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
 
 cola-check: cola-install
@@ -94,6 +106,9 @@ Documentation.html: Documentation.php
 bundle-create:
 	@bundle/bundle_create.sh 
 
+pkg-create:
+	@bundle/bundle_create.sh -macpkg
+
 #
 # Bundle installation under prefix
 #
@@ -113,7 +128,7 @@ clean:
 distclean:
 	$(MAKE) cola-distclean
 	$(MAKE) gex-distclean
-	/bin/rm -rf bin opengrads dist
+	/bin/rm -rf bin opengrads dist darwin/build darwin/build_debug
 
 #
 #                  Distribution Tarballs
