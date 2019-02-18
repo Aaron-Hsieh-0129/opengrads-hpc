@@ -145,6 +145,7 @@ dnl    guilibadd="-lSM -lICE"
 
   *-pc-cygwin)
     is_cygwin="yes"
+    host_cppflags="-I/usr/include/readline"
     host_ldflags="-lrpclib"
   ;;
 
@@ -310,7 +311,7 @@ echo --------
 # check in supplibs directory 
 if test "Z$ga_supplib_dir" != "Z" ; then 
   echo looking in $ga_supplib_dir
-  GA_SET_FLAGS([readline])
+  GA_SET_FLAGS([readline],[$host_cppflags])
   AC_CHECK_HEADER(readline.h,
   [ AC_CHECK_HEADER(history.h,
     [ AC_CHECK_LIB(readline,tgetent,

@@ -240,12 +240,20 @@ function supersize_it {
 # --------------------------
   if ! $copy win32/utils/* $b_exec ; then return 1; fi
  
-# Fix .ex_ extensions (this funny extension is to trick CVS into
+# Fix .ex_ extensions (this funny extension is to trick GIT into
 # checking in these files)
 # --------------------------------------------------------------
   for file in $x_ming/*.ex_ $b_exec/*.ex_ 
   do
     if ! mv $file ${file%.ex_}.exe ; then return 1; fi 
+  done
+
+# Fix .dl_ extensions (this funny extension is to trick GIT into
+# checking in these files)
+# --------------------------------------------------------------
+  for file in $x_ming/*.dl_ 
+  do
+    if ! mv $file ${file%.dl_}.dll ; then return 1; fi 
   done
   
   }
@@ -359,12 +367,21 @@ function liberate_win32 {
 
 # I believe rxvt does a dlopen on libW11
 # --------------------------------------
-  dep_libs="$dep_libs /bin/libW11.dll"
+# dep_libs="$dep_libs /bin/libW11.dll"
 
 # Copy dependency libraries alongside the binaries since Windows
 # look for DLLs in PATH
 # -------------------------------------------------------------
-  if ! cp -pr $dep_libs $b_exec; then return 1; fi
+#  if ! cp -pr $dep_libs $b_exec; then return 1; fi
+  dirb=`cygpath -a $b_exec`
+  for file in $dep_libs 
+  do
+      file_=`cygpath -a $file`
+      dirn=${file_%/*}
+      if test "$dirn" != "$dirb"; then
+	  if ! cp -pr $file $b_exec; then return 1; fi
+      fi
+  done
 
 }
 

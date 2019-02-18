@@ -1,6 +1,6 @@
 /*
 
-    Copyright (C) 2008 by Arlindo da Silva <dasilva@opengrads.org>
+    Copyright (C) 2019 by Arlindo da Silva <dasilva@opengrads.org>
     All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
@@ -89,15 +89,14 @@ main(int argc, char **argv)
     char gagui[MAX_PATH];
     char gascrp[MAX_PATH];
     char gaudxt[MAX_PATH];
+    char gaudpt[MAX_PATH];
     char display[MAX_PATH];
 
     char tmp[MAX_SIZE];
     char bintype[MAX_PATH];
 
-    int i, ia, j, batch, slash=0, has_xming, has_udxt, has_sh, gArgc;
+    int i, ia, j, batch, slash=0, has_xming, has_udxt, has_udpt, has_sh, gArgc;
 
-    printf("***********\n");
-    
 //  Tell cygwinn to be quiet about MSDOS file names //
     if ( ! getenv("CYGWIN") ) 
          putenv("CYGWIN=nodosfilewarning");
@@ -161,6 +160,7 @@ main(int argc, char **argv)
     sprintf(gascrp,"GASCRP=%s/Resources/Scripts", prefix);
     sprintf(gagui, "GAGUI=%s/Resources/Scripts/default.gui", prefix);
     sprintf(gaudxt,"GA2UDXT=%s/gex/udxt", gabin);
+    sprintf(gaudpt,"GAUDPT=%s/udpt", gabin);
     i = strlen(getenv("PATH"))+2*strlen(gabin)+32;
     if ( i > MAX_SIZE ) {
       printf("MAX_SIZE = %d, needed size = %d\n", MAX_SIZE, i);
@@ -181,6 +181,7 @@ main(int argc, char **argv)
 //  Check whether udxt is present
 //  -----------------------------
     has_udxt = check_file("%s/gex/udxt", gabin,(char *) NULL);
+    has_udpt = check_file("%s/udpt", gabin,(char *) NULL);
 
 //  Check whether we have /bin/sh (usually means cygwin is installed)
 //  This is no longer necessary undser cygwin 1.7 because we now mae
@@ -196,6 +197,9 @@ main(int argc, char **argv)
     if (has_udxt && getenv("GA2UDXT")==NULL) {
         putenv(gaudxt);
     } 
+    if (has_udpt && getenv("GAUDPT")==NULL) {
+        putenv(gaudpt);
+    } 
     if (getenv("TMPDIR")==NULL)      putenv(gatmp);
     if ( !strcmp(appl,"gradsgui") || !strcmp(appl,"GRADSGUI") ) {
          sprintf(gagui, "GAGUI=%s/Resources/Scripts/default.gui", prefix);
@@ -206,8 +210,11 @@ main(int argc, char **argv)
     } else if ( !strcmp(appl,"nomads") || !strcmp(appl,"NOMADS") ) {
          sprintf(gagui, "GAGUI=%s/Resources/Scripts/nomads.gui", prefix);
 	     if (getenv("GAGUI")==NULL)  putenv(gagui);
-    } else if ( !strcmp(appl,"geos5") || !strcmp(appl,"GEOS5") ) {
-         sprintf(gagui, "GAGUI=%s/Resources/Scripts/geos5.gui", prefix);
+    } else if ( !strcmp(appl,"ncep") || !strcmp(appl,"NCEP") ) {
+         sprintf(gagui, "GAGUI=%s/Resources/Scripts/ncep.gui", prefix);
+	     if (getenv("GAGUI")==NULL)  putenv(gagui);
+    } else if ( !strcmp(appl,"geos") || !strcmp(appl,"GEOS") ) {
+         sprintf(gagui, "GAGUI=%s/Resources/Scripts/geos.gui", prefix);
 	     if (getenv("GAGUI")==NULL)  putenv(gagui);
     }
 
@@ -274,7 +281,8 @@ main(int argc, char **argv)
 // -----------------------------------
    gArgv[0] = argv[0];
    if ( !strcmp(appl,"OPENGR~1") || !strcmp(appl,"gradsgui")  || 
-        !strcmp(appl,"merra")    || !strcmp(appl,"nomads")    ){
+        !strcmp(appl,"merra")    || !strcmp(appl,"nomads")    ||
+        !strcmp(appl,"geos")     || !strcmp(appl,"ncep")     ){
 	  gArgv[1] = "-HC";
 	  gArgv[2] = "0";
 	  gArgc = 3;

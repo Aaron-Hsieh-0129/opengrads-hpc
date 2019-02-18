@@ -214,7 +214,7 @@ endif
 # ------
 ifeq ($(OS),Cygwin)
 	bintype=#dods
-	LIBGRADS = ../../src/libgrads$(bintype).dll
+	LIBGRADS = ../../cola/src/libgrads$(bintype).dll
 	CFLAGS := $(LDFLAGS) -O -fno-common
 	DLLEXT=dll
 	LD = $(CC)

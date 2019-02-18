@@ -16259,6 +16259,7 @@ case "$host" in
 
   *-pc-cygwin)
     is_cygwin="yes"
+    host_cppflags="-I/usr/include/readline"
     host_ldflags="-lrpclib"
   ;;
 
@@ -17901,7 +17902,7 @@ if test "Z$ga_supplib_dir" != "Z" ; then
       CPPFLAGS="$CPPFLAGS -I${ga_supplib_dir}/include/${ga_inc_name}"
     done
 
-  CPPFLAGS="$CPPFLAGS "
+  CPPFLAGS="$CPPFLAGS $host_cppflags"
   LDFLAGS="-L${ga_supplib_dir}/lib "
   LIBS="$LIBS "
 

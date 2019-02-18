@@ -55,6 +55,20 @@ CPPFLAGS += -I/usr/include/freetype2 -I/usr/include/cairo
 #                  Create DLL for each GrADS Binary and Plugins
 #                  --------------------------------------------
 
+libgrads.a: $(grads_OBJECTS) $(grads_DEPENDENCIES) 
+	@rm -f $@
+	ar cr libgrads.a $(grads_OBJECTS) 
+	ranlib libgrads.a
+
+cyggrads.dll: libgrads.a
+	@rm -f $@
+	$(grads_LINK) -shared \
+                      -Wl,--out-implib=libgrads.dll.a \
+                      -Wl,--export-all-symbols \
+                      -Wl,--enable-auto-import \
+                      -Wl,--whole-archive libgrads.a \
+                      -Wl,--no-whole-archive $(grads_LDADD) $(LIBS) -lz
+
 libgrads.dll: $(grads_OBJECTS) $(grads_DEPENDENCIES) 
 	@rm -f $@
 	$(grads_LINK) -shared $(grads_OBJECTS) $(grads_LDADD) $(LIBS) -lz
@@ -110,7 +124,7 @@ main_win32.o : main_win32.c
 
 grads$(EXEEXT) : libgrads.dll main_win32.o $(ALIASES)
 	@rm -f $@
-	$(grads_LINK) main_win32.o libgrads.dll.a
+	$(grads_LINK) main_win32.o libgrads.dll
 
 $(ALIASES) : libgrads.dll main_win32.o 
 	@rm -f $@
@@ -124,6 +138,8 @@ binPROGRAMS_INSTALL = install-win32
 lib_LTLIBRARIES := 
 
 win32_DLLS := libgrads.dll $(PLUGINS)
+
+all-win32: $(win32_DLLS) $(bin_PROGRAMS)
 
 install install-win32: $(win32_DLLS) $(bin_PROGRAMS)
 	test -z "$(bindir)" || mkdir -p  "$(DESTDIR)$(bindir)"
@@ -146,22 +162,6 @@ install install-win32: $(win32_DLLS) $(bin_PROGRAMS)
 	  else :; fi; \
 	done
 
-
-# --------------------- Obsolete, but keep it for reference -------------------
-
-libgrads.a: $(grads_OBJECTS) $(grads_DEPENDENCIES) 
-	@rm -f $@
-	ar cr libgrads.a $(grads_OBJECTS) 
-	ranlib libgrads.a
-
-cyggrads.dll: libgrads.a
-	@rm -f $@
-	$(grads_LINK) -shared \
-                      -Wl,--out-implib=libgrads.dll.a \
-                      -Wl,--export-all-symbols \
-                      -Wl,--enable-auto-import \
-                      -Wl,--whole-archive libgrads.a \
-                      -Wl,--no-whole-archive $(grads_LDADD) $(LIBS) -lz
 
 endif # if on cygwin
 

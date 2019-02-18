@@ -11,12 +11,18 @@ export EXTRAS=galats.o lats.o  latsgrib.o  latsgribmap.o  latsint.o  \
               fgutil.o fgbds.o ShaveMantissa.o
 export GSFS=lats4d.gs
 
+OS := $(shell uname -o)
 ifeq ($(ARCH),AIX)
-export XLDFLAGS = $(SUPPLIBS)/lib/libnetcdf.a $(SUPPLIBS)/lib/libmfhdf.a 
+      XLDFLAGS := $(SUPPLIBS)/lib/libnetcdf.a $(SUPPLIBS)/lib/libmfhdf.a 
+else
+ifeq ($(OS),Cygwin)
+   XLDFLAGS := "-L$(SUPPLIBS)/lib -lnetcdf -lmfhdf"
+endif
 endif
 
+
 %:
-	@$(MAKE) -f ../gex.mk $@ CSRC="liblats.c"
+	@$(MAKE) -f ../gex.mk $@ CSRC="liblats.c" XLDFLAGS="-L$(SUPPLIBS)/lib -lnetcdf -lmfhdf"
 
 html:
 	./lats4d.sh -h | ./mkhtml.pl -t >  lats4d.html

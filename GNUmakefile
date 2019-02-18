@@ -28,11 +28,17 @@
   host_triplet := $(shell ./config.guess)
 
   GLIBC:=
+  BUILD:=
+  INSTALL:=install
+  UDPT:=bin/gex/udpt
   ifeq ($(ARCH),Darwin)
      DLLEXT=dylib
   else
   ifeq ($(OSTYPE),cygwin)
-     DLLEXT=dll
+     DLLEXT:=dll
+     INSTALL:=install-win32
+     BUILD:=all-win32
+     UDPT:=bin/udpt
   ifeq ($(ARCH),Linux)
      DLLEXT=so
      GLIBC := $(word 4, $(shell ldd --version | head -1))
@@ -50,12 +56,12 @@
 #
 
 cola-build: cola/Makefile
-	@(cd cola; $(MAKE) )
-	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
+	@(cd cola/src; $(MAKE) $(BUILD) )
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > $(UDPT)
 
 cola-install:
-	(cd cola; $(MAKE) install)
-	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
+	(cd cola/src; $(MAKE) $(INSTALL) )
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > $(UDPT)
 
 cola-check: cola-install
 	(cd pytests; $(MAKE) check)
@@ -63,7 +69,7 @@ cola-check: cola-install
 
 cola-clean cola-distclean:
 	(cd cola; $(MAKE) $(subst cola-,,$@))
-	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > bin/gex/udpt
+	@cat etc/udpt | sed s/\.so/\.$(DLLEXT)/g > $(UDPT)
 
 cola/Makefile:
 	@oga_configure
@@ -73,9 +79,11 @@ cola/Makefile:
 #
 
 gex-build:
+	@/bin/mkdir -p bin/gex
 	@(cd extensions; $(MAKE) --silent all)
 
 gex-install gex-check: gex-build
+	@/bin/mkdir -p bin/gex
 	@(cd extensions; $(MAKE) --silent $(subst gex-,,$@))
 
 gex-clean gex-distclean: 
