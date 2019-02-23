@@ -84,9 +84,9 @@ Name: "{group}\3 NCEP Browser";                   Filename: "{app}\Contents\Cygw
 Name: "{group}\4 GEOS Browser";                     Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\geos.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\globe.ico"
 ;
 ; Name: "{group}\Shells\Command Prompt";            Filename: "{cmd}";                                                         WorkingDir: "{app}\Contents\Resources\SampleDatasets"
-Name: "{group}\Shells\5 POSIX Shell";        Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\sh.exe";        WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
-Name: "{group}\Shells\6 C-Shell";            Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\tcsh.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
-;Name: "{group}\Shells\Rxvt Terminal (bash)";      Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\rxvt.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+Name: "{group}\Shells\5 POSIX Shell";        Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\bash.exe";        WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+Name: "{group}\Shells\6 C-Shell";            Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\tcsh.exe";     WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
+;Name: "{group}\Shells\7 Mintty";             Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\mintty.exe";      WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\Cygwin.ico"
 ;
 Name: "{group}\{cm:UninstallProgram,OpenGrADS}";      Filename: "{uninstallexe}"
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\OpenGrADS"; Filename: "{app}\Contents\Cygwin\Versions\2.2.1.oga.1\i686\opengrads.exe"; WorkingDir: "{app}\Contents\Resources\SampleDatasets"; IconFilename: "{app}\Contents\Resources\Icons\ollie.ico"

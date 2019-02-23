@@ -219,16 +219,17 @@ function supersize_it {
    
 # Handy posix utilities
 # ---------------------
-  for exe in tcsh sh uname test mount umount unix2dos dos2unix \
+  for exe in tcsh sh bash uname test mount umount unix2dos dos2unix \
               awk sed ls ln cp rm mv dir pwd cat date mkdir \
               grep tar wget gzip cut less diff head tail tee \
-              rxvt touch wc sort uniq sleep 
+              rxvt mintty touch wc sort uniq sleep 
   do			  
        if ! /bin/cp /usr/bin/$exe $b_exec/$exe.exe ; then return 1; fi
   done
 
 # Put shells under /bin so that system() work
 # -------------------------------------------
+  if ! /bin/cp $b_exec/bash.exe $b_wbin ; then return 1; fi
   if ! /bin/cp $b_exec/sh.exe   $b_wbin ; then return 1; fi
   if ! /bin/cp $b_exec/tcsh.exe $b_wbin ; then return 1; fi
    
