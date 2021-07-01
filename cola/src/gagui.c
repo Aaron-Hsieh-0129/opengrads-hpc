@@ -86,7 +86,7 @@ static int  CmdWinON = 0;              /* Make sure there is only one
 static char **CmdWinList;   /* Command buffer */
 static Widget Cmd_window, CmdExpr_window, CmdList_window, CmdStr_window;
 
-/*---------------------------------------------------------------------*
+/*---------------------------------------------------------------------*/
 
 /*
  * This is the GaGUI entry point. Return is thru the quit button.
@@ -122,18 +122,18 @@ int gagui_main(int argc, char **argv)
   strcpy(last_path_sdfopen,"./");
   strcpy(last_path_exec,"./");
   strcpy(last_path_run,"./");
-  if ( path = getenv("GADATA") ) {
+  if ( (path = getenv("GADATA")) ) {
        strcpy(last_path_open,path);
        strcpy(last_path_sdfopen,path);
   }
-  if ( path = getenv("GASCRP") ) {
+  if ( (path = getenv("GASCRP")) ) {
        strcpy(last_path_exec,path);
        strcpy(last_path_run,path);
   }
   default_var[0] = '\0';
 
   /* Widget request on startup */
-  if ( path = getenv( "GAGUI" ) ) {
+  if ( (path = getenv( "GAGUI" )) ) {
 
        /* Built in default GUI interface */
        if ( !strcmp(path,"default") ) {

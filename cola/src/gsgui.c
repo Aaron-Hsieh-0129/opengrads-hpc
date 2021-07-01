@@ -41,6 +41,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <ctype.h>
 
 #include "libsx.h"
 #if USEFREQ == 1

@@ -269,8 +269,12 @@ function liberate_unix {
 
       dllext=dylib
       export DYLD_LIBRARY_PATH="$SUPPLIBS/lib:$DYLD_LIBRARY_PATH"
-      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System  | awk '{print $1}' | sort | uniq`
-
+      dep_libs=`otool -L $xlist 2>&1 | grep '/' | grep -v -e ':' -e System  | awk '{print $1}' | sort | sed -e s@/usr/lib/.\*\b@@g | uniq`
+      for lib in $dep_libs
+      do
+	  echo "---> $lib"
+      done
+      
    elif test "$arch" = Cygwin; then
       dllext=dll
       export PATH="$SUPPLIBS/bin:$PATH"

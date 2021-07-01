@@ -171,12 +171,13 @@ LIBS += $(CLIBS) $(FLIBS)
 # ------
 ifeq ($(ARCH),Darwin)
 	CLIBS = 
-        LD = /usr/bin/libtool
-        CFLAGS := -O -fno-common -fPIC -mmacosx-version-min=10.6 
-        FFLAGS += -mmacosx-version-min=10.6 
+        LD = /usr/bin/libtool 
+        CFLAGS := -dynamic -Wno-error=implicit-function-declaration -O -fno-common -fPIC -mmacosx-version-min=10.14 
+        FFLAGS += -dynamic -mmacosx-version-min=10.14
         DLLEXT=dylib
-        LDFLAGS = -dynamic -flat_namespace -undefined suppress -macosx_version_min 10.6 
-        LIBS += #-lSystemStubs 
+        LDFLAGS = -dynamic -flat_namespace -undefined suppress # -macosx_version_min 10.14 
+        LIBS += -L$(SUPPLIBS)/lib -lz \
+                -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib # -lSystemStubs 
 
 # AIX
 # ---

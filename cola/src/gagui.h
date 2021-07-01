@@ -28,6 +28,9 @@ int init_display(int argc, char **argv, void *data);
 int Custom_GUI( char *fname );
 int gagui_main(int argc, char **argv);
 
+int Default_GUI(int argc, char **argv, void *data);
+
+
 /* callback protos */
 void CB_Exit       (Widget w, void *data);
 void CB_CloseWindow(Widget w, void *data); 

@@ -15639,8 +15639,8 @@ case "$host" in
   ;;
 
   *darwin*)
-     CC="$CC -mmacosx-version-min=10.9"
-     CXX="$CXX -mmacosx-version-min=10.9"
+     CC="$CC -mmacosx-version-min=10.14"
+     CXX="$CXX -mmacosx-version-min=10.14"
      is_darwin="yes"
      host_cppflags="-I/usr/X11/include"
   ;;

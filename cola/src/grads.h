@@ -1304,3 +1304,7 @@ gaint getncvnm (struct sdfnames *, char *);
 void *galloc(size_t,char *);
 void gree();
 void glook();
+
+#if OPENGRADS == 1
+int gaudi (struct gacmn *);
+#endif
