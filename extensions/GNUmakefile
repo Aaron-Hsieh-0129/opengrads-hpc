@@ -20,7 +20,7 @@ endif
 endif
 
 bintype=# On windows this will be set to c, nc, nc4, dods, hdf
-
+nam
 # Default installation directory depends on whether this is a standalone
 # module or not
 ifneq ($(wildcard ./include),)
