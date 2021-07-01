@@ -4,8 +4,14 @@
 
 include ../supplibs.mk
 
-XCFLAGS = -I$(SUPPLIBS)/include/pcre
-XLDFLAGS = $(SUPPLIBS)/lib/libpcre.a
+OS := $(shell uname -o)
+ifeq ($(OS),Cygwin)
+   XCFLAGS = -I/usr/include
+   XLDFLAGS = -lpcre
+else
+   XCFLAGS = -I$(SUPPLIBS)/include/pcre
+   XLDFLAGS = $(SUPPLIBS)/lib/libpcre.a
+endif
 
 export XCFLAGS XLDFLAGS 
 export PODS=env.pod path.pod

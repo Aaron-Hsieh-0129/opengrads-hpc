@@ -144,6 +144,8 @@ dnl    guilibadd="-lSM -lICE"
   ;;
 
   *-pc-cygwin)
+    is_cygwin="yes"
+    host_cppflags="-I/usr/include/readline"
     host_ldflags="-lrpclib"
   ;;
 
@@ -309,7 +311,7 @@ echo --------
 # check in supplibs directory 
 if test "Z$ga_supplib_dir" != "Z" ; then 
   echo looking in $ga_supplib_dir
-  GA_SET_FLAGS([readline])
+  GA_SET_FLAGS([readline],[$host_cppflags])
   AC_CHECK_HEADER(readline.h,
   [ AC_CHECK_HEADER(history.h,
     [ AC_CHECK_LIB(readline,tgetent,
@@ -412,13 +414,13 @@ fi
 
 
 # check in system locations
-#if test "$use_shp" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
-#  echo looking in other system locations
-#  GA_CHECK_LIB_SHP(
-#  [ use_shp=yes 
-#    shp_libs=$SHP_LIBS
-#  ])
-#fi
+if test "$use_shp" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
+  echo looking in other system locations
+  GA_CHECK_LIB_SHP(
+  [ use_shp=yes 
+    shp_libs=$SHP_LIBS
+  ])
+fi
 
 # set output variables
 if test "$use_shp" != "yes" ; then
@@ -433,12 +435,21 @@ fi
 if test "Z$ga_supplib_dir" != "Z" ; then 
   echo looking in $ga_supplib_dir for additional dependent libs
 
-  # png15
+  # png15 or simply png
   echo 
   echo png
   echo ---
   GA_SET_FLAGS([])
-  AC_CHECK_LIB([png15], [main], [have_png=yes])
+  AC_CHECK_LIB([png15], [main], [
+                have_png=yes
+                this_png="png15"
+  ])
+  if test "$have_png" != "yes" ; then
+  AC_CHECK_LIB([png],   [main], [
+                have_png=yes
+                this_png="png"
+		])
+  fi
   GA_UNSET_FLAGS
 
   # zlib
@@ -463,10 +474,8 @@ if test "Z$ga_supplib_dir" != "Z" ; then
   echo 
   echo jasper
   echo ------
-  GA_SET_FLAGS([jasper])
-  AC_CHECK_HEADER([jasper.h],
-  [ AC_CHECK_LIB([jasper], [main], [have_jasper=yes])
-  ])
+  GA_SET_FLAGS([])
+  AC_CHECK_LIB([jasper], [main], [have_jasper=yes])
   GA_UNSET_FLAGS
 
   # xml2
@@ -548,7 +557,7 @@ if test "Z$ga_supplib_dir" != "Z" ; then
       [ use_grib2=yes 
          GA_SET_INCLUDE_VAR([grib2_inc], [grib2c])
 #        GA_SET_LIB_VAR([grib2_libs], [grib2c jasper png15 z])
-        GA_SET_DYNLIB_VAR([grib2_libs], [grib2c jasper png15 z])
+        GA_SET_DYNLIB_VAR([grib2_libs], [grib2c jasper $this_png z])
       ])
     ])
     GA_UNSET_FLAGS
@@ -557,10 +566,12 @@ fi
 # check in system locations
 if test "$use_grib2" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
   echo looking in other system locations
+  GA_SET_FLAGS([])
   GA_CHECK_LIB_GRIB2(
   [ use_grib2=yes 
     grib2_libs=$G2_LIBS
   ])
+  GA_UNSET_FLAGS([])
 fi
 # set output variables
 if test "$use_grib2" != "yes" ; then
@@ -606,14 +617,22 @@ if test "Z$ga_supplib_dir" != "Z" ; then
   fi
 fi
 ## check in system locations
-#if test "$use_cairo" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
-#  echo looking in other system locations
-#  GA_CHECK_LIB_CAIRO([
-#    use_cairo='yes'
-#    cairo_inc=$CAIRO_CFLAGS
-#    cairo_libs=$CAIRO_LIBS
-#  ])
-#fi
+if test "$use_cairo" != "yes" -a "$is_cygwin" = "yes" ; then
+  echo looking in other system locations without pkg-config
+  AC_CHECK_LIB([cairo], [main], [
+    use_cairo='yes'
+    cairo_inc=-I/usr/include/cairo -I/usr/include/freetype2
+    cairo_libs=-lcairo
+  ])
+fi
+if test "$use_cairo" != "yes" -a "$ga_dyn_supplibs" = "yes" ; then
+  echo looking in other system locations
+  GA_CHECK_LIB_CAIRO([
+    use_cairo='yes'
+    cairo_inc=$CAIRO_CFLAGS
+    cairo_libs=$CAIRO_LIBS
+  ])
+fi
 # set output variables
 if test "$use_cairo" != "yes" ; then
   AC_DEFINE(USECAIRO, 0, [Disable cairo])

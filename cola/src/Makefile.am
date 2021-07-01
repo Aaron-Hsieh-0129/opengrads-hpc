@@ -101,7 +101,7 @@ AM_CPPFLAGS		= -I. $(host_cppflags) -I$(supp_include_dir) $(gui_inc) $(nc_inc) $
 ## libraries needed
 grads_LDADD	      = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 			$(hdf_libs) $(hdf5_libs) $(nc_libs) $(geotiff_libs) \
-			$(shp_libs) $(gadap_libs) $(gui_libs) -ldl -lpthread  
+			$(shp_libs) $(gadap_libs) $(gui_libs) -ldl -lpthread $(host_ldflags) 
 
 # print with GD
 if USEGD
