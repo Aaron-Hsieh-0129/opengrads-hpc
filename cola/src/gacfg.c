@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for optional ADIOS2 BP5 and CLI support; see COPYING. */
 
 /* file: gacfg.c
  *
@@ -45,6 +46,10 @@
 #if USENETCDF==1
 #include "netcdf.h"
 #include "netcdf_meta.h"
+#endif
+
+#if USEADIOS2==1
+#include <adios2/common/ADIOSConfig.h>
 #endif
 
 #if USEGADAP==1
@@ -99,6 +104,9 @@ snprintf(cmd,255,"Config: v%s",GRADS_VERSION);
 #endif
 #if USEHDF5==1
  strcat(cmd," hdf5");
+#endif
+#if USEADIOS2==1
+ strcat(cmd," adios2-bp5");
 #endif
 #if USEDAP==1
  strcat(cmd," opendap-grids");
@@ -191,6 +199,13 @@ snprintf(cmd,255,"Config: v%s",GRADS_VERSION);
    gaprnt(verbose,cmd);
 #else
    gaprnt(verbose," -+- HDF5 interface DISABLED \n");
+#endif
+
+#if USEADIOS2==1
+   snprintf(cmd,255," -+- ADIOS2 BP5 interface ENABLED  adios2-%s \n",ADIOS2_VERSION_STR);
+   gaprnt(verbose,cmd);
+#else
+   gaprnt(verbose," -+- ADIOS2 BP5 interface DISABLED \n");
 #endif
 
    gaprnt(verbose," -+- KML contour output ENABLED\n");

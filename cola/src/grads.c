@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for optional ADIOS2 BP5 and CLI support; see COPYING. */
 
 /* Main program for GrADS (Grid Analysis and Display System).
    This program loops on commands from the user, and calls the
@@ -41,9 +42,11 @@
 
 #if READLINE ==1
 #include <time.h>
+#include <readline/readline.h>
 #include <readline/history.h>
 extern gaint history_length;
 void write_command_log(char *logfile);
+static void ga_readline_init(void);
 #endif
 
 static struct gaupb *upba=NULL;     /* Anchor for user defined plug-in */
@@ -320,6 +323,7 @@ int main (int argc, char *argv[])  {
 #endif
   
 #if READLINE == 1
+  ga_readline_init();
   if (wrhstflg && logfile != NULL) {
     printf("Command line history in %s\n",logfile);
     history_truncate_file(logfile,256); 
@@ -589,6 +593,76 @@ gaint gaqsig (void) {
 }
 
 #if READLINE == 1
+static const char *ga_commands[] = {
+  "bpopen", "clear", "close", "collect", "define", "display", "draw",
+  "dropmenu", "enable", "exec", "flush", "frame", "history", "modify",
+  "open", "print", "printim", "query", "quit", "reinit", "repeat", "run",
+  "sdfopen", "set", "swap", "undefine", "xdfopen", NULL
+};
+
+static const char *ga_set_words[] = {
+  "background", "ccolor", "cint", "clevs", "clopts", "color", "csmooth",
+  "display", "dfile", "e", "font", "frame", "gxout", "lat", "lev", "lon",
+  "mpdraw", "mpdset", "mpvals", "parea", "poli", "rgb", "t", "time",
+  "undef", "x", "xaxis", "xflip", "xlint", "xsize", "y", "yaxis",
+  "yflip", "ylint", "z", NULL
+};
+
+static const char *ga_query_words[] = {
+  "attr", "config", "ctlinfo", "define", "dims", "file", "files",
+  "font", "gxconfig", "gxout", "pos", "shades", "time", "udct", "udft",
+  "vars", NULL
+};
+
+static const char *ga_draw_words[] = {
+  "button", "dropmenu", "line", "map", "mark", "polyf", "rec", "recf",
+  "string", "title", "xlab", "ylab", NULL
+};
+
+static const char **ga_completion_words;
+
+static char *ga_completion_generator(const char *text, int state) {
+  static size_t index;
+  size_t length;
+  const char *word;
+
+  if (!state) index = 0;
+  length = strlen(text);
+  while ((word = ga_completion_words[index++]) != NULL) {
+    if (strncmp(word,text,length)==0) return strdup(word);
+  }
+  return NULL;
+}
+
+static char **ga_attempted_completion(const char *text, int start, int end) {
+  char first[32];
+  size_t length;
+  (void)end;
+
+  if (start==0) ga_completion_words = ga_commands;
+  else {
+    length = 0;
+    while (rl_line_buffer[length] && rl_line_buffer[length]!=' ' &&
+           rl_line_buffer[length]!='\t' && length<sizeof(first)-1) {
+      first[length] = rl_line_buffer[length];
+      length++;
+    }
+    first[length] = '\0';
+    if (!strcmp(first,"set")) ga_completion_words = ga_set_words;
+    else if (!strcmp(first,"query") || !strcmp(first,"q"))
+      ga_completion_words = ga_query_words;
+    else if (!strcmp(first,"draw")) ga_completion_words = ga_draw_words;
+    else return NULL;
+  }
+  rl_attempted_completion_over = 1;
+  return rl_completion_matches(text,ga_completion_generator);
+}
+
+static void ga_readline_init(void) {
+  rl_readline_name = "opengrads";
+  rl_attempted_completion_function = ga_attempted_completion;
+}
+
 /* write command history to log file */
 void write_command_log(char *logfile) {
    char QuitLabel[60];

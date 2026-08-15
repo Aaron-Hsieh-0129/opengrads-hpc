@@ -1,3 +1,33 @@
+OpenGrADS BP5 development fork
+------------------------------
+
+This source tree adds optional serial ADIOS2 BP5 input to OpenGrADS
+2.2.1.oga.1. Supported datasets can be opened directly with `bpopen`, with
+no user-written CTL, or with an explicit `dtype bp5` descriptor.
+
+Start here:
+
+* `docs/BP5.md` -- portable build, use, tests, and limitations
+* `docs/CHANGES-BP5.md` -- complete change summary for this revision
+* `AGENTS.md` -- repository structure, architecture, verified build record,
+  and contributor roadmap
+* `docs/PUBLISHING.md` -- GitHub source-publication checklist
+* `THIRD_PARTY_NOTICES.md` -- optional dependency attribution and important
+  binary-redistribution cautions
+* `COPYING` and `COPYRIGHT` -- OpenGrADS license and copyright terms
+
+Quick interactive use after building:
+
+    ga-> bpopen /path/to/output.bp
+    ga-> q vars
+    ga-> set t 1
+    ga-> set z 1
+    ga-> set gxout shaded
+    ga-> display variable_name
+
+This repository does not include ADIOS2, GNU Readline, build outputs, or the
+RCEMIP verification data. They remain separate dependencies/data.
+
 Downloading
 -----------
 

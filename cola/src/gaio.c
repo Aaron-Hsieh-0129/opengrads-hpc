@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 to add optional ADIOS2 BP5 grid I/O; see COPYING. */
 
 /* Authored by B. Doty and Jennifer Adams */
 
@@ -232,6 +233,14 @@ gaint gaggrd (struct gagrid *pgrid) {
   }
 
   /* Break out point for reading 2D netcdf grids (for special cases) */
+#if USEADIOS2==1
+  /* Read an in-bounds X/Y BP5 request with one ADIOS2 selection. */
+  if (pfi->adios2flg) {
+    rc = gaadios_read_grid(pfi,pvr,pgr,gr,gru);
+    if (rc>=0) return(rc);
+  }
+#endif
+
   /* JMA still need to optimize handling of OPeNDAP pre-projected grids */
   if ((pgr->toff != 1) &&          /* if t value is not an offset */
       (pfi->ncflg==1) &&           /* format is netcdf */
@@ -535,6 +544,14 @@ gaint y,z,t,e;
     return (rc);
   }
   /* netcdf */
+#if USEADIOS2==1
+  /* ADIOS2 BP5 */
+  if (pfi->adios2flg) {
+    rc = gaadios_read_row(pfi, pvr, x, y, z, tt, ee, len, gr, gru);
+    return (rc);
+  }
+
+#endif
   if (pfi->ncflg==1) {              
     rc = gancsetup();
     if (rc) return(rc);

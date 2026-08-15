@@ -1,4 +1,5 @@
 ## Makefile.am for GrADS
+## Modified in 2026 for optional ADIOS2 BP5 support; see COPYING.
 ## Process this file with automake to produce Makefile.in
 
 
@@ -36,6 +37,10 @@ if OPENGRADS
 src_udx = gaudx.c
 endif
 
+if USEADIOS2
+src_adios2 = gaadios.c
+endif
+
 if USEGUI
 src_gui = gagui.c gsgui.c
 endif
@@ -57,12 +62,12 @@ grads_SOURCES =	grads.c  gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c gxdb.c \
 		gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
 		gscrpt.c gamach.c gatxt.c   galloc.c gaddes.c gacfg.c  gaio.c \
                 gauser.c gasdf.c  bufrstn.c gabufr.c gabufrtbl.c \
-                $(src_gui) $(src_gadap) $(src_udx) 
+                $(src_gui) $(src_gadap) $(src_udx) $(src_adios2)
 
 ## These may not always be compiled but must be listed in order to go in the distribution 
 EXTRA_grads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c \
                       gxprintGD.c gxGD.c gxdxwd.c gxX11.c \
-                      gxprint.c gxC.c gxX.c gxdummy.c 
+                      gxprint.c gxC.c gxX.c gxdummy.c gaadios.c
 
 
 ##---Header files---------------------------------------------------------------------
@@ -96,12 +101,12 @@ X11_ldadd               = $(X_LIBS) $(X_PRE_LIBS) -lX11 -lXext $(X_EXTRA_LIBS)
 
 AM_CPPFLAGS		= -I. $(host_cppflags) -I$(supp_include_dir) $(gui_inc) $(nc_inc) $(grib2_inc)\
 			  $(hdf_inc) $(udunits_inc) $(hdf5_inc) $(geotiff_inc) $(shp_inc) $(gadap_inc) \
-                          $(X_CFLAGS) $(XAW_CFLAGS) $(HDF4_CFLAGS) 
+                          $(X_CFLAGS) $(XAW_CFLAGS) $(HDF4_CFLAGS) $(adios2_cflags)
 
 ## libraries needed
 grads_LDADD	      = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 			$(hdf_libs) $(hdf5_libs) $(nc_libs) $(geotiff_libs) \
-			$(shp_libs) $(gadap_libs) $(gui_libs) -ldl -lpthread $(host_ldflags) 
+			$(shp_libs) $(gadap_libs) $(gui_libs) $(adios2_libs) -ldl -lpthread $(host_ldflags)
 
 # print with GD
 if USEGD
@@ -139,7 +144,7 @@ libgradspy_la_SOURCES  = grads.c gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c g
 		gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
 		gscrpt.c gamach.c gatxt.c   galloc.c gaddes.c gacfg.c  gaio.c \
                 gauser.c gasdf.c  bufrstn.c gabufr.c gabufrtbl.c \
-                $(src_gui) $(src_gadap) $(src_udx) 
+                $(src_gui) $(src_gadap) $(src_udx) $(src_adios2)
 
 ## this object file needs to be recompiled for gradspy with the SHRDOBJ flag set 
 libgradspy_la-grads.o: $(srcdir)/grads.c
@@ -153,6 +158,8 @@ libgradspy_la_LIBADD   = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 			 $(hdf_libs) $(hdf5_libs) $(nc_libs) $(geotiff_libs) \
 			 $(shp_libs) $(gadap_libs) $(gui_libs) 
 libgradspy_la_LDFLAGS  = -version-info $(LIBGX_VERSION)
+libgradspy_la_CPPFLAGS += $(adios2_cflags)
+libgradspy_la_LIBADD   += $(adios2_libs)
 
 
 

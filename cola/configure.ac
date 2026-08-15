@@ -1,4 +1,5 @@
 dnl
+dnl Modified in 2026 for optional ADIOS2 BP5 build support; see ../COPYING.
 dnl configure.ac: 
 dnl
 dnl  Source file for GrADS auto-configuration script. 
@@ -81,6 +82,12 @@ AC_ARG_WITH([opengrads],
 	    [AS_HELP_STRING([--with-opengrads], [enable OPeNDAP support for station data])],
             [with_opengrads=yes],
             [with_opengrads=no])
+
+AC_ARG_WITH([adios2],
+            [AS_HELP_STRING([--with-adios2@<:@=PREFIX@:>@],
+                            [enable ADIOS2 BP5 support, optionally using PREFIX/bin/adios2-config])],
+            [],
+            [with_adios2=no])
 
 # ----------------------------------------------------
 # Checks for programs
@@ -910,6 +917,52 @@ if test $with_opengrads != "yes" ; then
     AC_DEFINE(OPENGRADS, 1, [Enable OpenGrADS Extensions])
   fi
 
+# * * * ADIOS2 BP5 * * *
+use_adios2=no
+adios2_cflags=""
+adios2_libs=""
+if test "x$with_adios2" != "xno" ; then
+  if test "x$with_adios2" = "xyes" ; then
+    AC_PATH_PROG([ADIOS2_CONFIG], [adios2-config])
+  else
+    ADIOS2_CONFIG="$with_adios2/bin/adios2-config"
+  fi
+
+  if test ! -x "$ADIOS2_CONFIG" ; then
+    AC_MSG_ERROR([ADIOS2 requested but adios2-config was not found; use --with-adios2=PREFIX])
+  fi
+
+  adios2_cflags=`"$ADIOS2_CONFIG" --serial --c-flags`
+  adios2_libs=`"$ADIOS2_CONFIG" --serial --c-libs`
+
+  ga_save_CPPFLAGS="$CPPFLAGS"
+  ga_save_LIBS="$LIBS"
+  CPPFLAGS="$CPPFLAGS $adios2_cflags"
+  LIBS="$adios2_libs $LIBS"
+
+  AC_CHECK_HEADER([adios2_c.h], [],
+                  [AC_MSG_ERROR([ADIOS2 requested but adios2_c.h is not usable])])
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [[#include <adios2_c.h>]],
+      [[adios2_adios *adios = adios2_init_serial();
+        if (adios == 0) return 1;
+        return adios2_finalize(adios) == adios2_error_none ? 0 : 1;]])],
+    [use_adios2=yes],
+    [AC_MSG_ERROR([ADIOS2 requested but its serial C API could not be linked])])
+
+  CPPFLAGS="$ga_save_CPPFLAGS"
+  LIBS="$ga_save_LIBS"
+fi
+
+if test "$use_adios2" = "yes" ; then
+  AC_DEFINE(USEADIOS2, 1, [Enable ADIOS2 BP5])
+else
+  AC_DEFINE(USEADIOS2, 0, [Disable ADIOS2 BP5])
+fi
+AC_SUBST(adios2_cflags)
+AC_SUBST(adios2_libs)
+
 # ----------------------------------------------------
 # Send test results to makefile and config.h
 # ----------------------------------------------------
@@ -927,6 +980,7 @@ AM_CONDITIONAL(USEDAP,    [ test "$use_dap" = "yes" ] )
 AM_CONDITIONAL(USEHDF,    [ test "$use_hdf" = "yes" ] )
 AM_CONDITIONAL(USEGD,     [ test "$use_gd" = "yes" ] )
 AM_CONDITIONAL(USECAIRO,  [ test "$use_cairo" = "yes" ] )
+AM_CONDITIONAL(USEADIOS2, [ test "$use_adios2" = "yes" ] )
 AM_CONDITIONAL(OPENGRADS, [ test "$with_opengrads" = "yes" ] )
 
 
@@ -1008,6 +1062,11 @@ if test "$use_hdf5" = "yes" ; then
 else
    echo "  |  - HDF5 disabled              |"
 fi 
+if test "$use_adios2" = "yes" ; then
+   echo "  |  + ADIOS2 BP5 enabled        |"
+else
+   echo "  |  - ADIOS2 BP5 disabled       |"
+fi
 if test "$use_nc" != "yes" ; then
    echo "  |  - NETCDF disabled            |"
 else

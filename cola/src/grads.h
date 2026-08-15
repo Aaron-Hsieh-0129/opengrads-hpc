@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for optional ADIOS2 BP5 support; see COPYING. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -482,6 +483,8 @@ struct gastat {
   gaint time_type;             /* temporary flag for SDF time handling */
   char sdfdimnam[100][129];
   long cachesize;            /* default netcdf4/hdf5 cache size */
+  gaint adios2flg;             /* 1==ADIOS2 BP5 gridded data */
+  void *adios2;                /* backend-owned ADIOS2 state */
 };
 
 /* Structure that describes a grid (requestor or descriptor block).  */
@@ -891,6 +894,9 @@ gaint gaspcl (char *, struct gacmn *);
 gaint gapars (char *, struct gastat *, struct gacmn *) ;
 void gagrel (struct gacmn *);
 gaint gaopen (char *, struct gacmn *);
+#if USEADIOS2==1
+gaint gaadios_bpopen (char *, struct gacmn *);
+#endif
 void cleanup (char *);
 void mygreta(char *);
 struct gastat *getpst (struct gacmn *);
@@ -1006,6 +1012,12 @@ gaint gaclosehdf (struct gafile *);
 gaint gacloseh5 (struct gafile *);
 gaint gaophdf (struct gafile *, gaint, gaint);
 gaint gaoph5 (struct gafile *, gaint, gaint);
+gaint gaadios_open (struct gafile *);
+void gaadios_close (struct gafile *);
+gaint gaadios_read_row (struct gafile *, struct gavar *, gaint, gaint, gaint,
+                        gaint, gaint, gaint, gadouble *, char *);
+gaint gaadios_read_grid (struct gafile *, struct gavar *, struct gagrid *,
+                          gadouble *, char *);
 gaint h5setup (void);
 #if USEHDF5==1
 gaint h5openvar (gaint,char*,hid_t*,hid_t*);

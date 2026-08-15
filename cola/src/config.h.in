@@ -1,4 +1,5 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
+/* Modified in 2026 for optional ADIOS2 BP5 build support; see ../../COPYING. */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
@@ -122,6 +123,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* Enable ADIOS2 BP5 */
+#undef USEADIOS2
 
 /* Enable cairo */
 #undef USECAIRO

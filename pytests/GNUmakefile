@@ -1,4 +1,5 @@
 #
+# Modified in 2026; see ../COPYING and docs/CHANGES-BP5.md.
 # Tests an opengrads bundle.
 #
 
@@ -31,4 +32,8 @@ bundle-check:
 	/usr/bin/env PYTHONPATH=$(PYTHONPATH) \
 	             GASCRP=$(GASCRP) \
                     ./grads_tests.py -d $(GADSET)/ -b $(GABnDIR)/
+
+bp5-check:
+	OPENGRADS_BUILD_ROOT=${OPENGRADS_BUILD_ROOT} \
+	OPENGRADS_ADIOS2_ROOT=${OPENGRADS_ADIOS2_ROOT} ./TestBP5.sh
 

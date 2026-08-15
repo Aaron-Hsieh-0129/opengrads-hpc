@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Added in 2026 for BP5 development runtime setup and color; see COPYING.
+
+set -euo pipefail
+
+repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+build_root="${OPENGRADS_BUILD_ROOT:-/tmp/opengrads-build-cpu}"
+bundle_root="${OPENGRADS_BUNDLE_ROOT:-}"
+if [[ -z "$bundle_root" ]]; then
+  for candidate in "$repo_root/opengrads/Contents" \
+                   "$repo_root/../opengrads-2.2.1.oga.1/Contents"; do
+    if [[ -d "$candidate" ]]; then
+      bundle_root="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -z "$bundle_root" ]]; then
+  printf 'OpenGrADS bundle resources were not found.\n' >&2
+  printf 'Set OPENGRADS_BUNDLE_ROOT to a complete Contents directory.\n' >&2
+  exit 1
+fi
+platform="$(uname -s)"
+machine="$(uname -m)"
+
+version_file="$bundle_root/$platform/Versions/Current@"
+if [[ -r "$version_file" ]]; then
+  bundle_version="$(<"$version_file")"
+  platform_root="$bundle_root/$platform/Versions/$bundle_version/$machine"
+else
+  platform_root="$bundle_root/$platform/$machine"
+fi
+
+grads_binary="$build_root/src/grads"
+plugin_dir="$platform_root/gex"
+support_dir="$bundle_root/Resources/SupportData"
+script_dir="$bundle_root/Resources/Scripts"
+
+if [[ ! -x "$grads_binary" ]]; then
+  printf 'OpenGrADS development binary was not found at:\n  %s\n' "$grads_binary" >&2
+  printf 'Rebuild it using the instructions in:\n  %s/AGENTS.md\n' "$repo_root" >&2
+  printf 'Or set OPENGRADS_BUILD_ROOT to another build directory.\n' >&2
+  exit 1
+fi
+
+if [[ ! -r "$plugin_dir/udpt" ]]; then
+  printf 'OpenGrADS graphics plug-in table was not found at:\n  %s/udpt\n' "$plugin_dir" >&2
+  printf 'Set OPENGRADS_BUNDLE_ROOT to a complete OpenGrADS Contents directory.\n' >&2
+  exit 1
+fi
+
+export GAUDPT="$plugin_dir/udpt"
+export GA2UDXT="$plugin_dir/udxt"
+export GADDIR="$support_dir"
+
+if [[ -n "${GASCRP:-}" ]]; then
+  export GASCRP="$GASCRP $script_dir"
+else
+  export GASCRP="$script_dir"
+fi
+
+if [[ "$platform" == "Darwin" ]]; then
+  if [[ -n "${DYLD_LIBRARY_PATH:-}" ]]; then
+    export DYLD_LIBRARY_PATH="$plugin_dir:$DYLD_LIBRARY_PATH"
+  else
+    export DYLD_LIBRARY_PATH="$plugin_dir"
+  fi
+else
+  adios2_root="${OPENGRADS_ADIOS2_ROOT:-}"
+  library_path="$plugin_dir"
+  if [[ -d "$adios2_root/lib" ]]; then
+    library_path="$adios2_root/lib:$library_path"
+  fi
+  if [[ -n "${OPENGRADS_EXTRA_LIBRARY_PATH:-}" ]]; then
+    library_path="$library_path:$OPENGRADS_EXTRA_LIBRARY_PATH"
+  fi
+  export LD_LIBRARY_PATH="$library_path"
+
+  # The legacy graphics bundle carries an old libstdc++. Preload the runtime
+  # next to ADIOS2 (when present) so the bundle cannot override ADIOS2's ABI.
+  cxx_runtime="${OPENGRADS_CXX_RUNTIME:-}"
+  if [[ -z "$cxx_runtime" && -n "$adios2_root" &&
+        -f "$adios2_root/lib/libstdc++.so.6" ]]; then
+    cxx_runtime="$adios2_root/lib/libstdc++.so.6"
+  fi
+  if [[ -z "$cxx_runtime" ]]; then
+    adios2_library=""
+    while read -r library arrow resolved remainder; do
+      if [[ "$library" == libadios2_c.so* && "$resolved" == /* ]]; then
+        adios2_library="$resolved"
+        break
+      fi
+    done < <(env -u LD_LIBRARY_PATH ldd "$grads_binary" 2>/dev/null || true)
+    if [[ -n "$adios2_library" &&
+          -f "$(dirname -- "$adios2_library")/libstdc++.so.6" ]]; then
+      cxx_runtime="$(dirname -- "$adios2_library")/libstdc++.so.6"
+    fi
+  fi
+  if [[ -z "$cxx_runtime" && -x /usr/bin/c++ ]]; then
+    cxx_runtime="$(/usr/bin/c++ -print-file-name=libstdc++.so.6 2>/dev/null || true)"
+  fi
+  if [[ -z "$cxx_runtime" ]] && command -v c++ >/dev/null 2>&1; then
+    cxx_runtime="$(c++ -print-file-name=libstdc++.so.6 2>/dev/null || true)"
+  fi
+  if [[ -n "$cxx_runtime" && -f "$cxx_runtime" ]]; then
+    export LD_PRELOAD="$cxx_runtime${LD_PRELOAD:+:$LD_PRELOAD}"
+  fi
+fi
+
+if [[ "$#" -eq 0 ]]; then
+  set -- -l
+fi
+
+color_args=()
+if [[ "${OPENGRADS_COLOR:-1}" != 0 ]]; then
+  color_args=(-C "${OPENGRADS_COLOR_SCHEME:-1}")
+fi
+
+exec "$grads_binary" "${color_args[@]}" "$@"

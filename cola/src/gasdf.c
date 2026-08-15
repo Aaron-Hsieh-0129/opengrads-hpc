@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 to bound descriptor attribute parsing; see COPYING. */
 
 /*  
    Reads the metadata from a Self-Describing File 
@@ -3443,7 +3444,7 @@ size_t sz;
       /* Get the undef attribute name, if it's there */
       if ((ch=nxtwrd(ch))!=NULL) {
 	len = 0;
-	while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	sz = len+1;
 	if ((pfi->undefattr = (char *)galloc(sz,"undefattr5")) == NULL) goto err8;
 	for (i=0; i<len; i++) *(pfi->undefattr+i) = *(ch+i);
@@ -3453,7 +3454,7 @@ size_t sz;
         /* Get the secondary undef attribute name, if it's there */
         if ((ch=nxtwrd(ch))!=NULL) {
 	  len = 0;
-	  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	  sz = len+1;
 	  if ((pfi->undefattr2 = (char *)galloc(sz,"undefattr6")) == NULL) goto err8;
 	  for (i=0; i<len; i++) *(pfi->undefattr2+i) = *(ch+i);
@@ -3476,7 +3477,7 @@ size_t sz;
       parms->xsrch = 0 ;                    
       /* Copy the X dimension name into parms structure*/
       len = 0;
-      while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+      while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
       sz = len+1;
       if ((parms->xdimname = (char *)galloc(sz,"xdimname")) == NULL) goto err8;
       for (i=0; i<len; i++) *(parms->xdimname+i) = *(ch+i);
@@ -3522,7 +3523,7 @@ size_t sz;
       parms->ysrch = 0 ;
       /* Copy the Y dimension name into parms structure*/
       len = 0;
-      while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+      while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
       sz = len+1;
       if ((parms->ydimname = (char *)galloc(sz,"ydimname")) == NULL) goto err8;
       for (i=0; i<len; i++) *(parms->ydimname+i) = *(ch+i);
@@ -3605,7 +3606,7 @@ size_t sz;
       parms->zsrch = 0 ;
       /* Copy the Z dimension name into parms structure*/
       len = 0;
-      while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+      while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
       sz = len+1;
       if ((parms->zdimname = (char *)galloc(sz,"zdimname")) == NULL) goto err8;
       for (i=0; i<len; i++) *(parms->zdimname+i) = *(ch+i);
@@ -3648,7 +3649,7 @@ size_t sz;
       else {
 	/* Copy the T dimension name into parms structure*/
 	len = 0;
-	while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	sz = len+1;
 	if ((parms->tdimname = (char *)galloc(sz,"tdimname")) == NULL) goto err8;
 	for (i=0; i<len; i++) *(parms->tdimname+i) = *(ch+i);
@@ -3729,7 +3730,7 @@ size_t sz;
       parms->esrch  = 0;  /* got the coordinate variable name */
       /* copy the E dimension name into parms structure */
       len = 0;
-      while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+      while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
       sz = len+1;
       if ((parms->edimname = (char *)galloc(sz,"edimname")) == NULL) {
 	gaprnt(0,"Unable to allocate memory for E coordinate axis name\n");

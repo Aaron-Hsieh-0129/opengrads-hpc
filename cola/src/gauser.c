@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for optional ADIOS2 BP5 and CLI support; see COPYING. */
 
 /* Authored by B. Doty */
 
@@ -769,6 +770,17 @@ FILE *pdefid=NULL;
     if (!retcod) mygreta(cc);   /* (for IGES only) keep track of user's opened files */
 
     goto retrn;
+#if USEADIOS2==1
+  } else if (cmpwrd("bpopen", cmd)) {
+    if ((cmd = nxtwrd(com)) == NULL) {
+      gaprnt(0, "BPOPEN error: missing BP5 dataset pathname\n");
+      retcod = 1;
+      goto retrn;
+    }
+    retcod = gaadios_bpopen(cmd, pcm);
+    if (!retcod) mygreta(cmd);
+    goto retrn;
+#endif
 #if (USENETCDF==1 || USEHDF ==1)
   } else if (cmpwrd("sdfopen", cmd)) {
     if ((cmd = nxtwrd(com)) == NULL) {
@@ -3879,6 +3891,7 @@ gadouble minvals[4], maxvals[4],dval;
 
     if (pfi->ncflg==1) gaprnt(2,"dtype netcdf\n");
     if (pfi->ncflg==2) gaprnt(2,"dtype hdfsds\n");
+    if (pfi->adios2flg) gaprnt(2,"dtype bp5\n");
     if (pfi->type==2) {
       gaprnt (2,"dtype station\n");
       snprintf(pout,1255,"  Tsize = %i\n",pfi->dnum[3]);
@@ -7581,7 +7594,18 @@ gaint rc;
   pfi->fseq = pcm->fseq;       /* opened files get unique sequence number */
 
   if (pfi->tmplat==0 && pfi->dhandle == -999) {
-    if (pfi->ncflg) {
+    if (pfi->adios2flg) {
+#if USEADIOS2==1
+      rc = gaadios_open(pfi);
+      if (rc) {
+        frepfi (pfi,0);
+        return (1);
+      }
+#else
+      frepfi (pfi,0);
+      return (1);
+#endif
+    } else if (pfi->ncflg) {
       if (pfi->ncflg==1) {    /* dtype netcdf */
 #if USENETCDF == 1
 	rc = gaopnc(pfi,0,1);

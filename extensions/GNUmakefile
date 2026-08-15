@@ -1,4 +1,5 @@
 #
+# Modified in 2026; see ../COPYING and docs/CHANGES-BP5.md.
 # Driver Makefile
 #
 
@@ -20,7 +21,6 @@ endif
 endif
 
 bintype=# On windows this will be set to c, nc, nc4, dods, hdf
-nam
 # Default installation directory depends on whether this is a standalone
 # module or not
 ifneq ($(wildcard ./include),)
@@ -61,10 +61,13 @@ SUBDIRS = ams bjt fish hello ipc re shfilt gsf mf lats orb tle # gxyat shape
 % :
 	@ t=$@; argv="$(SUBDIRS)" ;\
           for d in $$argv; do                    \
-            ( cd $$d                            ;\
-              echo -n "Making $$t for extension <$$d> ... ";\
-              $(MAKE) -e  $$t ;\
-              echo ok ) \
+            ( cd $$d; \
+              echo -n "Making $$t for extension <$$d> ... "; \
+              if $(MAKE) -e $$t; then \
+                echo ok; \
+              else \
+                echo failed; exit 1; \
+              fi ) || exit 1; \
           done
 
 # Note: it may be better to have a top ut.py for this
@@ -92,10 +95,13 @@ install : force
 	@/bin/mkdir -p $(bindir) $(gexdir)
 	@ t=$@; argv="$(SUBDIRS)" ;\
           for d in $$argv; do                    \
-            ( cd $$d                            ;\
-              echo -n "Making $$t for extension <$$d> ... ";\
-              $(MAKE) -e  $$t ;\
-              echo ok ) \
+            ( cd $$d; \
+              echo -n "Making $$t for extension <$$d> ... "; \
+              if $(MAKE) -e $$t; then \
+                echo ok; \
+              else \
+                echo failed; exit 1; \
+              fi ) || exit 1; \
           done
 	@/bin/rm -rf $(gexdir)/udxt
 	@/bin/cat $(gexdir)/*.udxt > $(gexdir)/udxt 

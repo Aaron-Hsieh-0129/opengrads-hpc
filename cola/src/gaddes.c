@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for ADIOS2 BP5 descriptors and safe attribute parsing; see COPYING. */
 
 /* Authored by B. Doty */
 
@@ -202,7 +203,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	haveao = 0;
 	/* get the scale factor attribute name */
 	len = 0;
-	while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	sz = len+3;
 	if ((pfi->scattr = (char *)galloc(sz,"scattr")) == NULL) goto err8;
 	for (i=0; i<len; i++) *(pfi->scattr+i) = *(ch+i);
@@ -215,7 +216,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	  gaprnt (1,"Descriptor File Warning: No offset attribute name in unpack record\n");
 	} else {
 	  len = 0;
-	  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	  sz = len+3;
 	  if ((pfi->ofattr = (char *)galloc(sz,"ofattr")) == NULL) goto err8;
 	  for (i=0; i<len; i++) *(pfi->ofattr+i) = *(ch+i);
@@ -383,6 +384,14 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       }
 #if GRIB2
       else if (cmpwrd("grib2",ch)) pfi->idxflg = 2;
+#endif
+#if USEADIOS2==1
+      else if (cmpwrd("bp5",ch) || cmpwrd("adios2",ch)) pfi->adios2flg = 1;
+#else
+      else if (cmpwrd("bp5",ch) || cmpwrd("adios2",ch)) {
+        gaprnt (0,"Open Error: This build does not include ADIOS2 BP5 support\n");
+        goto err9;
+      }
 #endif
 #if USENETCDF
       else if (cmpwrd("netcdf",ch)) pfi->ncflg = 1;
@@ -755,7 +764,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       /* Get the undef attribute name, if it's there */
       if ( (ch=nxtwrd(ch))!=NULL ) {
 	len = 0;
-	while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	sz = len+3;
 	if ((pfi->undefattr = (char *)galloc(sz,"undefattr3")) == NULL) goto err8;
 	for (i=0; i<len; i++) *(pfi->undefattr+i) = *(ch+i);
@@ -766,7 +775,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
         /* Get the secondry undef attribute name, if it's there */
         if ( (ch=nxtwrd(ch))!=NULL ) {
   	  len = 0;
-	  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+	  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
 	  sz = len+3;
 	  if ((pfi->undefattr2 = (char *)galloc(sz,"undefattr4")) == NULL) goto err8;
 	  for (i=0; i<len; i++) *(pfi->undefattr2+i) = *(ch+i);
@@ -2047,6 +2056,15 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 
   if (err) goto retrn;
 
+  if (pfi->adios2flg && (pfi->tmplat || pfi->ppflag)) {
+    gaprnt(0,"Open Error: BP5 currently supports non-templated, non-PDEF grids only\n");
+    goto retrn;
+  }
+  if (pfi->adios2flg && pfi->type!=1) {
+    gaprnt(0,"Open Error: BP5 currently supports gridded data only\n");
+    goto retrn;
+  }
+
   /* Make sure there are no conflicting options and data types */
   pvar=pfi->pvar1;
   for (j=1; j<=pfi->vnum; j++) {
@@ -2643,7 +2661,7 @@ struct gaattr *parseattr (char *ch) {
   
   /* get the variable name */
   len = 0;
-  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
   for (jj=0; jj<len; jj++) varname[jj] = *(ch+jj);
   varname[len] = '\0';
   
@@ -2653,7 +2671,7 @@ struct gaattr *parseattr (char *ch) {
     goto err;
   } 
   len = 0;
-  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
   for (jj=0; jj<len; jj++) attrtype[jj] = *(ch+jj);
   attrtype[len] = '\0';
   
@@ -2663,7 +2681,7 @@ struct gaattr *parseattr (char *ch) {
     goto err;
   }
   len = 0;
-  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
+  while (*(ch+len)!='\0' && *(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
   for (jj=0; jj<len; jj++) attrname[jj] = *(ch+jj);
   attrname[len] = '\0';
   
@@ -2852,6 +2870,8 @@ size_t sz;
   pfi->idxflg = 0;       /* Assume binary */
   pfi->ncflg = 0;        /* Assume not netcdf */
   pfi->bufrflg = 0;      /* Assume not bufr */
+  pfi->adios2flg = 0;    /* Assume not ADIOS2 BP5 */
+  pfi->adios2 = NULL;     /* No ADIOS2 state allocated */
   pfi->ncid = -999;      /* No netcdf file open */
   pfi->sdid = -999;      /* No hdfsds file open */
   pfi->h5id = -999;      /* No hdf5 file open */
@@ -2936,6 +2956,9 @@ struct gachsub *pchsub,*pch2;
 gaint i;
 
 /* these are listed in the order in which they appear in the pfi declaration in grads.h */
+#if USEADIOS2==1 && !defined(STNDALN)
+  if (pfi->adios2) gaadios_close(pfi);
+#endif
   if (pfi->tempname) gree(pfi->tempname,"f56");
   if (pfi->mnam)   gree(pfi->mnam,"f57");
   if (pfi->rbuf)   gree(pfi->rbuf,"f58");
