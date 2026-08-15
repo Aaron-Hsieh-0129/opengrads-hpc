@@ -8,7 +8,140 @@ There is currently no supported portable binary release of this fork. A clone
 contains source code, not the compiled `grads` executable or ADIOS2. Build
 once using the steps below; afterward, use `./opengrads` directly.
 
-## 1. Clone the repository
+## 1. Find or load the bootstrap tools
+
+This workflow uses no system package manager and writes only below `$HOME`.
+It first reuses tools already on `PATH`. On a cluster, check available modules
+with `module avail` and load a compiler or CMake module before continuing.
+
+A C compiler, C++ compiler, `make`, `curl`, `tar`, and `sha256sum` must already
+exist, along with the compiler's linker/binutils and a basic Unix userland
+(`sh`, `awk`, `sed`, `grep`, and `install`). A compiler cannot be bootstrapped
+from source without another working compiler. Check the main tools with:
+
+```bash
+export CC="${CC:-$(command -v gcc || command -v cc)}"
+export CXX="${CXX:-$(command -v g++ || command -v c++)}"
+
+"$CC" --version
+"$CXX" --version
+make --version
+curl --version
+tar --version
+sha256sum --version
+```
+
+All six commands must succeed. If the compiler or `make` is missing, load a
+site-provided toolchain module or ask the machine administrator for a basic
+build toolchain. No root privileges are needed after that bootstrap.
+
+## 2. Build local CMake, ncurses, and Readline
+
+Use one private prefix for locally built tools and libraries:
+
+```bash
+export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+deps_root="$OPENGRADS_DEPS_ROOT"
+deps_source="$HOME/src/opengrads-deps"
+deps_build="$HOME/build/opengrads-deps"
+jobs="${OPENGRADS_BUILD_JOBS:-4}"
+
+mkdir -p "$deps_root" "$deps_source" "$deps_build"
+export PATH="$deps_root/bin:$PATH"
+export CPPFLAGS="-I$deps_root/include"
+export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
+export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="$deps_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+```
+
+If `cmake --version` already works, keep it. Otherwise build CMake 3.31.8
+locally:
+
+```bash
+if ! command -v cmake >/dev/null 2>&1; then
+  cd "$deps_source"
+  curl -fL --retry 3 \
+    https://github.com/Kitware/CMake/releases/download/v3.31.8/cmake-3.31.8.tar.gz \
+    -o cmake-3.31.8.tar.gz
+  printf '%s  %s\n' \
+    e3cde3ca83dc2d3212105326b8f1b565116be808394384007e7ef1c253af6caa \
+    cmake-3.31.8.tar.gz | sha256sum --check -
+  tar -xzf cmake-3.31.8.tar.gz
+  cd cmake-3.31.8
+  ./bootstrap --prefix="$deps_root" --parallel="$jobs"
+  make --jobs "$jobs"
+  make install
+fi
+cmake --version
+```
+
+Build ncurses 6.5 and GNU Readline 8.2 in the same prefix. The explicit
+`SHLIB_LIBS=-lncurses` is important: it prevents the private Readline shared
+library from exposing unresolved terminal symbols to unrelated programs.
+
+```bash
+cd "$deps_source"
+curl -fL --retry 3 https://ftp.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz \
+  -o ncurses-6.5.tar.gz
+curl -fL --retry 3 https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz \
+  -o readline-8.2.tar.gz
+
+printf '%s  %s\n' \
+  136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6 \
+  ncurses-6.5.tar.gz | sha256sum --check -
+printf '%s  %s\n' \
+  3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35 \
+  readline-8.2.tar.gz | sha256sum --check -
+
+tar -xzf ncurses-6.5.tar.gz
+tar -xzf readline-8.2.tar.gz
+
+cd "$deps_source/ncurses-6.5"
+CC="$CC" CXX="$CXX" ./configure \
+  --prefix="$deps_root" \
+  --with-shared \
+  --without-debug \
+  --without-ada \
+  --without-tests \
+  --disable-widec \
+  --enable-overwrite
+make --jobs "$jobs"
+make install
+
+cd "$deps_source/readline-8.2"
+CC="$CC" CPPFLAGS="-I$deps_root/include" \
+LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib" \
+  ./configure --prefix="$deps_root" --enable-shared --disable-static
+make --jobs "$jobs" SHLIB_LIBS=-lncurses
+make install SHLIB_LIBS=-lncurses
+
+ldd "$deps_root/lib/libreadline.so"
+```
+
+An ncurses message saying that `ldconfig` was not run can be ignored. The
+build embeds a private-library run path, and the `opengrads` launcher also
+loads `$OPENGRADS_DEPS_ROOT/lib`.
+
+In every new shell, restore the local paths before rebuilding:
+
+```bash
+export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+deps_root="$OPENGRADS_DEPS_ROOT"
+deps_source="$HOME/src/opengrads-deps"
+deps_build="$HOME/build/opengrads-deps"
+jobs="${OPENGRADS_BUILD_JOBS:-4}"
+export PATH="$deps_root/bin:$PATH"
+export CPPFLAGS="-I$deps_root/include"
+export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
+export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="$deps_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export CC="${CC:-$(command -v gcc || command -v cc)}"
+export CXX="${CXX:-$(command -v g++ || command -v c++)}"
+```
+
+## 3. Obtain the source and build serial CPU-only ADIOS2 2.11.0
+
+Clone this repository when `git` is available:
 
 ```bash
 git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git
@@ -16,49 +149,44 @@ cd opengrads-update
 repo_root="$PWD"
 ```
 
-## 2. Install build prerequisites
-
-Debian or Ubuntu headless build:
+Without `git`, download the GitHub source archive instead:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential cmake git pkg-config \
-  autoconf automake libtool \
-  libreadline-dev libncurses-dev
+mkdir -p "$HOME/src"
+cd "$HOME/src"
+curl -fL --retry 3 \
+  https://github.com/Aaron-Hsieh-0129/opengrads-update/archive/refs/heads/main.tar.gz \
+  -o opengrads-update-main.tar.gz
+tar -xzf opengrads-update-main.tar.gz
+cd opengrads-update-main
+repo_root="$PWD"
 ```
 
-For an X window and Cairo graphics, also install:
+Download the pinned ADIOS2 source release and verify it:
 
 ```bash
-sudo apt-get install -y \
-  libx11-dev libxext-dev libxrender-dev \
-  libcairo2-dev libfontconfig1-dev libfreetype6-dev libpixman-1-dev \
-  libpng-dev zlib1g-dev libxml2-dev
-```
+cd "$deps_source"
+curl -fL --retry 3 \
+  https://github.com/ornladios/ADIOS2/archive/refs/tags/v2.11.0.tar.gz \
+  -o adios2-v2.11.0.tar.gz
+printf '%s  %s\n' \
+  0a2bd745e3f39745f07587e4a5f92d72f12fa0e2be305e7957bdceda03735dbf \
+  adios2-v2.11.0.tar.gz | sha256sum --check -
+tar -xzf adios2-v2.11.0.tar.gz
 
-Equivalent compiler, CMake, Readline, X11, and Cairo development packages may
-be used on another distribution.
-
-## 3. Build serial CPU-only ADIOS2 2.11.0
-
-Keep third-party source, build files, and installation outside the OpenGrADS
-repository:
-
-```bash
-mkdir -p "$HOME/src" "$HOME/build" "$HOME/.local"
-git clone --branch v2.11.0 --depth 1 \
-  https://github.com/ornladios/ADIOS2.git "$HOME/src/ADIOS2-2.11.0"
-
-adios2_source="$HOME/src/ADIOS2-2.11.0"
-adios2_build="$HOME/build/adios2-2.11.0-cpu"
+adios2_source="$deps_source/ADIOS2-2.11.0"
+adios2_build="$deps_build/adios2-2.11.0-cpu"
 adios2_root="$HOME/.local/adios2-2.11.0-cpu"
+```
 
+Build ADIOS2 with the existing or locally built CMake:
+
+```bash
 cmake -S "$adios2_source" -B "$adios2_build" \
   -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_C_COMPILER=/usr/bin/gcc \
-  -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+  -DCMAKE_C_COMPILER="$CC" \
+  -DCMAKE_CXX_COMPILER="$CXX" \
   -DCMAKE_INSTALL_PREFIX="$adios2_root" \
   -DBUILD_SHARED_LIBS=ON \
   -DBUILD_TESTING=OFF \
@@ -95,7 +223,7 @@ cmake -S "$adios2_source" -B "$adios2_build" \
   -DADIOS2_USE_XRootD=OFF \
   -DADIOS2_USE_Profiling=OFF
 
-cmake --build "$adios2_build" --parallel
+cmake --build "$adios2_build" --parallel "$jobs"
 cmake --install "$adios2_build"
 "$adios2_root/bin/adios2-config" --version
 ```
@@ -115,8 +243,8 @@ build_root="$repo_root/build"
 mkdir -p "$build_root/src" "$build_root/lib"
 
 cd "$build_root"
-CC=/usr/bin/gcc \
-CXX=/usr/bin/g++ \
+CC="$CC" \
+CXX="$CXX" \
 ac_cv_header_hdf5_h=no \
   "$repo_root/cola/configure" \
   --enable-dyn-supplibs \
@@ -125,7 +253,7 @@ ac_cv_header_hdf5_h=no \
   --without-gui \
   --with-adios2="$adios2_root"
 
-make -C src --jobs 4 grads libgxdummy.la
+make -C src --jobs "$jobs" grads libgxdummy.la
 ```
 
 The configuration summary must include:
@@ -140,15 +268,27 @@ completion.
 
 ### Optional Cairo/X11 graphical plug-ins
 
-If the Cairo/X11 development packages were installed and configure reports
-Cairo enabled, build:
+The headless build above has no Cairo/X11 prerequisites. The environment in
+step 2 also exposes any Cairo/X11 headers already installed in the local
+prefix. If the configure summary says `CAIRO enabled`, build:
 
 ```bash
-make -C "$build_root/src" --jobs 4 libgxpCairo.la libgxdCairo.la libgxdX11.la
+make -C "$build_root/src" --jobs "$jobs" \
+  libgxpCairo.la libgxdCairo.la libgxdX11.la
 ```
 
-If this optional command fails, the headless BP5 executable and tests can
-still be used.
+Another no-root option is to reuse the graphics plug-ins and resource files
+from an existing original OpenGrADS bundle. Keep the BP5-enabled executable
+from this repository and point the launcher at the bundle's `Contents`
+directory:
+
+```bash
+OPENGRADS_BUNDLE_ROOT=/path/to/opengrads/Contents ./opengrads
+```
+
+The launcher also finds a sibling directory named
+`opengrads-2.2.1.oga.1/Contents` automatically. If neither local graphics nor
+a compatible bundle is available, use the fully supported headless mode.
 
 ## 5. Verify the installation
 
@@ -189,6 +329,9 @@ cd "$repo_root"
 ./opengrads
 ```
 
+The launcher automatically adds `$OPENGRADS_DEPS_ROOT/lib` (defaulting to
+`$HOME/.local/opengrads-deps/lib`) to its runtime library path.
+
 The launcher searches for `repo/build/src/grads` first. When locally built
 Cairo/X11 plug-ins and an X display are available, it opens a graphical
 window. Otherwise it automatically starts in headless `gxdummy` mode.
@@ -221,24 +364,38 @@ OPENGRADS_ADIOS2_ROOT=/path/to/adios2-install \
 
 ## Updating an existing installation
 
-Set the paths again in a new shell, then update and rebuild:
+Restore the local-prefix variables from step 2, then update and rebuild:
 
 ```bash
+export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+deps_root="$OPENGRADS_DEPS_ROOT"
+export PATH="$deps_root/bin:$PATH"
+export CPPFLAGS="-I$deps_root/include"
+export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
+export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CC="${CC:-$(command -v gcc || command -v cc)}"
+export CXX="${CXX:-$(command -v g++ || command -v c++)}"
+export LD_LIBRARY_PATH="$deps_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
 cd /path/to/opengrads-update
 repo_root="$PWD"
 build_root="$repo_root/build"
-adios2_build="$HOME/build/adios2-2.11.0-cpu"
+adios2_build="$HOME/build/opengrads-deps/adios2-2.11.0-cpu"
 adios2_root="$HOME/.local/adios2-2.11.0-cpu"
+jobs="${OPENGRADS_BUILD_JOBS:-4}"
 
 git pull --ff-only origin main
-cmake --build "$adios2_build" --parallel
+cmake --build "$adios2_build" --parallel "$jobs"
 cmake --install "$adios2_build"
-make -C "$build_root/src" --jobs 4 grads libgxdummy.la
+make -C "$build_root/src" --jobs "$jobs" grads libgxdummy.la
 
 OPENGRADS_BUILD_ROOT="$build_root" \
 OPENGRADS_ADIOS2_ROOT="$adios2_root" \
   ./pytests/TestBP5.sh
 ```
+
+If you installed from the GitHub archive instead of a Git clone, download a
+new archive and rebuild rather than running `git pull`.
 
 ## Troubleshooting
 

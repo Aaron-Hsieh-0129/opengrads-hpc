@@ -97,7 +97,11 @@ if [[ "$platform" == Darwin ]]; then
   fi
 else
   adios2_root="${OPENGRADS_ADIOS2_ROOT:-}"
+  local_deps_root="${OPENGRADS_DEPS_ROOT:-$HOME/.local/opengrads-deps}"
   library_path="$plugin_dir"
+  if [[ -d "$local_deps_root/lib" ]]; then
+    library_path="$local_deps_root/lib:$library_path"
+  fi
   if [[ -d "$adios2_root/lib" ]]; then
     library_path="$adios2_root/lib:$library_path"
   fi
@@ -113,6 +117,10 @@ else
     if [[ -z "$cxx_runtime" && -n "$adios2_root" &&
           -f "$adios2_root/lib/libstdc++.so.6" ]]; then
       cxx_runtime="$adios2_root/lib/libstdc++.so.6"
+    fi
+    if [[ -z "$cxx_runtime" &&
+          -f "$local_deps_root/lib/libstdc++.so.6" ]]; then
+      cxx_runtime="$local_deps_root/lib/libstdc++.so.6"
     fi
     if [[ -z "$cxx_runtime" ]]; then
       adios2_library=""
