@@ -182,6 +182,10 @@ adios2_root="$HOME/.local/adios2-2.11.0-cpu"
 Build ADIOS2 with the existing or locally built CMake:
 
 ```bash
+# Prevent site-wide compiler include variables from injecting an unrelated
+# config.h into ADIOS2's bundled third-party projects.
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
+
 cmake -S "$adios2_source" -B "$adios2_build" \
   -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE=Release \
@@ -226,11 +230,16 @@ cmake -S "$adios2_source" -B "$adios2_build" \
 cmake --build "$adios2_build" --parallel "$jobs"
 cmake --install "$adios2_build"
 "$adios2_root/bin/adios2-config" --version
+"$adios2_root/bin/adios2-config" --serial --c-libs
+ldd "$adios2_root/lib64/libadios2_core.so" | \
+  grep -E 'libmpi|libfabric|not found' || true
 ```
 
 Inspect the CMake summary. It must report MPI, CUDA, and Kokkos as disabled.
-Warnings about unused options are acceptable when an option is unavailable in
-the pinned release.
+The final `ldd`/`grep` command must produce no output; a serial C library is
+not sufficient if its ADIOS2 core was built with MPI or has unresolved runtime
+dependencies. Warnings about unused options are acceptable when an option is
+unavailable in the pinned release.
 
 ## 4. Build OpenGrADS
 
@@ -376,6 +385,7 @@ export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig${PKG
 export CC="${CC:-$(command -v gcc || command -v cc)}"
 export CXX="${CXX:-$(command -v g++ || command -v c++)}"
 export LD_LIBRARY_PATH="$deps_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
 
 cd /path/to/opengrads-update
 repo_root="$PWD"
@@ -436,6 +446,43 @@ OPENGRADS_CXX_RUNTIME=/absolute/path/to/libstdc++.so.6 ./opengrads
 ```
 
 Reconfigure OpenGrADS with the exact same `adios2_root`.
+
+### ADIOS2 unexpectedly links MPI or libfabric
+
+An existing ADIOS2 installation may provide `--serial` compiler flags while
+its shared core library was still built with MPI. Check the core, not only the
+output of `adios2-config`:
+
+```bash
+ldd "$adios2_root/lib64/libadios2_core.so" | \
+  grep -E 'libmpi|libfabric|not found' || true
+```
+
+The command must produce no output for the supported build. If it lists MPI,
+libfabric, or a missing library, rebuild ADIOS2 with the step 3 options and
+reconfigure OpenGrADS with that new installation prefix.
+
+When changing `adios2_root` in an existing OpenGrADS build, clean the compiled
+targets after reconfiguring so that the executable is relinked. Do not use
+`make -B`, because it can unnecessarily invoke Autotools regeneration.
+
+```bash
+make -C "$build_root/src" clean
+make -C "$build_root/src" --jobs "$jobs" grads libgxdummy.la
+```
+
+### ADIOS2 EVPath fails with a duplicate `writev`
+
+An error such as `static declaration of 'writev' follows non-static
+declaration` can occur when site-wide compiler include variables make one
+bundled ADIOS2 component include another component's generic `config.h`.
+Clear those variables and resume the existing build:
+
+```bash
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
+cmake --build "$adios2_build" --parallel "$jobs"
+cmake --install "$adios2_build"
+```
 
 ## Direct binary use
 
