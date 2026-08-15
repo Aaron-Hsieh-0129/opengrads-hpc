@@ -1,4 +1,5 @@
 # Autoconf check that uses pkg-config to look for Cairo Graphics Library.
+dnl Modified in 2026 so missing optional Cairo does not abort headless builds; see ../../COPYING.
 # Usage:
 #   GA_CHECK_LIB_CAIRO(action-if-found, action-if-not-found)
 
@@ -6,7 +7,7 @@ AC_DEFUN([GA_CHECK_LIB_CAIRO],
 [
 
   cairo_pkgconfig=no
-  PKG_CHECK_MODULES([CAIRO],[cairo],[cairo_pkgconfig=yes])
+  PKG_CHECK_MODULES([CAIRO],[cairo],[cairo_pkgconfig=yes],[cairo_pkgconfig=no])
 
   if test $cairo_pkgconfig = 'yes'; then
      m4_if([$1], [], [:], [$1])

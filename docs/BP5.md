@@ -42,7 +42,7 @@ cmake --build /tmp/adios2-cpu-build --parallel
 cmake --install /tmp/adios2-cpu-build
 ```
 
-ADIOS2 enables other optional packages when it finds them. Inspect its CMake summary and disable unwanted transports, compression packages, and language bindings for a minimal deployment. The exact dependency-minimized configuration used in this workspace is recorded in [AGENTS.md](../AGENTS.md).
+ADIOS2 enables other optional packages when it finds them. Inspect its CMake summary and disable unwanted transports, compression packages, and language bindings for a minimal deployment. The exact dependency-minimized configuration used in this workspace is recorded in [INSTALL.md](INSTALL.md).
 
 GNU Readline is optional. When available at configure time it provides command history, editing, and the Tab completion added by this fork. Color prompts are enabled at runtime by the development launcher.
 
@@ -68,7 +68,7 @@ make -C src -j4 grads libgxdummy.la
 
 The configuration summary must say `ADIOS2 BP5 enabled`. At startup, the configuration line includes `adios2-bp5`; `q config` prints the ADIOS2 version.
 
-This reduced target deliberately builds only the executable and dummy graphics device. The historical full-bundle build and this workspace's Readline/Cairo launcher setup are documented in [AGENTS.md](../AGENTS.md).
+This reduced target deliberately builds only the executable and dummy graphics device. The historical full-bundle build and this workspace's Readline/Cairo launcher setup are documented in [INSTALL.md](INSTALL.md).
 
 ## Open a dataset without a CTL
 
@@ -190,4 +190,4 @@ headlessly with `./opengrads -bl -d gxdummy -h gxdummy`.
 - GrADS retains global request state and is not generally thread-safe.
 - Native cubed-sphere/curvilinear topology is not implemented.
 
-See [AGENTS.md](../AGENTS.md) for the architecture and remaining roadmap.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the architecture and remaining roadmap.

@@ -14,7 +14,7 @@ This document summarizes the changes made after OpenGrADS 2.2.1.oga.1. It is a c
 - Direct discovery reads coordinate variables, dataset title, field descriptions, units, `_FillValue`, and `missing_value`.
 - In-bounds X/Y plots use one bulk ADIOS2 selection instead of one request per row.
 - GNU Readline builds complete common GrADS commands and common `set`, `query`, and `draw` words with Tab.
-- The `opengrads` development launcher configures runtime plug-ins, enables the colored prompt by default, and can be redirected with environment variables.
+- The `opengrads` launcher uses a repository-local build without requiring the historical binary bundle, configures available graphics plug-ins, enables color by default, and supports explicit runtime path overrides.
 
 ## Internal changes
 
@@ -26,6 +26,7 @@ This document summarizes the changes made after OpenGrADS 2.2.1.oga.1. It is a c
 - `gaio.c` dispatches the bulk grid path and retains the BP5 row fallback.
 - Descriptor token scanning in `gaddes.c` and `gasdf.c` now stops at NUL as well as whitespace. This fixes an out-of-bounds read found by AddressSanitizer.
 - Generated Autotools files were refreshed after their canonical inputs changed.
+- Missing optional Cairo or Readline libraries now disable those features cleanly instead of aborting configuration or leaving stale linker flags.
 - Aggregate extension builds now stop when a sub-build fails instead of printing a misleading success.
 
 ## Tests added
@@ -59,4 +60,4 @@ The RCEMIP data is not part of this repository.
 - Native curvilinear and cubed-sphere topology.
 - Reproducible cross-platform performance benchmarks.
 
-See [BP5.md](BP5.md) for usage and [../AGENTS.md](../AGENTS.md) for the architecture and longer roadmap.
+See [BP5.md](BP5.md) for usage and [ARCHITECTURE.md](ARCHITECTURE.md) for the architecture and longer roadmap.

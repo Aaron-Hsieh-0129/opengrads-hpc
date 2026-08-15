@@ -9,8 +9,9 @@ Start here:
 
 * `docs/BP5.md` -- portable build, use, tests, and limitations
 * `docs/CHANGES-BP5.md` -- complete change summary for this revision
-* `AGENTS.md` -- repository structure, architecture, verified build record,
-  and contributor roadmap
+* `docs/INSTALL.md` -- complete new-machine installation and direct-use guide
+* `docs/ARCHITECTURE.md` -- repository structure, runtime architecture,
+  contributor constraints, and engineering roadmap
 * `docs/PUBLISHING.md` -- GitHub source-publication checklist
 * `THIRD_PARTY_NOTICES.md` -- optional dependency attribution and important
   binary-redistribution cautions
@@ -28,26 +29,28 @@ Quick interactive use after building:
 This repository does not include ADIOS2, GNU Readline, build outputs, or the
 RCEMIP verification data. They remain separate dependencies/data.
 
-Downloading
------------
+Obtaining this fork
+-------------------
 
-   URL: https://sourceforge.net/projects/opengrads/files/grads2/
+Clone the BP5-enabled source repository:
 
-   On Linux, select binaries based on your glibc version. 
-   To find out your glibc version, enter onnthe command line:  
+    git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git
+    cd opengrads-update
 
-                        ldd --version
-
-   Select the newest glibc version that is less or equal the
-   version you have installed on your system. For example,
-   if your system has glibc 2.17 you can install any version
-   less than 2.17 (say, 2.12) but not 2.18.
+This fork does not currently publish a universal Linux binary. Build it once
+with `docs/INSTALL.md`, then run it directly with `./opengrads`. The historical
+SourceForge downloads contain the original OpenGrADS releases, not the BP5
+changes in this repository.
 
 Installation
 ------------
 
-   For binary installation information see file INSTALL.
-   For instructions on building from sources consult file BUILD 
+For this BP5-enabled fork, follow `docs/INSTALL.md`. It covers a pinned
+CPU-only ADIOS2 build, OpenGrADS compilation, local headless/graphical
+plug-ins, verification, updates, and runtime troubleshooting.
+
+The historical `BUILD` and `INSTALL` files describe the original
+supplemental-library and bundle workflows.
 
 Overview of GrADS
 -----------------

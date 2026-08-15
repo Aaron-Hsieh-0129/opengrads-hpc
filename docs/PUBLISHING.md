@@ -14,7 +14,8 @@ This is a conservative engineering checklist, not legal advice.
 
 - `COPYING` and `COPYRIGHT`: the existing GPL version 2-only terms and notices.
 - `THIRD_PARTY_NOTICES.md`: optional dependency attribution and compatibility warning.
-- `AGENTS.md`: architecture, verified build record, and remaining roadmap.
+- `docs/INSTALL.md`: supported installation, verification, and direct-use workflow.
+- `docs/ARCHITECTURE.md`: architecture, contributor constraints, and remaining roadmap.
 - `docs/BP5.md`: portable BP5 build, usage, testing, and limitations.
 - `docs/CHANGES-BP5.md`: reviewer-facing summary of this development revision.
 - Source and generated Autotools changes under `cola/`.

@@ -1,4 +1,5 @@
 dnl @synopsis GA_LIB_READLINE
+dnl Modified in 2026 to clear stale linker flags when readline is unavailable; see ../../COPYING.
 dnl  args :             action-if-found, action-if-not-found
 dnl                     it is found if readline is found and has 
 dnl                     history
@@ -94,7 +95,11 @@ AC_DEFUN([GA_LIB_READLINE], [
       m4_if([$2], [], [:], [$2])
     fi
   fi
-  READLINE_LIBS=$TRY_LIB
+  if test "$vl_cv_lib_readline" = "no"; then
+    READLINE_LIBS=""
+  else
+    READLINE_LIBS=$TRY_LIB
+  fi
   LIBS="$ORIG_LIBS"
 
 
