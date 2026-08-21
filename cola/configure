@@ -17237,15 +17237,9 @@ case "$host" in
     LDFLAGS="$LDFLAGS -Wl,-bbigtoc -Wl,-bexpall -Wl,-brtl"
   ;;
 
-  i*86-pc-linux-*)
-    CFLAGS="$CFLAGS -rdynamic"
-  ;;
-
-  x86_64-*-linux-*)
-    CFLAGS="$CFLAGS -rdynamic"
-  ;;
-
-  ia64-*-linux-*)
+  *-*-linux-*)
+    # Graphics devices use dlopen() and call symbols from the main executable.
+    # Export those symbols on every Linux architecture, including ARM64.
     CFLAGS="$CFLAGS -rdynamic"
   ;;
 

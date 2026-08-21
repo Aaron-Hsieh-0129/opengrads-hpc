@@ -10,9 +10,9 @@ once using the steps below; afterward, use `./opengrads` directly.
 
 ## 1. Find or load the bootstrap tools
 
-This workflow uses no system package manager and writes only below `$HOME`.
-It first reuses tools already on `PATH`. On a cluster, check available modules
-with `module avail` and load a compiler or CMake module before continuing.
+After the graphics prerequisites are available, this workflow builds and
+installs below `$HOME`. On a cluster, check available modules with
+`module avail` and load a compiler or CMake module before continuing.
 
 A C compiler, C++ compiler, `make`, `curl`, `tar`, and `sha256sum` must already
 exist, along with the compiler's linker/binutils and a basic Unix userland
@@ -34,6 +34,17 @@ sha256sum --version
 All six commands must succeed. If the compiler or `make` is missing, load a
 site-provided toolchain module or ask the machine administrator for a basic
 build toolchain. No root privileges are needed after that bootstrap.
+
+For the recommended graphical build, Cairo, X11, and Xext development files
+and `pkg-config` must also be installed. On Ubuntu or Debian, install them with:
+
+```bash
+sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev
+pkg-config --modversion cairo x11 xext
+```
+
+On other distributions, install the corresponding development packages. If
+they are unavailable, use the explicit headless build described in step 4.
 
 ## 2. Build local CMake, ncurses, and Readline
 
@@ -262,7 +273,8 @@ ac_cv_header_hdf5_h=no \
   --without-gui \
   --with-adios2="$adios2_root"
 
-make -C src --jobs "$jobs" grads libgxdummy.la
+make -C src --jobs "$jobs" \
+  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxpCairo.la
 ```
 
 The configuration summary must include:
@@ -270,21 +282,28 @@ The configuration summary must include:
 ```text
 + ADIOS2 BP5 enabled
 + READLINE enabled
++ CAIRO enabled
 ```
 
 Readline is optional for data access, but it provides command history and Tab
 completion.
 
-### Optional Cairo/X11 graphical plug-ins
+### Graphical and headless builds
 
-The headless build above has no Cairo/X11 prerequisites. The environment in
-step 2 also exposes any Cairo/X11 headers already installed in the local
-prefix. If the configure summary says `CAIRO enabled`, build:
+The default command above builds the Cairo display and printing plug-ins, the
+X11 display fallback, and the dummy headless device. `--without-gui` disables
+the legacy Athena Widget interface; it does not disable graphical plots.
+
+For a machine without Cairo/X11 development files, build only the supported
+headless device:
 
 ```bash
-make -C "$build_root/src" --jobs "$jobs" \
-  libgxpCairo.la libgxdCairo.la libgxdX11.la
+make -C "$build_root/src" --jobs "$jobs" grads libgxdummy.la
 ```
+
+If Cairo is unavailable but X11 development files exist, also build
+`libgxdX11.la`. The launcher selects X11 automatically for an interactive
+window and uses `gxdummy` for hardcopy output.
 
 Another no-root option is to reuse the graphics plug-ins and resource files
 from an existing original OpenGrADS bundle. Keep the BP5-enabled executable
@@ -295,9 +314,10 @@ directory:
 OPENGRADS_BUNDLE_ROOT=/path/to/opengrads/Contents ./opengrads
 ```
 
-The launcher also finds a sibling directory named
-`opengrads-2.2.1.oga.1/Contents` automatically. If neither local graphics nor
-a compatible bundle is available, use the fully supported headless mode.
+The launcher also finds a compatible sibling directory named
+`opengrads-2.2.1.oga.1/Contents` automatically. A bundle without plug-ins for
+the current platform and architecture is ignored. If neither local graphics
+nor a compatible bundle is available, use the supported headless mode.
 
 ## 5. Verify the installation
 
@@ -329,6 +349,22 @@ quit
 
 The startup configuration must contain `readline adios2-bp5`.
 
+On a desktop with a working X display, start the graphical application:
+
+```bash
+./opengrads
+```
+
+At the prompt, verify the selected graphics devices:
+
+```text
+q gxconfig
+quit
+```
+
+The recommended build reports `GX Display "Cairo"` and `GX Print "Cairo"`.
+An X11-only build reports `GX Display "X11"`.
+
 ## 6. Run OpenGrADS
 
 From the repository:
@@ -341,9 +377,10 @@ cd "$repo_root"
 The launcher automatically adds `$OPENGRADS_DEPS_ROOT/lib` (defaulting to
 `$HOME/.local/opengrads-deps/lib`) to its runtime library path.
 
-The launcher searches for `repo/build/src/grads` first. When locally built
-Cairo/X11 plug-ins and an X display are available, it opens a graphical
-window. Otherwise it automatically starts in headless `gxdummy` mode.
+The launcher searches for `repo/build/src/grads` first. With an X display, it
+prefers the Cairo display/print plug-ins and falls back to the X11 display
+plug-in when Cairo was not built. Without a display plug-in or `$DISPLAY`, it
+automatically starts in headless `gxdummy` mode.
 
 Open BP5 data without a CTL:
 
@@ -397,7 +434,20 @@ jobs="${OPENGRADS_BUILD_JOBS:-4}"
 git pull --ff-only origin main
 cmake --build "$adios2_build" --parallel "$jobs"
 cmake --install "$adios2_build"
-make -C "$build_root/src" --jobs "$jobs" grads libgxdummy.la
+cd "$build_root"
+CC="$CC" \
+CXX="$CXX" \
+ac_cv_header_hdf5_h=no \
+  "$repo_root/cola/configure" \
+  --enable-dyn-supplibs \
+  --with-opengrads \
+  --without-gadap \
+  --without-gui \
+  --with-adios2="$adios2_root"
+make -C src clean
+make -C src --jobs "$jobs" \
+  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxpCairo.la
+cd "$repo_root"
 
 OPENGRADS_BUILD_ROOT="$build_root" \
 OPENGRADS_ADIOS2_ROOT="$adios2_root" \

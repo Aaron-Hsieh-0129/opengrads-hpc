@@ -24,6 +24,10 @@ if [[ ! -x "$grads_binary" ]]; then
 fi
 
 bundle_root="${OPENGRADS_BUNDLE_ROOT:-}"
+bundle_root_explicit=0
+if [[ -n "${OPENGRADS_BUNDLE_ROOT:-}" ]]; then
+  bundle_root_explicit=1
+fi
 if [[ -z "$bundle_root" ]]; then
   for candidate in "$repo_root/opengrads/Contents" \
                    "$repo_root/../opengrads-2.2.1.oga.1/Contents"; do
@@ -50,8 +54,14 @@ if [[ -n "$bundle_root" && -d "$bundle_root" ]]; then
   extension_table="$plugin_dir/udxt"
   support_dir="$bundle_root/Resources/SupportData"
   script_dir="$bundle_root/Resources/Scripts"
-  runtime_kind=bundle
-else
+  if [[ -r "$plugin_table" || "$bundle_root_explicit" -eq 1 ]]; then
+    runtime_kind=bundle
+  else
+    bundle_root=""
+  fi
+fi
+
+if [[ "$runtime_kind" == local ]]; then
   plugin_dir="$build_root/src/.libs"
   plugin_table="$repo_root/etc/udpt-local"
   extension_table=""
@@ -149,10 +159,19 @@ else
 fi
 
 if [[ "$#" -eq 0 ]]; then
-  if [[ "$runtime_kind" == local &&
-        ( -z "${DISPLAY:-}" || ! -r "$plugin_dir/libgxdCairo.so" ||
-          ! -r "$plugin_dir/libgxpCairo.so" ) ]]; then
-    set -- -bl -d gxdummy -h gxdummy
+  if [[ "$runtime_kind" == local ]]; then
+    if [[ -z "${DISPLAY:-}" ]]; then
+      set -- -bl -d gxdummy -h gxdummy
+    elif [[ -r "$plugin_dir/libgxdCairo.so" &&
+            -r "$plugin_dir/libgxpCairo.so" ]]; then
+      set -- -l
+    elif [[ -r "$plugin_dir/libgxdX11.so" ]]; then
+      # X11 provides an interactive window without Cairo. Keep hardcopy on
+      # the dummy device when the Cairo printing plug-in was not built.
+      set -- -l -d X11 -h gxdummy
+    else
+      set -- -bl -d gxdummy -h gxdummy
+    fi
   else
     set -- -l
   fi

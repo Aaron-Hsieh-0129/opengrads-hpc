@@ -16,3 +16,4 @@
 *.x
 autom4te.cache
 /AGENTS.md
+/build/

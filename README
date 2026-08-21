@@ -46,8 +46,8 @@ Installation
 ------------
 
 For this BP5-enabled fork, follow `docs/INSTALL.md`. It covers a pinned
-CPU-only ADIOS2 build, OpenGrADS compilation, local headless/graphical
-plug-ins, verification, updates, and runtime troubleshooting.
+CPU-only ADIOS2 build, graphical Cairo/X11 plug-ins by default, an explicit
+headless fallback, verification, updates, and runtime troubleshooting.
 
 The historical `BUILD` and `INSTALL` files describe the original
 supplemental-library and bundle workflows.
