@@ -1,8 +1,20 @@
-# OpenGrADS Update
+# opengrads-hpc
 
-OpenGrADS Update is a development fork of OpenGrADS 2.2.1.oga.1. It keeps the
-interactive GrADS workflow while adding modern data access, faster calculations,
-and a practical Linux release path for scientific analysis and visualization.
+opengrads-hpc is a maintained fork of OpenGrADS 2.2.1.oga.1, GrADS built for
+modern simulation output. It keeps the interactive GrADS workflow — the same
+descriptors, commands, and `.gs` scripts — while adding an ADIOS2/BP5 reader,
+OpenMP-threaded calculations, and self-contained releases for Linux, macOS,
+and Windows.
+
+**"HPC" means the ADIOS2/BP5 engine plus OpenMP threading on a single node.**
+There is no MPI or GPU support and none is planned; ADIOS2 is deliberately
+built with `ADIOS2_USE_MPI=OFF`. Data written by a multi-rank MPI job is read
+serially.
+
+Releases are versioned independently of GrADS: archives are named
+`opengrads-hpc-<version>`, while `grads` still reports the GrADS baseline it
+matches (`2.2.1.oga.1`). Each archive carries a `VERSION` file with both. See
+[release documentation](docs/RELEASES.md).
 
 ## What is GrADS?
 
@@ -41,13 +53,14 @@ libraries are available.
   retained under [extensions](extensions).
 
 - **Modern interactive and release experience.** Optional GNU Readline adds
-  command history and Tab completion. The Linux release builder produces
-  self-contained x86_64 and aarch64 archives with BP5, OpenMP, graphics, and
-  required runtime libraries.
+  command history and Tab completion. The release builders produce five
+  self-contained archives — Linux x86_64 and aarch64, macOS arm64 and x86_64,
+  and Windows x86_64 — carrying BP5, OpenMP, the graphics plug-ins available
+  on that platform, and every required runtime library.
 
 ## Quick start
 
-For a packaged Linux release, follow [RELEASES.md](docs/RELEASES.md). For a
+For a packaged release, follow [RELEASES.md](docs/RELEASES.md). For a
 source build, follow [INSTALL.md](docs/INSTALL.md). Once started, a BP5 session
 can look like this:
 

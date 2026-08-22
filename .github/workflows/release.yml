@@ -152,12 +152,28 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           pattern: opengrads-*
           path: artifacts
           merge-multiple: true
+
+      - name: Check the tag matches the distribution version
+        run: |
+          dist_version="$(cat release/VERSION)"
+          if [[ "${GITHUB_REF_NAME}" != "v${dist_version}" ]]; then
+            printf 'Tag %s does not match release/VERSION (%s).\n' \
+              "${GITHUB_REF_NAME}" "${dist_version}" >&2
+            exit 1
+          fi
+
       - name: Create release and upload archives
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" artifacts/* --generate-notes --repo "${GITHUB_REPOSITORY}"
+        run: |
+          gh release create "${GITHUB_REF_NAME}" artifacts/* \
+            --title "opengrads-hpc $(cat release/VERSION)" \
+            --notes-file docs/RELEASE_NOTES.md \
+            --repo "${GITHUB_REPOSITORY}"

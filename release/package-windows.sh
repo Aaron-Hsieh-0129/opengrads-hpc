@@ -15,8 +15,9 @@ esac
 repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 build_root="$1"
 output_root="$2"
-version="$(<"$repo_root/cola/src/VERSION")"
-archive_base="opengrads-$version-windows-x86_64"
+grads_version="$(<"$repo_root/cola/src/VERSION")"
+dist_version="$(<"$repo_root/release/VERSION")"
+archive_base="opengrads-hpc-$dist_version-windows-x86_64"
 bundle_root="$output_root/$archive_base"
 lib_root="$bundle_root/lib"
 plugin_root="$bundle_root/plugins"
@@ -61,6 +62,12 @@ cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
 cp -a "$repo_root/docs/." "$bundle_root/docs/"
 install -m 0644 "$repo_root/README.md" "$repo_root/COPYING" \
   "$repo_root/COPYRIGHT" "$repo_root/THIRD_PARTY_NOTICES.md" "$bundle_root/"
+
+# Record both identities so an unpacked archive can say what it is.
+cat > "$bundle_root/VERSION" <<VERSIONFILE
+opengrads-hpc $dist_version
+GrADS base $grads_version
+VERSIONFILE
 install -m 0644 "$repo_root/release/opengrads.cmd" "$bundle_root/opengrads.cmd"
 
 # Breadth-first copy of every non-system DLL the binaries need. MSYS2 reports

@@ -11,9 +11,9 @@ Download the archive matching the machine architecture, verify its adjacent
 `.sha256` file, and run:
 
 ```bash
-sha256sum -c opengrads-2.2.1.oga.1-linux-ARCH.tar.gz.sha256
-tar -xzf opengrads-2.2.1.oga.1-linux-ARCH.tar.gz
-cd opengrads-2.2.1.oga.1-linux-ARCH
+sha256sum -c opengrads-hpc-1.0.0-linux-ARCH.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.0-linux-ARCH.tar.gz
+cd opengrads-hpc-1.0.0-linux-ARCH
 ./opengrads
 ```
 
@@ -63,6 +63,22 @@ the self-contained `gxdummy` driver does. Adding Windows hardcopy means
 exporting the executable's symbols (`-Wl,--export-all-symbols
 -Wl,--out-implib`) and linking the plug-ins against that import library, or
 returning to a Cygwin port as the historical OpenGrADS Windows builds did.
+
+## Two version numbers
+
+Archives are named for the distribution, not for GrADS:
+
+- `release/VERSION` holds the **distribution version** (`1.0.0`). It names the
+  archives and must match the release tag — the publish job fails if
+  `vX.Y.Z` and `release/VERSION` disagree.
+- `AC_INIT` in `cola/configure.ac` holds the **GrADS baseline**
+  (`2.2.1.oga.1`). It feeds `GRADS_VERSION`, so `grads` keeps reporting the
+  GrADS release its behaviour matches. Do not repurpose it as a fork version:
+  a bare `1.0.0` there would make the banner read "GrADS Version 1.0.0", and
+  GrADS 1.x genuinely existed.
+
+Every archive carries a `VERSION` file recording both. To cut a release, bump
+`release/VERSION`, update `docs/RELEASE_NOTES.md`, commit, then tag `vX.Y.Z`.
 
 ## Maintainer one-command build
 

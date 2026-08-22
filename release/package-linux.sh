@@ -16,9 +16,10 @@ deps_root="$2"
 adios2_root="$3"
 work_root="$4"
 output_root="$5"
-version="$(<"$repo_root/cola/src/VERSION")"
+grads_version="$(<"$repo_root/cola/src/VERSION")"
+dist_version="$(<"$repo_root/release/VERSION")"
 machine="$(uname -m)"
-archive_base="opengrads-$version-linux-$machine"
+archive_base="opengrads-hpc-$dist_version-linux-$machine"
 bundle_root="$output_root/$archive_base"
 runtime_lib_root="$bundle_root/adios2/lib"
 plugin_root="$bundle_root/build/src/.libs"
@@ -41,6 +42,12 @@ cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
 cp -a "$repo_root/docs/." "$bundle_root/docs/"
 install -m 0644 "$repo_root/README.md" "$repo_root/COPYING" \
   "$repo_root/COPYRIGHT" "$repo_root/THIRD_PARTY_NOTICES.md" "$bundle_root/"
+
+# Record both identities so an unpacked archive can say what it is.
+cat > "$bundle_root/VERSION" <<VERSIONFILE
+opengrads-hpc $dist_version
+GrADS base $grads_version
+VERSIONFILE
 
 for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxpCairo.so; do
   if [[ ! -r "$build_root/src/.libs/$plugin" ]]; then
