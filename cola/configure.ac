@@ -111,6 +111,18 @@ echo ---------------------
 AC_PROG_AWK
 AC_PROG_CC(xlc gcc cc)
 AC_PROG_CXX(xlc++ g++ c++)
+
+# GrADS predates C23, which reinterprets an empty parameter list such as
+# "void gree();" as taking no arguments rather than an unspecified number.
+# GCC 15 and Clang 16 default to C23, which turns every such call into a hard
+# error. Pin the dialect to gnu17 when the compiler understands it.
+AC_MSG_CHECKING([whether $CC accepts -std=gnu17])
+ga_save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -std=gnu17"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[]])],
+  [AC_MSG_RESULT([yes])],
+  [AC_MSG_RESULT([no])
+   CFLAGS="$ga_save_CFLAGS"])
 AC_PROG_INSTALL
 AC_PROG_LN_S
 echo

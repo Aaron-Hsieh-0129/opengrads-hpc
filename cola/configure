@@ -17214,6 +17214,36 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+# GrADS predates C23, which reinterprets an empty parameter list such as
+# "void gree();" as taking no arguments rather than an unspecified number.
+# GCC 15 and Clang 16 default to C23, which turns every such call into a hard
+# error. Pin the dialect to gnu17 when the compiler understands it.
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $CC accepts -std=gnu17" >&5
+printf %s "checking whether $CC accepts -std=gnu17... " >&6; }
+ga_save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -std=gnu17"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+   CFLAGS="$ga_save_CFLAGS"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ln -s works" >&5
 printf %s "checking whether ln -s works... " >&6; }
 LN_S=$as_ln_s
