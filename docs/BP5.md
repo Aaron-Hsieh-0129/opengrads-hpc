@@ -48,7 +48,7 @@ ADIOS2 enables other optional packages when it finds them. Inspect its CMake sum
 
 BSD libedit is optional. When available at configure time it provides command history, editing, and the Tab completion added by this fork. Color prompts are enabled at runtime by the development launcher.
 
-## Build OpenGrADS
+## Build opengrads-hpc
 
 Build out of tree:
 

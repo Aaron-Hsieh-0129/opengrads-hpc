@@ -1,6 +1,6 @@
 # Calculation performance
 
-OpenGrADS can use OpenMP for common in-memory grid calculations. The default
+opengrads-hpc can use OpenMP for common in-memory grid calculations. The default
 is **4 calculation threads**. OpenMP is detected automatically by
 `configure`; no extra user action is needed with a supported GCC, Clang, or
 vendor compiler.

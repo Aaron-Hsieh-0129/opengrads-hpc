@@ -17,7 +17,7 @@ fi
 
 grads_binary="$build_root/src/grads"
 if [[ ! -x "$grads_binary" ]]; then
-  printf 'OpenGrADS executable was not found at:\n  %s\n' "$grads_binary" >&2
+  printf 'opengrads-hpc executable was not found at:\n  %s\n' "$grads_binary" >&2
   printf 'Build it using:\n  %s/docs/INSTALL.md\n' "$repo_root" >&2
   printf 'Or set OPENGRADS_BUILD_ROOT to an existing build directory.\n' >&2
   exit 1
@@ -78,7 +78,7 @@ if [[ "$runtime_kind" == local ]]; then
 fi
 
 if [[ ! -r "$plugin_table" ]]; then
-  printf 'OpenGrADS graphics plug-in table was not found at:\n  %s\n' \
+  printf 'opengrads-hpc graphics plug-in table was not found at:\n  %s\n' \
     "$plugin_table" >&2
   printf 'See %s/docs/INSTALL.md\n' "$repo_root" >&2
   exit 1

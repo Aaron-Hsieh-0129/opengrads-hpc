@@ -90,7 +90,7 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 ```
 
 The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and libedit
-20240808-3.1 source archives; builds them into `.release-work`; builds OpenGrADS with
+20240808-3.1 source archives; builds them into `.release-work`; builds opengrads-hpc with
 ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
 OpenMP regressions; assembles the runtime closure; and writes the archive and
 checksum to `release-dist`.

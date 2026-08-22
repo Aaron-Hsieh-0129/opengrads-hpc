@@ -4,7 +4,7 @@ For a plain-language summary of what you may do with this software, see
 [docs/LICENSING.md](docs/LICENSING.md). This file is the component-by-component
 record.
 
-OpenGrADS itself is distributed under GNU GPL version 2 only; see `COPYING` and `COPYRIGHT`. This file records optional libraries used by this development revision. It does not change the license of OpenGrADS.
+opengrads-hpc is distributed under GNU GPL version 2 only, inherited from GrADS; see `COPYING` and `COPYRIGHT`. This file records the third-party libraries it uses. It does not change the license of any of them.
 
 No ADIOS2 or libedit source or binary is committed in this repository.
 The release builder downloads checksum-pinned sources into ignored build

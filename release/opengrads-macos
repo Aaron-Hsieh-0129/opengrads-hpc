@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launcher for the relocatable macOS OpenGrADS release archive.
+# Launcher for the relocatable macOS opengrads-hpc release archive.
 
 set -euo pipefail
 

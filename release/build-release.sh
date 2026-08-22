@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command self-contained OpenGrADS release build.
+# One-command self-contained opengrads-hpc release build.
 
 set -euo pipefail
 

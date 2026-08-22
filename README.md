@@ -100,6 +100,6 @@ supported build and release process.
 
 ## License and notices
 
-OpenGrADS license and copyright terms are in [COPYING](COPYING) and
+GrADS license and copyright terms, inherited by this fork, are in [COPYING](COPYING) and
 [COPYRIGHT](COPYRIGHT). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 for dependency attribution and binary-redistribution cautions.

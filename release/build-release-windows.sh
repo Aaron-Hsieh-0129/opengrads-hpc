@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, test, and package a native Windows OpenGrADS release in MSYS2/MinGW.
+# Build, test, and package a native Windows opengrads-hpc release in MSYS2/MinGW.
 
 set -euo pipefail
 

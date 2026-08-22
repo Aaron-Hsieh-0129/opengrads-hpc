@@ -1,4 +1,4 @@
-# OpenGrADS Architecture and Contributor Guide
+# opengrads-hpc Architecture and Contributor Guide
 
 This document describes the repository structure, runtime architecture,
 development constraints, extension points, and remaining engineering roadmap.
@@ -7,7 +7,7 @@ Build and end-user setup instructions are maintained separately in
 
 ## Project snapshot
 
-OpenGrADS is a distribution around the GrADS (Grid Analysis and Display System) engine. It combines the upstream-style COLA core, dynamically loaded OpenGrADS commands/functions, scripts, documentation, sample data, tests, and platform bundle tooling.
+opengrads-hpc is a distribution around the GrADS (Grid Analysis and Display System) engine. It combines the upstream-style COLA core, dynamically loaded OpenGrADS commands/functions, scripts, documentation, sample data, tests, and platform bundle tooling.
 
 - Version in this tree: `2.2.1.oga.1` (`cola/src/VERSION`).
 - Release described by `NEWS`: 9 February 2019, based on COLA GrADS 2.2.1.

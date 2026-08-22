@@ -50,7 +50,7 @@ install -m 0755 "$dummy_source" "$plugin_root/libgxdummy.dll"
 # call back into symbols that live in the GrADS executable. Only the
 # self-contained gxdummy driver links natively, so this archive is headless.
 cat > "$bundle_root/etc/udpt" <<'UDPT'
-# OpenGrADS Windows release plug-in table.
+# opengrads-hpc Windows release plug-in table.
 # GA_ROOT is set by opengrads.cmd.
 gxdisplay  gxdummy  $GA_ROOT/libgxdummy.dll
 *

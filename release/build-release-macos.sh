@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, test, and package a native macOS OpenGrADS release archive.
+# Build, test, and package a native macOS opengrads-hpc release archive.
 
 set -euo pipefail
 

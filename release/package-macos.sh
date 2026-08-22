@@ -53,7 +53,7 @@ install_plugin libgxdummy
 install_plugin libgxpCairo
 
 cat > "$bundle_root/etc/udpt" <<'UDPT'
-# OpenGrADS macOS release plug-in table.
+# opengrads-hpc macOS release plug-in table.
 # GA_ROOT is set by the bundled launcher.
 gxdisplay  gxdummy  $GA_ROOT/libgxdummy.dylib
 *
