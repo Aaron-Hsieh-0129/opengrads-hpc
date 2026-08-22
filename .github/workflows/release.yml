@@ -40,8 +40,11 @@ jobs:
 
       - name: Show archive contents and checksum
         run: |
-          sha256sum -c release-dist/*.sha256
-          tar -tzf release-dist/*.tar.gz | sed -n '1,80p'
+          cd release-dist
+          sha256sum -c -- *.sha256
+          for archive in *.tar.gz; do
+            tar -tzf "$archive"
+          done | sed -n '1,80p'
 
       - name: Upload approved binary artifact
         if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
