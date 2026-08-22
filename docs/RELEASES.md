@@ -122,8 +122,8 @@ SHA-256 together and re-run both architecture jobs before accepting a change.
 The macOS builder uses Homebrew dependencies and must run on a Mac:
 
 ```bash
-brew install adios2 autoconf automake cairo coreutils gcc geotiff hdf5 \
-  libomp libtool netcdf pkgconf udunits
+brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
+  libedit libomp libtool netcdf pkgconf udunits
 ./release/build-release-macos.sh
 ```
 

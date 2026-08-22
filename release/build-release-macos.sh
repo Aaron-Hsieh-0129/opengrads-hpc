@@ -15,7 +15,7 @@ build_root="$work_root/opengrads-build"
 jobs="${OPENGRADS_BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
 
 for formula in adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 libomp \
-               libtool netcdf pkgconf udunits; do
+               libedit libtool netcdf pkgconf udunits; do
   if ! brew list --versions "$formula" >/dev/null 2>&1; then
     printf 'Required Homebrew formula is not installed: %s\n' "$formula" >&2
     exit 1
@@ -40,8 +40,13 @@ export PKG_CONFIG_PATH="$(brew --prefix adios2)/lib/pkgconfig:$(brew --prefix ca
 # directory first and then fall back to hardcoded /usr/local and /opt paths
 # that do not match Homebrew's layout, so without this they all miss.
 brew_prefix="$(brew --prefix)"
-export CPPFLAGS="-I$brew_prefix/include${CPPFLAGS:+ $CPPFLAGS}"
-export LDFLAGS="-L$brew_prefix/lib${LDFLAGS:+ $LDFLAGS}"
+# Homebrew's libedit is keg-only because it shadows the copy in the macOS SDK,
+# and the SDK's copy is older: it does not declare history_list(), which the
+# GrADS "history" command calls. Put the keg ahead of the SDK.
+libedit_prefix="$(brew --prefix libedit)"
+export CPPFLAGS="-I$libedit_prefix/include -I$brew_prefix/include${CPPFLAGS:+ $CPPFLAGS}"
+export LDFLAGS="-L$libedit_prefix/lib -L$brew_prefix/lib${LDFLAGS:+ $LDFLAGS}"
+export PKG_CONFIG_PATH="$libedit_prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 rm -rf -- "$build_root"
 mkdir -p "$build_root/src" "$build_root/lib" "$output_root"

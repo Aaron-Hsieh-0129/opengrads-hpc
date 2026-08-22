@@ -75,7 +75,7 @@ jobs:
         run: |
           brew update
           brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
-            libomp libtool netcdf pkgconf udunits
+            libedit libomp libtool netcdf pkgconf udunits
 
       - name: Build, test, and package
         env:
