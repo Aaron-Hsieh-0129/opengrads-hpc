@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 to build the Cairo plug-ins without Xlib; see COPYING. */
 
 /* This file contains the primary Cairo-GrADS interface. 
    The interactive interface (X windows) is managed by routines in gxX.c and the routines here.  

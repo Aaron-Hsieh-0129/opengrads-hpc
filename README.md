@@ -88,7 +88,7 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 
 ## Legacy OpenGrADS documentation
 
-The [pre-fork OpenGrADS README](https://github.com/Aaron-Hsieh-0129/opengrads-update/blob/3c0ea22b3c592ccfcc876da442da61a37bb1d23c/README)
+The [pre-fork OpenGrADS README](https://github.com/Aaron-Hsieh-0129/opengrads-hpc/blob/3c0ea22b3c592ccfcc876da442da61a37bb1d23c/README)
 is retained in the repository history for the original project overview and
 older installation guidance. The historical [BUILD](BUILD) and [INSTALL](INSTALL)
 files are also preserved, but the documentation above describes this fork's

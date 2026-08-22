@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for OpenMP-parallel functions; see COPYING. */
 
 /*  Originally authored by B. Doty.
     Some functions provided by others. */

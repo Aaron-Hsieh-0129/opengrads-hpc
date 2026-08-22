@@ -20,3 +20,4 @@ autom4te.cache
 
 /.release-work/
 /release-dist/
+/config.log

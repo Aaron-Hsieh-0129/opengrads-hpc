@@ -188,7 +188,7 @@ export CXX="${CXX:-$(command -v g++ || command -v c++)}"
 Clone this repository into the single installation tree when `git` is available:
 
 ```bash
-git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git \
+git clone https://github.com/Aaron-Hsieh-0129/opengrads-hpc.git \
   "$OPENGRADS_ROOT/source"
 cd "$OPENGRADS_ROOT/source"
 repo_root="$PWD"
@@ -201,9 +201,9 @@ directory:
 mkdir -p "$OPENGRADS_ROOT/source"
 cd "$OPENGRADS_ROOT"
 curl -fL --retry 3 \
-  https://github.com/Aaron-Hsieh-0129/opengrads-update/archive/refs/heads/main.tar.gz \
-  -o opengrads-update-main.tar.gz
-tar -xzf opengrads-update-main.tar.gz \
+  https://github.com/Aaron-Hsieh-0129/opengrads-hpc/archive/refs/heads/main.tar.gz \
+  -o opengrads-hpc-main.tar.gz
+tar -xzf opengrads-hpc-main.tar.gz \
   --strip-components=1 -C "$OPENGRADS_ROOT/source"
 cd "$OPENGRADS_ROOT/source"
 repo_root="$PWD"
