@@ -7959,7 +7959,7 @@ gaint prntgaattr (struct gafile *pfi, char *name, gaint hdrflg, gaint fnum) {
 /* print history or repeat commands from history  */
 gaint gahistory(char*cmd, char *com, struct gacmn *pcm) {
 
-#include <readline/history.h>
+#include "gaedit.h"
 
   extern gaint history_length; 
   HIST_ENTRY **his_cmd;

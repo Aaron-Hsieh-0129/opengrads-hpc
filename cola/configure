@@ -19061,6 +19061,7 @@ esac
 
 # Initialize. The assumption is that we have none of the needed libs.
 use_readline=no
+use_editline=no
 use_gui=no
 use_freq=no
 use_xaw_xlibs=no
@@ -19110,8 +19111,108 @@ echo "Checking for libraries to support extra features ..."
 echo
 echo readline
 echo --------
+# BSD libedit is preferred over GNU Readline. Readline is GPLv3, which is
+# incompatible with this GPLv2-only program, so a binary linking it cannot be
+# redistributed; libedit is BSD and supplies every symbol GrADS uses.
+# See THIRD_PARTY_NOTICES.md.
+echo looking for libedit
+ac_fn_c_check_header_compile "$LINENO" "editline/readline.h" "ac_cv_header_editline_readline_h" "$ac_includes_default"
+if test "x$ac_cv_header_editline_readline_h" = xyes
+then :
+   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for readline in -ledit" >&5
+printf %s "checking for readline in -ledit... " >&6; }
+if test ${ac_cv_lib_edit_readline+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ledit  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char readline ();
+int
+main (void)
+{
+return readline ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_edit_readline=yes
+else $as_nop
+  ac_cv_lib_edit_readline=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_edit_readline" >&5
+printf "%s\n" "$ac_cv_lib_edit_readline" >&6; }
+if test "x$ac_cv_lib_edit_readline" = xyes
+then :
+   use_readline=yes
+    use_editline=yes
+    readline_libs="-ledit"
+
+else $as_nop
+   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for readline in -ledit" >&5
+printf %s "checking for readline in -ledit... " >&6; }
+if test ${ac_cv_lib_edit_readline+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ledit -lncurses $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char readline ();
+int
+main (void)
+{
+return readline ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_edit_readline=yes
+else $as_nop
+  ac_cv_lib_edit_readline=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_edit_readline" >&5
+printf "%s\n" "$ac_cv_lib_edit_readline" >&6; }
+if test "x$ac_cv_lib_edit_readline" = xyes
+then :
+   use_readline=yes
+      use_editline=yes
+      readline_libs="-ledit -lncurses"
+
+fi
+
+
+fi
+
+
+fi
+
+
 # check in supplibs directory
-if test "Z$ga_supplib_dir" != "Z" ; then
+if test "Z$ga_supplib_dir" != "Z" -a "$use_readline" != "yes" ; then
   echo looking in $ga_supplib_dir
 
   # Use to make temporary changes to -I and -L paths
@@ -19399,6 +19500,15 @@ else
 
 printf "%s\n" "#define READLINE 1" >>confdefs.h
 
+
+fi
+if test "$use_editline" = "yes" ; then
+
+printf "%s\n" "#define USE_EDITLINE 1" >>confdefs.h
+
+else
+
+printf "%s\n" "#define USE_EDITLINE 0" >>confdefs.h
 
 fi
 

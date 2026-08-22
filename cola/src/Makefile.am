@@ -76,7 +76,7 @@ EXTRA_grads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c \
 ## Headers must be listed here to be included in the distribution.
 ## The "noinst_" prefix prevents "make install" from trying to do anything with them
 hdr_core  = grads.h  gatypes.h bitmaps.h bitmaps2.h gvt.h wx.h gs.h
-hdr_ga    = gagmap.h gagui.h gabufr.h gasdf.h gasdf_std_time.h gaomp.h
+hdr_ga    = gagmap.h gagui.h gabufr.h gasdf.h gasdf_std_time.h gaomp.h gaedit.h
 hdr_gx    = gx.h gxGD.h gxC.h gxmap.h 
 
 noinst_HEADERS = $(hdr_core) $(hdr_ga) $(hdr_gx) 

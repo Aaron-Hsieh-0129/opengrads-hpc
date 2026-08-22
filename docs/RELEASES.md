@@ -1,7 +1,7 @@
 # Self-contained binary releases
 
 The modern release path produces archives that users unpack and run directly.
-ADIOS2, ncurses, Readline, Cairo/X11, OpenMP runtime support, and every other
+ADIOS2, ncurses, libedit, Cairo/X11, OpenMP runtime support, and every other
 non-glibc shared-library dependency discovered at build time are included.
 Users do not install ADIOS2 or set library paths.
 
@@ -89,8 +89,8 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 ./release/build-release.sh
 ```
 
-The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and Readline
-8.2 source archives; builds them into `.release-work`; builds OpenGrADS with
+The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and libedit
+20240808-3.1 source archives; builds them into `.release-work`; builds OpenGrADS with
 ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
 OpenMP regressions; assembles the runtime closure; and writes the archive and
 checksum to `release-dist`.
@@ -100,7 +100,7 @@ For offline validation with existing private prefixes:
 
 ```bash
 OPENGRADS_RELEASE_ADIOS2_ROOT=/path/to/adios2 \
-OPENGRADS_RELEASE_DEPS_ROOT=/path/to/readline-and-ncurses \
+OPENGRADS_RELEASE_DEPS_ROOT=/path/to/libedit-and-ncurses \
   ./release/build-release.sh
 ```
 
@@ -141,8 +141,9 @@ creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.
 
 Do not set that variable merely because the build passes. OpenGrADS is treated
-as GPL-2.0-only, while ADIOS2 is Apache-2.0 and current Readline is GPLv3. The
-current project notices identify unresolved linked-binary compatibility. The
+as GPL-2.0-only, while ADIOS2 is Apache-2.0. (The Readline half of this problem
+was removed in 2026 by switching to BSD libedit.) The current project notices
+identify unresolved linked-binary compatibility for ADIOS2. The
 gate may be enabled only after permission, a valid relicensing/exception, or
 qualified legal advice establishes a distributable combination. Local builds
 and tests do not themselves authorize public redistribution.

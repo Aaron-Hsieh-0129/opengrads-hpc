@@ -158,6 +158,9 @@
 /* Enable shapefile */
 #undef USESHP
 
+/* Command line editing uses GNU Readline */
+#undef USE_EDITLINE
+
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD

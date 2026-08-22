@@ -4,9 +4,9 @@ This checklist prepares the source tree for a GitHub repository. It does not upl
 
 ## Recommended publication scope
 
-Publish the modified source tree, tests, documentation, and existing OpenGrADS license files. Do not publish binaries linked with ADIOS2 or a modern GNU Readline release until a qualified review or permission from the relevant copyright holders resolves the license-compatibility questions described in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+Publish the modified source tree, tests, documentation, and existing OpenGrADS license files. Do not publish binaries linked with ADIOS2 until a qualified review or permission from the relevant copyright holders resolves the license-compatibility questions described in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). Command line editing now uses BSD libedit, so GNU Readline is no longer part of that question.
 
-The repository does not commit ADIOS2 or Readline source. The release builder
+The repository does not commit ADIOS2 or libedit source. The release builder
 downloads checksum-pinned source archives and packages their runtime libraries.
 
 This is a conservative engineering checklist, not legal advice.
@@ -89,12 +89,12 @@ Do not rewrite upstream copyright statements. Add your own authorship or copyrig
 
 ## Suggested release notes
 
-> This source development revision adds CPU-only ADIOS2 BP5 input to OpenGrADS. BP5 datasets can be opened directly with `bpopen` or through a `dtype bp5` descriptor. The reader supports global real numeric arrays, ADIOS2 step selection, coordinate discovery, descriptive and missing-value attributes, and bulk in-bounds XY selections. It also adds Readline command completion, a color-enabled development launcher, and generated BP5 integration tests. See `docs/BP5.md` for prerequisites and limitations. Binary publication remains gated pending resolution of linked-library license compatibility.
+> This source development revision adds CPU-only ADIOS2 BP5 input to OpenGrADS. BP5 datasets can be opened directly with `bpopen` or through a `dtype bp5` descriptor. The reader supports global real numeric arrays, ADIOS2 step selection, coordinate discovery, descriptive and missing-value attributes, and bulk in-bounds XY selections. It also adds libedit command completion, a color-enabled development launcher, and generated BP5 integration tests. See `docs/BP5.md` for prerequisites and limitations. Binary publication remains gated pending resolution of linked-library license compatibility.
 
 ## After publishing
 
 - Put the license identifier `GPL-2.0-only` in the GitHub description or metadata; do not label the entire repository Apache-2.0.
 - Link the README to `COPYING`, `docs/BP5.md`, and `THIRD_PARTY_NOTICES.md`.
-- State that release archives contain ADIOS2 and Readline runtimes and retain their notices.
+- State that release archives contain ADIOS2 and libedit runtimes and retain their notices.
 - Use GitHub Issues for unsupported BP shapes, including `bpls -la` output and a minimal non-sensitive reproducer.
 - Never attach the RCEMIP dataset unless its data owner and license explicitly allow redistribution.

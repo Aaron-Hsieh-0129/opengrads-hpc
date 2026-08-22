@@ -18,7 +18,7 @@ $HOME/opengrads/
   source/       OpenGrADS source and its build/ directory
   sources/      extracted third-party source trees
   build-tools/  third-party build trees
-  deps/         CMake, ncurses, and Readline installation
+  deps/         CMake, ncurses, and libedit installation
   adios2/       ADIOS2 installation
 ```
 
@@ -77,7 +77,7 @@ pkg-config --modversion cairo x11 xext xmu netcdf udunits
 
 On other distributions, install the corresponding GUI development packages.
 
-## 2. Build local CMake, ncurses, and Readline
+## 2. Build local CMake, ncurses, and libedit
 
 Create the single installation tree and derive every path from it:
 
@@ -118,26 +118,27 @@ fi
 cmake --version
 ```
 
-Build ncurses 6.5 and GNU Readline 8.2 in the same prefix. The explicit
-`SHLIB_LIBS=-lncurses` is important: it prevents the private Readline shared
-library from exposing unresolved terminal symbols to unrelated programs.
+Build ncurses 6.5 and libedit in the same prefix. libedit provides the command
+line editing, history, and Tab completion; it is used instead of GNU Readline
+because Readline is GPLv3 and cannot be linked into a redistributable
+GPLv2-only binary. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 ```bash
 cd "$deps_source"
 curl -fL --retry 3 https://ftp.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz \
   -o ncurses-6.5.tar.gz
-curl -fL --retry 3 https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz \
-  -o readline-8.2.tar.gz
+curl -fL --retry 3 https://thrysoee.dk/editline/libedit-20240808-3.1.tar.gz \
+  -o libedit-20240808-3.1.tar.gz
 
 printf '%s  %s\n' \
   136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6 \
   ncurses-6.5.tar.gz | sha256sum --check -
 printf '%s  %s\n' \
-  3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35 \
-  readline-8.2.tar.gz | sha256sum --check -
+  5f0573349d77c4a48967191cdd6634dd7aa5f6398c6a57fe037cc02696d6099f \
+  libedit-20240808-3.1.tar.gz | sha256sum --check -
 
 tar -xzf ncurses-6.5.tar.gz
-tar -xzf readline-8.2.tar.gz
+tar -xzf libedit-20240808-3.1.tar.gz
 
 cd "$deps_source/ncurses-6.5"
 CC="$CC" CXX="$CXX" ./configure \
@@ -151,14 +152,14 @@ CC="$CC" CXX="$CXX" ./configure \
 make --jobs "$jobs"
 make install
 
-cd "$deps_source/readline-8.2"
+cd "$deps_source/libedit-20240808-3.1"
 CC="$CC" CPPFLAGS="-I$deps_root/include" \
 LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib" \
   ./configure --prefix="$deps_root" --enable-shared --disable-static
-make --jobs "$jobs" SHLIB_LIBS=-lncurses
-make install SHLIB_LIBS=-lncurses
+make --jobs "$jobs"
+make install
 
-ldd "$deps_root/lib/libreadline.so"
+ldd "$deps_root/lib/libedit.so"
 ```
 
 An ncurses message saying that `ldconfig` was not run can be ignored. The
@@ -320,8 +321,8 @@ The configuration summary must include:
 + CAIRO enabled
 ```
 
-Readline is optional for data access, but it provides command history and Tab
-completion.
+Line editing is optional for data access, but it provides command history and
+Tab completion.
 
 ### Graphical build
 
