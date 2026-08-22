@@ -1370,8 +1370,9 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
             if ( (ch=getdbl(ch,&(pvar->units[j])))==NULL ) goto err6;
 	    /* no negative array indices for ncflag files */
 	    if ((pfi->ncflg) && (pvar->units[j] < 0))  goto err6;   
-	    /* for hdf5, count the fixed array indices as varying dimensions */
-	    if ((pfi->ncflg==3) && (pvar->units[j] >= 0)) pvar->nh5vardims++;
+	    /* for hdf5 and BP5, count fixed array indices in the native rank */
+	    if ((pfi->ncflg==3 || pfi->adios2flg) && (pvar->units[j] >= 0))
+	      pvar->nh5vardims++;
           }
           while (*ch==' ') ch++;
           if (*ch=='\0' || *ch=='\n') goto err6;

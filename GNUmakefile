@@ -184,3 +184,7 @@ reallyclean:
 	$(MAKE) distclean
 	$(MAKE) java-distclean
 
+
+.PHONY: release
+release:
+	./release/build-release.sh

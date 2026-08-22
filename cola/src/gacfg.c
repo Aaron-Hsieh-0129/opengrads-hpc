@@ -57,6 +57,7 @@ const char *libgadap_version(void);
 #endif
 
 #include "gatypes.h"
+#include "gaomp.h"
 #include "gx.h"
 static struct gxdsubs *dsubs=NULL; /* function pointers for display  */
 static struct gxpsubs *psubs=NULL; /* function pointers for printing */
@@ -107,6 +108,9 @@ snprintf(cmd,255,"Config: v%s",GRADS_VERSION);
 #endif
 #if USEADIOS2==1
  strcat(cmd," adios2-bp5");
+#endif
+#if USEOPENMP==1
+ strcat(cmd," openmp");
 #endif
 #if USEDAP==1
  strcat(cmd," opendap-grids");
@@ -208,6 +212,14 @@ snprintf(cmd,255,"Config: v%s",GRADS_VERSION);
    gaprnt(verbose," -+- ADIOS2 BP5 interface DISABLED \n");
 #endif
 
+#if USEOPENMP==1
+   snprintf(cmd,255," -+- OpenMP calculation acceleration ENABLED, %i threads\n",
+            ga_omp_get_threads());
+   gaprnt(verbose,cmd);
+#else
+   gaprnt(verbose," -+- OpenMP calculation acceleration DISABLED\n");
+#endif
+
    gaprnt(verbose," -+- KML contour output ENABLED\n");
 
 #if GEOTIFF==1
@@ -223,4 +235,3 @@ snprintf(cmd,255,"Config: v%s",GRADS_VERSION);
 
  gaprnt(verbose,"The 'q gxconfig' command returns Graphics configuration information\n");
 }
-

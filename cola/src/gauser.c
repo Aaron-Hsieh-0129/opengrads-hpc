@@ -38,6 +38,7 @@
 #include <limits.h>
 #include <math.h>
 #include "grads.h"
+#include "gaomp.h"
 #include "gx.h"
 
 #if OPENGRADS == 1
@@ -2872,6 +2873,7 @@ gadouble minvals[4], maxvals[4],dval;
     gaprnt (2,"  q shp      Lists the contents of a shapefile\n");
     gaprnt (2,"  q shpopts  Returns settings for drawing and writing shapefiles\n");
     gaprnt (2,"  q string   Returns width of a string\n");
+    gaprnt (2,"  q threads  Returns calculation thread settings\n");
     gaprnt (2,"  q time     Returns info about time settings\n");
     gaprnt (2,"  q udpt     Returns list of user defined plug-ins\n");
     gaprnt (2,"  q undef    Returns output undef value \n");
@@ -2901,6 +2903,13 @@ gadouble minvals[4], maxvals[4],dval;
   }
   else if (cmpwrd(arg,"undef")) {
     snprintf(pout,1255,"Output undef value is set to %12f\n",pcm->undef);
+    gaprnt(2,pout);
+  }
+  else if (cmpwrd(arg,"threads")) {
+    if (ga_omp_enabled())
+      snprintf(pout,1255,"Calculation threads = %i (OpenMP enabled)\n",ga_omp_get_threads());
+    else
+      snprintf(pout,1255,"Calculation threads = 1 (OpenMP disabled at build time)\n");
     gaprnt(2,pout);
   }
   else if (cmpwrd(arg,"dbuff")) {
@@ -5077,6 +5086,20 @@ static char *kwds[130] = {"X","Y","Z","T","LON","LAT","LEV","TIME",
   else if (cmpwrd("defval",cmd)) {
     i1 = gaqdef (cmd, pcm, 1);
     return (i1);
+  }
+  else if (cmpwrd("threads",cmd)) {
+    if ((cmd = nxtwrd(cmd)) == NULL || intprs(cmd,&itt) == NULL || itt<1) {
+      gaprnt(0,"SET THREADS Error: thread count must be a positive integer\n");
+      return(1);
+    }
+    i1 = ga_omp_set_threads(itt);
+    if (i1==2) {
+      gaprnt(0,"SET THREADS Error: this build does not include OpenMP\n");
+      return(1);
+    }
+    snprintf(pout,1255,"Calculation threads set to %i\n",ga_omp_get_threads());
+    gaprnt(2,pout);
+    return(0);
   }
   else if (cmpwrd("hempref",cmd)) {
     kwrd=105;

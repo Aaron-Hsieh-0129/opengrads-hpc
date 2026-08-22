@@ -4,9 +4,40 @@ This guide installs the BP5-enabled OpenGrADS fork from source on a new
 64-bit Linux machine. The supported baseline is a serial CPU-only ADIOS2
 2.11.0 build. MPI, CUDA, Kokkos, and GPU support are intentionally disabled.
 
-There is currently no supported portable binary release of this fork. A clone
-contains source code, not the compiled `grads` executable or ADIOS2. Build
-once using the steps below; afterward, use `./opengrads` directly.
+End users should use the self-contained x86_64 or aarch64 Linux archives
+described in [RELEASES.md](RELEASES.md): unpack and run `./opengrads`, with no
+ADIOS2 installation or compiler. Public upload remains protected by the
+redistribution-approval gate documented there. This guide is the maintainer and
+source-build path.
+
+All downloads, extracted sources, build trees, dependencies, and installed
+libraries in this tutorial live under one directory:
+
+```text
+$HOME/opengrads/
+  source/       OpenGrADS source and its build/ directory
+  sources/      extracted third-party source trees
+  build-tools/  third-party build trees
+  deps/         CMake, ncurses, and Readline installation
+  adios2/       ADIOS2 installation
+```
+
+Set `OPENGRADS_ROOT` to use a different parent directory. Apart from optional
+system development packages installed by an administrator, the procedure does
+not place user-managed files elsewhere.
+
+## Automated maintainer build
+
+For the default release configuration, the shorter supported path is:
+
+```bash
+./release/build-release.sh
+```
+
+That command downloads checksum-pinned dependencies below `.release-work`,
+builds and tests OpenGrADS, and produces a relocatable archive in
+`release-dist`. The detailed steps below remain useful for development and
+troubleshooting.
 
 ## 1. Find or load the bootstrap tools
 
@@ -43,21 +74,21 @@ sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev
 pkg-config --modversion cairo x11 xext
 ```
 
-On other distributions, install the corresponding development packages. If
-they are unavailable, use the explicit headless build described in step 4.
+On other distributions, install the corresponding GUI development packages.
 
 ## 2. Build local CMake, ncurses, and Readline
 
-Use one private prefix for locally built tools and libraries:
+Create the single installation tree and derive every path from it:
 
 ```bash
-export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+export OPENGRADS_ROOT="${OPENGRADS_ROOT:-$HOME/opengrads}"
+export OPENGRADS_DEPS_ROOT="$OPENGRADS_ROOT/deps"
 deps_root="$OPENGRADS_DEPS_ROOT"
-deps_source="$HOME/src/opengrads-deps"
-deps_build="$HOME/build/opengrads-deps"
+deps_source="$OPENGRADS_ROOT/sources"
+deps_build="$OPENGRADS_ROOT/build-tools"
 jobs="${OPENGRADS_BUILD_JOBS:-4}"
 
-mkdir -p "$deps_root" "$deps_source" "$deps_build"
+mkdir -p "$OPENGRADS_ROOT" "$deps_root" "$deps_source" "$deps_build"
 export PATH="$deps_root/bin:$PATH"
 export CPPFLAGS="-I$deps_root/include"
 export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
@@ -136,10 +167,11 @@ loads `$OPENGRADS_DEPS_ROOT/lib`.
 In every new shell, restore the local paths before rebuilding:
 
 ```bash
-export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+export OPENGRADS_ROOT="${OPENGRADS_ROOT:-$HOME/opengrads}"
+export OPENGRADS_DEPS_ROOT="$OPENGRADS_ROOT/deps"
 deps_root="$OPENGRADS_DEPS_ROOT"
-deps_source="$HOME/src/opengrads-deps"
-deps_build="$HOME/build/opengrads-deps"
+deps_source="$OPENGRADS_ROOT/sources"
+deps_build="$OPENGRADS_ROOT/build-tools"
 jobs="${OPENGRADS_BUILD_JOBS:-4}"
 export PATH="$deps_root/bin:$PATH"
 export CPPFLAGS="-I$deps_root/include"
@@ -152,24 +184,27 @@ export CXX="${CXX:-$(command -v g++ || command -v c++)}"
 
 ## 3. Obtain the source and build serial CPU-only ADIOS2 2.11.0
 
-Clone this repository when `git` is available:
+Clone this repository into the single installation tree when `git` is available:
 
 ```bash
-git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git
-cd opengrads-update
+git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git \
+  "$OPENGRADS_ROOT/source"
+cd "$OPENGRADS_ROOT/source"
 repo_root="$PWD"
 ```
 
-Without `git`, download the GitHub source archive instead:
+Without `git`, download and extract the GitHub source archive into the same
+directory:
 
 ```bash
-mkdir -p "$HOME/src"
-cd "$HOME/src"
+mkdir -p "$OPENGRADS_ROOT/source"
+cd "$OPENGRADS_ROOT"
 curl -fL --retry 3 \
   https://github.com/Aaron-Hsieh-0129/opengrads-update/archive/refs/heads/main.tar.gz \
   -o opengrads-update-main.tar.gz
-tar -xzf opengrads-update-main.tar.gz
-cd opengrads-update-main
+tar -xzf opengrads-update-main.tar.gz \
+  --strip-components=1 -C "$OPENGRADS_ROOT/source"
+cd "$OPENGRADS_ROOT/source"
 repo_root="$PWD"
 ```
 
@@ -187,7 +222,7 @@ tar -xzf adios2-v2.11.0.tar.gz
 
 adios2_source="$deps_source/ADIOS2-2.11.0"
 adios2_build="$deps_build/adios2-2.11.0-cpu"
-adios2_root="$HOME/.local/adios2-2.11.0-cpu"
+adios2_root="$OPENGRADS_ROOT/adios2"
 ```
 
 Build ADIOS2 with the existing or locally built CMake:
@@ -270,7 +305,6 @@ ac_cv_header_hdf5_h=no \
   --enable-dyn-supplibs \
   --with-opengrads \
   --without-gadap \
-  --without-gui \
   --with-adios2="$adios2_root"
 
 make -C src --jobs "$jobs" \
@@ -288,22 +322,11 @@ The configuration summary must include:
 Readline is optional for data access, but it provides command history and Tab
 completion.
 
-### Graphical and headless builds
+### Graphical build
 
-The default command above builds the Cairo display and printing plug-ins, the
-X11 display fallback, and the dummy headless device. `--without-gui` disables
-the legacy Athena Widget interface; it does not disable graphical plots.
-
-For a machine without Cairo/X11 development files, build only the supported
-headless device:
-
-```bash
-make -C "$build_root/src" --jobs "$jobs" grads libgxdummy.la
-```
-
-If Cairo is unavailable but X11 development files exist, also build
-`libgxdX11.la`. The launcher selects X11 automatically for an interactive
-window and uses `gxdummy` for hardcopy output.
+The command above builds the normal GUI together with Cairo and X11 display
+plug-ins. The dummy device is also built because regression tests and benchmarks
+use it without opening a window. Start `./opengrads` normally for the GUI.
 
 Another no-root option is to reuse the graphics plug-ins and resource files
 from an existing original OpenGrADS bundle. Keep the BP5-enabled executable
@@ -316,8 +339,7 @@ OPENGRADS_BUNDLE_ROOT=/path/to/opengrads/Contents ./opengrads
 
 The launcher also finds a compatible sibling directory named
 `opengrads-2.2.1.oga.1/Contents` automatically. A bundle without plug-ins for
-the current platform and architecture is ignored. If neither local graphics
-nor a compatible bundle is available, use the supported headless mode.
+the current platform and architecture is ignored.
 
 ## 5. Verify the installation
 
@@ -374,8 +396,8 @@ cd "$repo_root"
 ./opengrads
 ```
 
-The launcher automatically adds `$OPENGRADS_DEPS_ROOT/lib` (defaulting to
-`$HOME/.local/opengrads-deps/lib`) to its runtime library path.
+The launcher automatically discovers `deps/lib` and `adios2/lib` beside the
+`source` directory. Environment variables may override either location.
 
 The launcher searches for `repo/build/src/grads` first. With an X display, it
 prefers the Cairo display/print plug-ins and falls back to the X11 display
@@ -394,12 +416,6 @@ set gxout shaded
 display variable_name
 ```
 
-For an explicit headless session:
-
-```bash
-./opengrads -bl -d gxdummy -h gxdummy
-```
-
 For an existing build or ADIOS2 installation in another location:
 
 ```bash
@@ -413,7 +429,8 @@ OPENGRADS_ADIOS2_ROOT=/path/to/adios2-install \
 Restore the local-prefix variables from step 2, then update and rebuild:
 
 ```bash
-export OPENGRADS_DEPS_ROOT="$HOME/.local/opengrads-deps"
+export OPENGRADS_ROOT="${OPENGRADS_ROOT:-$HOME/opengrads}"
+export OPENGRADS_DEPS_ROOT="$OPENGRADS_ROOT/deps"
 deps_root="$OPENGRADS_DEPS_ROOT"
 export PATH="$deps_root/bin:$PATH"
 export CPPFLAGS="-I$deps_root/include"
@@ -424,11 +441,11 @@ export CXX="${CXX:-$(command -v g++ || command -v c++)}"
 export LD_LIBRARY_PATH="$deps_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
 
-cd /path/to/opengrads-update
+cd "$OPENGRADS_ROOT/source"
 repo_root="$PWD"
 build_root="$repo_root/build"
-adios2_build="$HOME/build/opengrads-deps/adios2-2.11.0-cpu"
-adios2_root="$HOME/.local/adios2-2.11.0-cpu"
+adios2_build="$OPENGRADS_ROOT/build-tools/adios2-2.11.0-cpu"
+adios2_root="$OPENGRADS_ROOT/adios2"
 jobs="${OPENGRADS_BUILD_JOBS:-4}"
 
 git pull --ff-only origin main
@@ -442,7 +459,6 @@ ac_cv_header_hdf5_h=no \
   --enable-dyn-supplibs \
   --with-opengrads \
   --without-gadap \
-  --without-gui \
   --with-adios2="$adios2_root"
 make -C src clean
 make -C src --jobs "$jobs" \

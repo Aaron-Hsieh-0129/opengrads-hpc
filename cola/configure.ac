@@ -85,9 +85,15 @@ AC_ARG_WITH([opengrads],
 
 AC_ARG_WITH([adios2],
             [AS_HELP_STRING([--with-adios2@<:@=PREFIX@:>@],
-                            [enable ADIOS2 BP5 support, optionally using PREFIX/bin/adios2-config])],
+                            [enable ADIOS2 BP5 support, optionally using PREFIX/bin/adios2-config @<:@default=auto@:>@])],
             [],
-            [with_adios2=no])
+            [with_adios2=auto])
+
+AC_ARG_ENABLE([openmp],
+              [AS_HELP_STRING([--disable-openmp],
+                              [build without OpenMP calculation acceleration])],
+              [],
+              [enable_openmp=auto])
 
 # ----------------------------------------------------
 # Checks for programs
@@ -102,6 +108,40 @@ AC_PROG_CXX(xlc++ g++ c++)
 AC_PROG_INSTALL
 AC_PROG_LN_S
 echo
+
+# ----------------------------------------------------
+# Optional OpenMP calculation acceleration
+# ----------------------------------------------------
+use_openmp=no
+openmp_cflags=
+if test "x$enable_openmp" != "xno" ; then
+  ga_save_CFLAGS="$CFLAGS"
+  ga_save_LIBS="$LIBS"
+  for ga_openmp_flag in -fopenmp -qopenmp -mp ; do
+    CFLAGS="$ga_save_CFLAGS $ga_openmp_flag"
+    LIBS="$ga_openmp_flag $ga_save_LIBS"
+    AC_LINK_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[#include <omp.h>]],
+        [[return omp_get_max_threads() < 1;]])],
+      [use_openmp=yes
+       openmp_cflags="$ga_openmp_flag"],
+      [])
+    if test "x$use_openmp" = "xyes" ; then break ; fi
+  done
+  CFLAGS="$ga_save_CFLAGS"
+  LIBS="$ga_save_LIBS"
+  if test "x$enable_openmp" = "xyes" && test "x$use_openmp" != "xyes" ; then
+    AC_MSG_ERROR([OpenMP requested but the compiler and runtime are not usable])
+  fi
+fi
+
+if test "x$use_openmp" = "xyes" ; then
+  AC_DEFINE(USEOPENMP, 1, [Define to 1 to enable OpenMP calculation acceleration])
+else
+  AC_DEFINE(USEOPENMP, 0, [Define to 1 to enable OpenMP calculation acceleration])
+fi
+AC_SUBST(openmp_cflags)
 
 echo Setting host specific options
 echo -----------------------------
@@ -916,37 +956,44 @@ use_adios2=no
 adios2_cflags=""
 adios2_libs=""
 if test "x$with_adios2" != "xno" ; then
-  if test "x$with_adios2" = "xyes" ; then
+  if test "x$with_adios2" = "xyes" -o "x$with_adios2" = "xauto" ; then
     AC_PATH_PROG([ADIOS2_CONFIG], [adios2-config])
   else
     ADIOS2_CONFIG="$with_adios2/bin/adios2-config"
   fi
 
   if test ! -x "$ADIOS2_CONFIG" ; then
-    AC_MSG_ERROR([ADIOS2 requested but adios2-config was not found; use --with-adios2=PREFIX])
+    if test "x$with_adios2" = "xauto" ; then
+      AC_MSG_NOTICE([ADIOS2 not found; BP5 support disabled. The release builder supplies ADIOS2 automatically.])
+      ADIOS2_CONFIG=""
+    else
+      AC_MSG_ERROR([ADIOS2 requested but adios2-config was not found; use --with-adios2=PREFIX])
+    fi
   fi
 
-  adios2_cflags=`"$ADIOS2_CONFIG" --serial --c-flags`
-  adios2_libs=`"$ADIOS2_CONFIG" --serial --c-libs`
+  if test -x "$ADIOS2_CONFIG" ; then
+    adios2_cflags=`"$ADIOS2_CONFIG" --serial --c-flags`
+    adios2_libs=`"$ADIOS2_CONFIG" --serial --c-libs`
 
-  ga_save_CPPFLAGS="$CPPFLAGS"
-  ga_save_LIBS="$LIBS"
-  CPPFLAGS="$CPPFLAGS $adios2_cflags"
-  LIBS="$adios2_libs $LIBS"
+    ga_save_CPPFLAGS="$CPPFLAGS"
+    ga_save_LIBS="$LIBS"
+    CPPFLAGS="$CPPFLAGS $adios2_cflags"
+    LIBS="$adios2_libs $LIBS"
 
-  AC_CHECK_HEADER([adios2_c.h], [],
-                  [AC_MSG_ERROR([ADIOS2 requested but adios2_c.h is not usable])])
-  AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM(
-      [[#include <adios2_c.h>]],
-      [[adios2_adios *adios = adios2_init_serial();
-        if (adios == 0) return 1;
-        return adios2_finalize(adios) == adios2_error_none ? 0 : 1;]])],
-    [use_adios2=yes],
-    [AC_MSG_ERROR([ADIOS2 requested but its serial C API could not be linked])])
+    AC_CHECK_HEADER([adios2_c.h], [],
+                    [AC_MSG_ERROR([ADIOS2 was found but adios2_c.h is not usable])])
+    AC_LINK_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[#include <adios2_c.h>]],
+        [[adios2_adios *adios = adios2_init_serial();
+          if (adios == 0) return 1;
+          return adios2_finalize(adios) == adios2_error_none ? 0 : 1;]])],
+      [use_adios2=yes],
+      [AC_MSG_ERROR([ADIOS2 was found but its serial C API could not be linked])])
 
-  CPPFLAGS="$ga_save_CPPFLAGS"
-  LIBS="$ga_save_LIBS"
+    CPPFLAGS="$ga_save_CPPFLAGS"
+    LIBS="$ga_save_LIBS"
+  fi
 fi
 
 if test "$use_adios2" = "yes" ; then
@@ -1060,6 +1107,11 @@ if test "$use_adios2" = "yes" ; then
    echo "  |  + ADIOS2 BP5 enabled        |"
 else
    echo "  |  - ADIOS2 BP5 disabled       |"
+fi
+if test "$use_openmp" = "yes" ; then
+   echo "  |  + OPENMP enabled             |"
+else
+   echo "  |  - OPENMP disabled            |"
 fi
 if test "$use_nc" != "yes" ; then
    echo "  |  - NETCDF disabled            |"

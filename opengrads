@@ -106,8 +106,13 @@ if [[ "$platform" == Darwin ]]; then
     export DYLD_LIBRARY_PATH="$plugin_dir"
   fi
 else
-  adios2_root="${OPENGRADS_ADIOS2_ROOT:-}"
-  local_deps_root="${OPENGRADS_DEPS_ROOT:-$HOME/.local/opengrads-deps}"
+  if [[ -d "$repo_root/adios2" || -d "$repo_root/deps" ]]; then
+    install_root="$repo_root"
+  else
+    install_root="$(CDPATH= cd -- "$repo_root/.." && pwd)"
+  fi
+  adios2_root="${OPENGRADS_ADIOS2_ROOT:-$install_root/adios2}"
+  local_deps_root="${OPENGRADS_DEPS_ROOT:-$install_root/deps}"
   library_path="$plugin_dir"
   if [[ -d "$local_deps_root/lib" ]]; then
     library_path="$local_deps_root/lib:$library_path"
@@ -117,6 +122,9 @@ else
   fi
   if [[ -n "${OPENGRADS_EXTRA_LIBRARY_PATH:-}" ]]; then
     library_path="$library_path:$OPENGRADS_EXTRA_LIBRARY_PATH"
+  fi
+  if [[ -n "${LD_LIBRARY_PATH:-}" ]]; then
+    library_path="$library_path:$LD_LIBRARY_PATH"
   fi
   export LD_LIBRARY_PATH="$library_path"
 

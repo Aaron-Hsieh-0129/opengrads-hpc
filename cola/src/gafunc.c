@@ -1,6 +1,6 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
 
-/*  Originally authored by B. Doty.  
+/*  Originally authored by B. Doty.
     Some functions provided by others. */
 
 #ifdef HAVE_CONFIG_H
@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include "grads.h"
+#include "gaomp.h"
 
 #if OPENGRADS == 1
 #include "gaudx.h"
@@ -63,7 +64,7 @@ gaint ffg2s2   (struct gafunc *, struct gastat *);
 gaint fftv2t   (struct gafunc *, struct gastat *);
 gaint fftv2q   (struct gafunc *, struct gastat *);
 gaint ffoacr   (struct gafunc *, struct gastat *);
-gaint ffoabn   (struct gafunc *, struct gastat *); 
+gaint ffoabn   (struct gafunc *, struct gastat *);
 gaint ffsmth   (struct gafunc *, struct gastat *);
 gaint ffsave   (struct gafunc *, struct gastat *);
 gaint ffsmin   (struct gafunc *, struct gastat *);
@@ -71,35 +72,35 @@ gaint ffsmax   (struct gafunc *, struct gastat *);
 gaint ffskip   (struct gafunc *, struct gastat *);
 gaint ffcnst   (struct gafunc *, struct gastat *);
 gaint ffcdif   (struct gafunc *, struct gastat *);
-gaint ffmn     (struct gafunc *, struct gastat *); 
-gaint ffamn    (struct gafunc *, struct gastat *); 
-gaint ffsum    (struct gafunc *, struct gastat *); 
-gaint ffsumg   (struct gafunc *, struct gastat *); 
-gaint ffasum   (struct gafunc *, struct gastat *); 
-gaint ffasumg  (struct gafunc *, struct gastat *); 
-gaint ffatot   (struct gafunc *, struct gastat *); 
+gaint ffmn     (struct gafunc *, struct gastat *);
+gaint ffamn    (struct gafunc *, struct gastat *);
+gaint ffsum    (struct gafunc *, struct gastat *);
+gaint ffsumg   (struct gafunc *, struct gastat *);
+gaint ffasum   (struct gafunc *, struct gastat *);
+gaint ffasumg  (struct gafunc *, struct gastat *);
+gaint ffatot   (struct gafunc *, struct gastat *);
 gaint ffamin   (struct gafunc *, struct gastat *);
 gaint ffamax   (struct gafunc *, struct gastat *);
 gaint ffaminlocx (struct gafunc *, struct gastat *);
 gaint ffaminlocy (struct gafunc *, struct gastat *);
 gaint ffamaxlocx (struct gafunc *, struct gastat *);
 gaint ffamaxlocy (struct gafunc *, struct gastat *);
-gaint ffgrarea (struct gafunc *, struct gastat *); 
+gaint ffgrarea (struct gafunc *, struct gastat *);
 gaint ffclgr   (struct gafunc *, struct gastat *);
 gaint ffmin    (struct gafunc *, struct gastat *);
 gaint ffmax    (struct gafunc *, struct gastat *);
 gaint ffminl   (struct gafunc *, struct gastat *);
 gaint ffmaxl   (struct gafunc *, struct gastat *);
 gaint ffflvl   (struct gafunc *, struct gastat *);
-gaint ffsreg   (struct gafunc *, struct gastat *); 
-gaint fftreg   (struct gafunc *, struct gastat *); 
+gaint ffsreg   (struct gafunc *, struct gastat *);
+gaint fftreg   (struct gafunc *, struct gastat *);
 gaint ffs2g1d  (struct gafunc *, struct gastat *);
 gaint fftv2    (struct gafunc *, struct gastat *, gaint);
 gaint ffsmnx   (struct gafunc *, struct gastat *, gaint);
 gaint tmaskf   (struct gafunc *, struct gastat *, gaint);
-gaint aave     (struct gafunc *, struct gastat *, gaint);  
-gaint ave      (struct gafunc *, struct gastat *, gaint);   
-gaint scorr    (struct gafunc *, struct gastat *, gaint); 
+gaint aave     (struct gafunc *, struct gastat *, gaint);
+gaint ave      (struct gafunc *, struct gastat *, gaint);
+gaint scorr    (struct gafunc *, struct gastat *, gaint);
 gaint tvrh2q   (gadouble, gadouble, gadouble, gadouble *, gadouble *);
 gaint fndarg   (char *, gaint *);
 void cosadj    (struct gagrid *);
@@ -165,34 +166,34 @@ gaint (*fpntr)(struct gafunc *, struct gastat *);
   if (cmpwrd("skip",name)) fpntr = ffskip;
   if (cmpwrd("const",name)) fpntr = ffcnst;
   if (cmpwrd("cdiff",name)) fpntr = ffcdif;
-  if (cmpwrd("mean",name)) fpntr = ffmn;    
-  if (cmpwrd("amean",name)) fpntr = ffamn;  
-  if (cmpwrd("sum",name)) fpntr = ffsum;    
-  if (cmpwrd("sumg",name)) fpntr = ffsumg;  
-  if (cmpwrd("asum",name)) fpntr = ffasum;  
-  if (cmpwrd("asumg",name)) fpntr = ffasumg; 
-  if (cmpwrd("atot",name)) fpntr = ffatot; 
-  if (cmpwrd("grarea",name)) fpntr = ffgrarea; 
+  if (cmpwrd("mean",name)) fpntr = ffmn;
+  if (cmpwrd("amean",name)) fpntr = ffamn;
+  if (cmpwrd("sum",name)) fpntr = ffsum;
+  if (cmpwrd("sumg",name)) fpntr = ffsumg;
+  if (cmpwrd("asum",name)) fpntr = ffasum;
+  if (cmpwrd("asumg",name)) fpntr = ffasumg;
+  if (cmpwrd("atot",name)) fpntr = ffatot;
+  if (cmpwrd("grarea",name)) fpntr = ffgrarea;
   if (cmpwrd("coll2gr",name)) fpntr = ffclgr;
   if (cmpwrd("min",name)) fpntr = ffmin;
   if (cmpwrd("max",name)) fpntr = ffmax;
   if (cmpwrd("minloc",name)) fpntr = ffminl;
   if (cmpwrd("maxloc",name)) fpntr = ffmaxl;
   if (cmpwrd("fndlvl",name)) fpntr = ffflvl;
-  if (cmpwrd("sregr",name)) fpntr = ffsreg;  
-  if (cmpwrd("tregr",name)) fpntr = fftreg;  
+  if (cmpwrd("sregr",name)) fpntr = ffsreg;
+  if (cmpwrd("tregr",name)) fpntr = fftreg;
   if (cmpwrd("s2g1d",name)) fpntr = ffs2g1d;
   if (cmpwrd("lterp",name)) fpntr = fflterp;
-  if (cmpwrd("amin",name)) fpntr = ffamin;    
-  if (cmpwrd("amax",name)) fpntr = ffamax;    
-  if (cmpwrd("aminlocx",name)) fpntr = ffaminlocx;    
-  if (cmpwrd("aminlocy",name)) fpntr = ffaminlocy;    
-  if (cmpwrd("amaxlocx",name)) fpntr = ffamaxlocx;    
-  if (cmpwrd("amaxlocy",name)) fpntr = ffamaxlocy;    
+  if (cmpwrd("amin",name)) fpntr = ffamin;
+  if (cmpwrd("amax",name)) fpntr = ffamax;
+  if (cmpwrd("aminlocx",name)) fpntr = ffaminlocx;
+  if (cmpwrd("aminlocy",name)) fpntr = ffaminlocy;
+  if (cmpwrd("amaxlocx",name)) fpntr = ffamaxlocx;
+  if (cmpwrd("amaxlocy",name)) fpntr = ffamaxlocy;
 
 #if OPENGRADS == 1
   /* OpenGrADS User Defined Extensions */
-  if (fpntr==NULL) *(void **) &fpntr = (void *) gaudf(name); 
+  if (fpntr==NULL) *(void **) &fpntr = (void *) gaudf(name);
 #endif
 
   /* check the list of plug-ins functions/defops */
@@ -310,17 +311,19 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val  = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) reduction(+:ecnt) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) {
-        if (*val<0.0) {
-          *valu = 0;
+      if (valu[i]!=0) {
+        if (val[i]<0.0) {
+          valu[i] = 0;
           ecnt++;
         } else {
-	  *val = sqrt(*val);
-	  *valu = 1;
+	  val[i] = sqrt(val[i]);
+	  valu[i] = 1;
 	}
       }
-	val++; valu++;
     }
   } else {
     stn = pst->result.stn;
@@ -365,9 +368,11 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) *val = sin(*val);
-      val++; valu++;
+      if (valu[i]!=0) val[i] = sin(val[i]);
     }
   } else {
     stn = pst->result.stn;
@@ -403,9 +408,11 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) *val = cos(*val);
-      val++; valu++;
+      if (valu[i]!=0) val[i] = cos(val[i]);
     }
   } else {
     stn = pst->result.stn;
@@ -441,9 +448,11 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) *val = tan(*val);
-      val++; valu++;
+      if (valu[i]!=0) val[i] = tan(val[i]);
     }
   } else {
     stn = pst->result.stn;
@@ -478,16 +487,18 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) {
-        if (*val>1.0 || *val<-1.0) {
-	  *valu = 0;
+      if (valu[i]!=0) {
+        if (val[i]>1.0 || val[i]<-1.0) {
+	  valu[i] = 0;
 	}
         else {
-	  *val = asin(*val);
+	  val[i] = asin(val[i]);
 	}
       }
-      val++; valu++;
     }
   } else {
     stn = pst->result.stn;
@@ -525,16 +536,18 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) {
-        if (*val>1.0 || *val<-1.0) {
-	  *valu = 0;
+      if (valu[i]!=0) {
+        if (val[i]>1.0 || val[i]<-1.0) {
+	  valu[i] = 0;
 	}
         else {
-	  *val = acos(*val);
+	  val[i] = acos(val[i]);
 	}
       }
-      val++; valu++;
     }
   } else {
     stn = pst->result.stn;
@@ -572,9 +585,11 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) *val = fabs(*val);
-      val++; valu++;
+      if (valu[i]!=0) val[i] = fabs(val[i]);
     }
   } else {
     stn = pst->result.stn;
@@ -610,9 +625,11 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) *val = exp(*val);
-      val++; valu++;
+      if (valu[i]!=0) val[i] = exp(val[i]);
     }
   } else {
     stn = pst->result.stn;
@@ -649,15 +666,17 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) reduction(+:ecnt) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) {
-        if (*val<=0.0) {
-          *valu = 0;
+      if (valu[i]!=0) {
+        if (val[i]<=0.0) {
+          valu[i] = 0;
           ecnt++;
-        } 
-	else *val = log(*val);
+        }
+	else val[i] = log(val[i]);
       }
-      val++; valu++;
     }
   } else {
     stn = pst->result.stn;
@@ -704,14 +723,16 @@ char *valu;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     valu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) reduction(+:ecnt) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
-      if (*valu!=0) {
-        if (*val<=0.0) {
-          *valu = 0;
+      if (valu[i]!=0) {
+        if (val[i]<=0.0) {
+          valu[i] = 0;
           ecnt++;
-        } else *val = log10(*val);
+        } else val[i] = log10(val[i]);
       }
-      val++; valu++;
     }
   } else {
     stn = pst->result.stn;
@@ -743,7 +764,7 @@ struct gastat pst2,pst3;
 struct gagrid *mypgr,*pgr1,*pgrres1,*pgrres2,*pgrres3;
 gaint rc,i,savaloc;
 
-  if (pfc->argnum!=3) { 
+  if (pfc->argnum!=3) {
     gaprnt (0,"Error from IF:  Too many or too few args \n");
     gaprnt (0,"                Three arguments expected \n");
     return (1);
@@ -775,16 +796,16 @@ gaint rc,i,savaloc;
     goto err1;
   }
 
-  /* We need a copy of the result of the logical expression (arg 1) 
-     since we need to use that result twice, and gagrop 
-     may put its result grid there for our first 
-     step.  We will re-use the scaling info, but we have to be 
+  /* We need a copy of the result of the logical expression (arg 1)
+     since we need to use that result twice, and gagrop
+     may put its result grid there for our first
+     step.  We will re-use the scaling info, but we have to be
      careful with the alocf issue. */
 
   mypgr = galloc(sizeof(struct gagrid),"ffif3");
   if (mypgr==NULL) goto err1;
 
-  pgr1 = pst->result.pgr; 
+  pgr1 = pst->result.pgr;
   savaloc = pgr1->alocf;   /* preserve original alocf value */
   *mypgr = *pgr1;
   mypgr->alocf = 0;
@@ -814,10 +835,10 @@ gaint rc,i,savaloc;
   if (rc==0) pgrres2 = gagrop(mypgr, pst3.result.pgr, 15, 0);
   if (pgrres2==NULL) rc = 1;
   if (rc==0) pgrres3 = gagrop(pgrres2, pgrres1, 2, 0);
-  if (pgrres3==NULL) rc = 1; 
+  if (pgrres3==NULL) rc = 1;
 
   /* We don't really know what original pgr ended up being our final result.
-     We sure don't want to free that one! We'll do something kloodgy 
+     We sure don't want to free that one! We'll do something kloodgy
      and compare pointers.  On error, pgrres3 ends up NULL, so everything
      will get free'd  */
 
@@ -825,7 +846,7 @@ gaint rc,i,savaloc;
                    pst2.result.pgr,pst3.result.pgr,mypgr);
   printf ("xxxx before gafree pst\n",rc); */
 
-  if (pgrres3 == mypgr) mypgr->alocf = savaloc; /* propagate alocf... */ 
+  if (pgrres3 == mypgr) mypgr->alocf = savaloc; /* propagate alocf... */
   else pgr1->alocf = savaloc;      /*  or restore it */
 
   if (pgrres3 != pst->result.pgr) gafree(pst);
@@ -852,7 +873,7 @@ gaint ffpow (struct gafunc *pfc, struct gastat *pst) {
 struct gastat pst2;
 gaint rc;
 
-  if (pfc->argnum!=2) { 
+  if (pfc->argnum!=2) {
     gaprnt (0,"Error from POW:  Too many or too few args \n");
     gaprnt (0,"                 Two arguments expected \n");
     return (1);
@@ -935,9 +956,9 @@ gaint rc;
   return (rc);
 }
 
-/* Performs a bi-linear interpolation between two grids, 
+/* Performs a bi-linear interpolation between two grids,
    adapted from the external UDF lterp.
-*/ 
+*/
 gaint fflterp (struct gafunc *pfc, struct gastat *pst) {
 struct gastat pst2;
 struct gagrid *pgr1,*pgr2;
@@ -948,7 +969,7 @@ gadouble *x1b=NULL,*x2b=NULL,*y1b=NULL,*y2b=NULL;
 gadouble *gr1,*gr2,*gxout=NULL,*gyout=NULL,*area1=NULL,*area2=NULL;
 gadouble rad,w1,w2=0,alo,ahi,pct,minpct,tscl;
 gaint rc,i,ii,j,jj,i2,ij,ij1,ij2,j2,error=0,opt;
-gaint pxgbflg,pygbflg; 
+gaint pxgbflg,pygbflg;
 gaint ib,ie,jb,je,maxgrid,icnt,indx,flag;
 gadouble *area_box=NULL,*fld_box=NULL,tot_fld,tot_area;
 char *gr1u,*gr2u;
@@ -958,7 +979,7 @@ gadouble r,s,r1,r2,r3,s1,s2,s3,fijm1,fij,fijp1,fijp2,u,fr[4],del,del2,del3;
 char uijm1,uij,uijp1,uijp2;
 struct dt t1g1;
 gadouble tval;
-  
+
   rad = M_PI/180.0;
 
   if (pfc->argnum<2 || pfc->argnum>4) {
@@ -994,22 +1015,22 @@ gadouble tval;
    /* Evaluate the 2nd expression, the destination grid */
   pst2=*pst;
   rc = gaexpr(pfc->argpnt[1],pst);
-  if (rc) { 
-    gaprnt (0,"Error from LTERP: Failed to evaluate 2nd expression \n"); 
-    error=1; goto err; 
+  if (rc) {
+    gaprnt (0,"Error from LTERP: Failed to evaluate 2nd expression \n");
+    error=1; goto err;
   }
   if (pst->type!=1) {
-    gaprnt (0,"Error from LTERP: The 2nd argument is not a grid expression \n"); 
+    gaprnt (0,"Error from LTERP: The 2nd argument is not a grid expression \n");
     error=1; goto err;
   }
 
   /* Check environment */
   if (pst->idim==-1) {
-    gaprnt (0,"Error from LTERP: The destination grid is a constant \n"); 
+    gaprnt (0,"Error from LTERP: The destination grid is a constant \n");
     error=1; goto err;
   }
   if (pst->idim==2 || pst->idim==4 || pst->jdim==2 || pst->jdim==4) {
-    gaprnt (0,"Error from LTERP: The grids cannot vary in Z or E \n"); 
+    gaprnt (0,"Error from LTERP: The grids cannot vary in Z or E \n");
     error=1; goto err;
   }
   if (opt==1 || opt==2) {
@@ -1018,12 +1039,12 @@ gadouble tval;
     error=1; goto err;
     }
   }
- 
+
   /* Evaluate the 1st expression, the data values to be interpolated */
   rc = gaexpr(pfc->argpnt[0],&pst2);
-  if (rc) { 
+  if (rc) {
     gaprnt (0,"Error from LTERP: Failed to evaluate 1st expression \n");
-    error=1; goto err; 
+    error=1; goto err;
   }
   if (pst2.type!=1) {
     gaprnt (0,"Error from LTERP: The 1st argument is not a grid expression \n");
@@ -1046,33 +1067,33 @@ gadouble tval;
   pfi1 = pgr1->pfile;
   pfi2 = pgr2->pfile;
 
-  /* If the time dimension varies, the time increment must be equivalent 
+  /* If the time dimension varies, the time increment must be equivalent
      (we won't interpolate from months to minutes) */
   if (pst->idim==3) {
-    if ((*(pgr1->ivals+6)<0.5 && *(pgr2->ivals+6)>0.8) || 
+    if ((*(pgr1->ivals+6)<0.5 && *(pgr2->ivals+6)>0.8) ||
 	(*(pgr1->ivals+6)>0.8 && *(pgr2->ivals+6)<0.5)) {
       gaprnt (0,"Error from LTERP: Grids do not have matching time increments \n");
       error=1; goto err;
     }
   }
   if (pst->jdim==3) {
-    if ((*(pgr1->jvals+6)<0.5 && *(pgr2->jvals+6)>0.8) || 
+    if ((*(pgr1->jvals+6)<0.5 && *(pgr2->jvals+6)>0.8) ||
 	(*(pgr1->jvals+6)>0.8 && *(pgr2->jvals+6)<0.5)) {
       gaprnt (0,"Error from LTERP: Grids do not have matching time increments \n");
       error=1; goto err;
     }
   }
 
-  /* get coordinate information (grid box centers and edges) for both grids, 
+  /* get coordinate information (grid box centers and edges) for both grids,
      source input grid 1 and destination output grid 2 */
 
   if (pgr1->idim>-1) {
     /* x1  is for the longitude of source grid box centers */
     /* x1b is for the longitude of source grid box boundaries */
     x1 = (gadouble *)galloc(sizeof(gadouble)*pgr1->isiz,"x1");
-    if (x1==NULL) { 
+    if (x1==NULL) {
       gaprnt (0,"Error from LTERP: Unable to allocate memory for x1\n");
-      error=1; goto err; 
+      error=1; goto err;
     }
     if (pgr1->idim==3) {
       /* don't need to get the boundaries for time interpolation */
@@ -1083,10 +1104,10 @@ gadouble tval;
       }
     } else {
       /* one extra point in the boundary array */
-      x1b = (gadouble *)galloc(sizeof(gadouble)*(pgr1->isiz+1),"x1b");  
-      if (x1b==NULL) { 
+      x1b = (gadouble *)galloc(sizeof(gadouble)*(pgr1->isiz+1),"x1b");
+      if (x1b==NULL) {
 	gaprnt (0,"Error from LTERP: Unable to allocate memory for x1b\n");
-	error=1; goto err; 
+	error=1; goto err;
       }
       i1conv = pgr1->igrab;
       j=0;
@@ -1103,9 +1124,9 @@ gadouble tval;
     /* x2  is for the longitude of destination grid box centers */
     /* x2b is for the longitude of destination grid box boundaries */
     x2 = (gadouble *)galloc(sizeof(gadouble)*pgr2->isiz,"x2");
-    if (x2==NULL) { 
+    if (x2==NULL) {
       gaprnt (0,"Error from LTERP: Unable to allocate memory for x2\n");
-      error=1; goto err; 
+      error=1; goto err;
     }
     if (pgr2->idim==3) {
       /* don't need to get the boundaries for time interpolation */
@@ -1116,9 +1137,9 @@ gadouble tval;
       }
     } else {
       x2b = (gadouble *)galloc(sizeof(gadouble)*(pgr2->isiz+1),"x2b");
-      if (x2b==NULL) { 
+      if (x2b==NULL) {
 	gaprnt (0,"Error from LTERP: Unable to allocate memory for x2b\n");
-	error=1; goto err; 
+	error=1; goto err;
       }
       i2conv = pgr2->igrab;
       j=0;
@@ -1135,9 +1156,9 @@ gadouble tval;
     /* y1  is for the latitude of source grid box centers */
     /* y1b is for the latitude of source grid box boundaries */
     y1 = (gadouble *)galloc(sizeof(gadouble)*pgr1->jsiz,"y1");
-    if (y1==NULL) { 
+    if (y1==NULL) {
       gaprnt (0,"Error from LTERP: Unable to allocate memory for y1\n");
-      error=1; goto err; 
+      error=1; goto err;
     }
     if (pgr1->jdim==3) {
       /* don't need to get the boundaries for time interpolation */
@@ -1148,9 +1169,9 @@ gadouble tval;
       }
     } else {
       y1b = (gadouble *)galloc(sizeof(gadouble)*(pgr1->jsiz+1),"y1b");
-      if (y1b==NULL) { 
+      if (y1b==NULL) {
 	gaprnt (0,"Error from LTERP: Unable to allocate memory for y1b\n");
-	error=1; goto err; 
+	error=1; goto err;
       }
       i1conv = pgr1->jgrab;
       j=0;
@@ -1167,9 +1188,9 @@ gadouble tval;
     /* y2  is for the latitude of destination grid box centers */
     /* y2b is for the latitude of destination grid box boundaries */
     y2 = (gadouble *)galloc(sizeof(gadouble)*pgr2->jsiz,"y2");
-    if (y2==NULL) { 
+    if (y2==NULL) {
       gaprnt (0,"Error from LTERP: Unable to allocate memory for y2\n");
-      error=1; goto err; 
+      error=1; goto err;
     }
     if (pgr2->jdim==3) {
       /* don't need to get the boundaries for time interpolation */
@@ -1180,9 +1201,9 @@ gadouble tval;
       }
     } else {
       y2b = (gadouble *)galloc(sizeof(gadouble)*(pgr2->jsiz+1),"y2b");
-      if (y2==NULL) { 
+      if (y2==NULL) {
 	gaprnt (0,"Error from LTERP: Unable to allocate memory for y2b\n");
-	error=1; goto err; 
+	error=1; goto err;
       }
       i2conv = pgr2->jgrab;
       j=0;
@@ -1191,7 +1212,7 @@ gadouble tval;
 	*(y2b+j) = i2conv(pgr2->jvals,(gadouble)(i-0.5));   /* grid box edges */
 	j++;
       }
-      *(y2b+j) = i2conv(pgr2->jvals,(gadouble)(i-0.5));   /* final edge */  
+      *(y2b+j) = i2conv(pgr2->jvals,(gadouble)(i-0.5));   /* final edge */
     }
   }
 
@@ -1207,7 +1228,7 @@ gadouble tval;
     if (pst->idim==3) {
       /* the i dimension is T-varying */
       /* determine scaling factor */
-      if (pgr1->ivals[6]>0.8) 
+      if (pgr1->ivals[6]>0.8)
 	tscl = pgr2->ivals[6] / pgr1->ivals[6] ;
       else
 	tscl = pgr2->ivals[5] / pgr1->ivals[5] ;
@@ -1227,21 +1248,21 @@ gadouble tval;
   }
 
   if (opt==1 || opt==2) {
-    /* for aave and amean, 
-       gxout/gyout contain real-valued locations of output grid box EDGES in i/j-axis of input grid, 
+    /* for aave and amean,
+       gxout/gyout contain real-valued locations of output grid box EDGES in i/j-axis of input grid,
        and whole integer values of gxout/gyout correspond to input grid point boundaries */
-    
+
     /* allocate memory with one extra point in array size for final boundary value */
     gxout = (gadouble *)galloc((pgr2->isiz+1)*sizeof(gadouble),"gxout");
-    if (gxout==NULL) { 
-      gaprnt (0,"Error from LTERP: Unable to allocate memory for gxout\n"); error=1; goto err; 
+    if (gxout==NULL) {
+      gaprnt (0,"Error from LTERP: Unable to allocate memory for gxout\n"); error=1; goto err;
     }
     gyout = (gadouble *)galloc((pgr2->jsiz+1)*sizeof(gadouble),"gyout");
-    if (gyout==NULL) { 
-      gaprnt (0,"Error from LTERP: Unable to allocate memory for gyout\n"); error=1; goto err; 
+    if (gyout==NULL) {
+      gaprnt (0,"Error from LTERP: Unable to allocate memory for gyout\n"); error=1; goto err;
     }
     /* loop over i dimension for output grid boundaries */
-    for (i2=0; i2<=pgr2->isiz; i2++) {  
+    for (i2=0; i2<=pgr2->isiz; i2++) {
       /* check if this output grid point lies inside the longitude range of input grid */
       if ((*(x2b+i2) >= *(x1b+0)) && (*(x2b+i2) <= *(x1b+pgr1->isiz))){
 	/* loop over i dimension for input grid boundaries */
@@ -1254,9 +1275,9 @@ gadouble tval;
       }
       else {
 	/* output grid point is outside the longitude range of input grid */
-	if (*(x2b+i2) < *(x1b+0)) 
+	if (*(x2b+i2) < *(x1b+0))
 	  *(gxout+i2) = 0.0;
-	else 
+	else
 	  *(gxout+i2) = (gadouble)pgr1->isiz;
       }
     }
@@ -1274,27 +1295,27 @@ gadouble tval;
       }
       else {
 	/* output grid point is outside the longitude range of input grid */
-	if (*(y2b+j2) < *(y1b+0))  
+	if (*(y2b+j2) < *(y1b+0))
 	  *(gyout+j2) = 0.0;
-	else 
+	else
 	  *(gyout+j2) = (gadouble)pgr1->jsiz;
       }
     }
   }
   else {
-    /* for bilin (opt==0), 
-       gxout/gyout contain real-valued locations of output grid box CENTERS in i/j-axis of input grid, 
+    /* for bilin (opt==0),
+       gxout/gyout contain real-valued locations of output grid box CENTERS in i/j-axis of input grid,
        and whole integer values of gxout/gyout correspond to input grid point centers */
-    
+
     /* allocate memory */
     gxout = (gadouble *)galloc((pgr2->isiz)*sizeof(gadouble),"gxout");
-    if (gxout==NULL) { 
-      gaprnt (0,"Error from LTERP: Unable to allocate memory for gxout\n"); error=1; goto err; 
+    if (gxout==NULL) {
+      gaprnt (0,"Error from LTERP: Unable to allocate memory for gxout\n"); error=1; goto err;
     }
     /* loop over i dimension for output grid centers */
-    for (i2=0; i2<pgr2->isiz; i2++) {  
+    for (i2=0; i2<pgr2->isiz; i2++) {
       /* initialize -- destination grid points outside range of input grid will have gxout=-999 */
-      *(gxout+i2)=-999;   
+      *(gxout+i2)=-999;
       /* check if this output grid point lies inside the longitude range of input grid box centers */
       if ((*(x2+i2) >= *(x1+0)) && (*(x2+i2) <= *(x1+pgr1->isiz-1))){
 	/* loop over i dimension for input grid box centers */
@@ -1309,13 +1330,13 @@ gadouble tval;
     if (pgr1->jdim>0) {
       /* allocate memory */
       gyout = (gadouble *)galloc((pgr2->jsiz)*sizeof(gadouble),"gyout");
-      if (gyout==NULL) { 
-	gaprnt (0,"Error from LTERP: Unable to allocate memory for gyout\n"); error=1; goto err; 
+      if (gyout==NULL) {
+	gaprnt (0,"Error from LTERP: Unable to allocate memory for gyout\n"); error=1; goto err;
       }
       /* loop over j dimension for output grid boundaries */
       for (j2=0; j2<pgr2->jsiz; j2++) {
 	/* initialize -- destination grid points outside range of input grid will have gyout=-999 */
-	*(gyout+j2)=-999; 
+	*(gyout+j2)=-999;
 	/* check if this output grid point lies inside the latitude range of input grid */
 	if (*(y2+j2) >= *(y1+0) && *(y2+j2) <= *(y1+pgr1->jsiz-1)) {
 	  /* loop over j dimension for input grid boundaries */
@@ -1335,20 +1356,20 @@ gadouble tval;
   /* don't bother to calculate areas if using bilin */
   if (opt==1 || opt==2) {
     area1 = (gadouble *)galloc(pgr1->isiz*pgr1->jsiz*sizeof(gadouble),"area1");
-    if (area1==NULL) { 
-      gaprnt (0,"Error from LTERP: Unable to allocate memory for area1\n"); error=1; goto err; 
+    if (area1==NULL) {
+      gaprnt (0,"Error from LTERP: Unable to allocate memory for area1\n"); error=1; goto err;
     }
     for (j=0; j<pgr1->jsiz; j++) {
       alo = *(y1b+j);
       ahi = *(y1b+j+1);
       if (alo < -90.0) alo = -90.0; if (alo > 90.0) alo = 90.0;
       if (ahi < -90.0) ahi = -90.0; if (ahi > 90.0) ahi = 90.0;
-      if (opt==1) 
+      if (opt==1)
 	w1 = fabs(sin(ahi*rad)-sin(alo*rad));  /* length is weighted by latitude (aave) */
-      else 
+      else
 	w1 = fabs((ahi-alo)*rad);              /* length is not weighted by latitude (amean) */
       for (i=0; i<pgr1->isiz; i++) {
-	ij = j*pgr1->isiz+i;  
+	ij = j*pgr1->isiz+i;
 	alo = *(x1b+i);
 	ahi = *(x1b+i+1);
 	w2 = fabs((ahi-alo)*rad);              /* w2 is the width of grid box  */
@@ -1356,20 +1377,20 @@ gadouble tval;
       }
     }
     area2 = (gadouble *)galloc(pgr2->isiz*pgr2->jsiz*sizeof(gadouble),"area2");
-    if (area2==NULL) { 
-      gaprnt (0,"Error from LTERP: Unable to allocate memory for area2\n"); error=1; goto err; 
+    if (area2==NULL) {
+      gaprnt (0,"Error from LTERP: Unable to allocate memory for area2\n"); error=1; goto err;
     }
     for (j=0; j<pgr2->jsiz; j++) {
       alo = *(y2b+j);
       ahi = *(y2b+j+1);
       if (alo < -90.0) alo = -90.0; if (alo > 90.0) alo = 90.0;
       if (ahi < -90.0) ahi = -90.0; if (ahi > 90.0) ahi = 90.0;
-      if (opt==1) 
+      if (opt==1)
 	w1 = fabs(sin(ahi*rad)-sin(alo*rad));  /* length is weighted by latitude (aave) */
-      else 
+      else
 	w1 = fabs((ahi-alo)*rad);              /* length is not weighted by latitude (amean) */
       for (i=0; i<pgr2->isiz; i++) {
-	ij = j*pgr2->isiz+i;  
+	ij = j*pgr2->isiz+i;
 	alo = *(x2b+i);
 	ahi = *(x2b+i+1);
 	w2 = fabs((ahi-alo)*rad);              /* w2 is the width of grid box  */
@@ -1385,7 +1406,7 @@ gadouble tval;
     /* loop over output grid points */
     for (j=0; j<pgr2->jsiz; j++) {
       for (i=0; i<pgr2->isiz; i++) {
-	ij = j*pgr2->isiz+i;  
+	ij = j*pgr2->isiz+i;
 	if (*(area2+ij) > 0) {
 	  /* whole integer values of gxout and gyout correspond to the boundaries of input grid boxes */
 	  ib = (int)*(gxout+i);
@@ -1399,15 +1420,15 @@ gadouble tval;
 	  if (area_box==NULL || fld_box==NULL) {
 	    gaprnt (0,"Error from LTERP: memory allocation error for box_averaging \n");
 	    error=1; goto err;
-	  }      
+	  }
 	  /* Now loop over all input grid boxes that lie within the output grid box.
-	     Figure out area of of each, whether whole or partial. 
-	     Start with the length along the latitude axis. 
+	     Figure out area of of each, whether whole or partial.
+	     Start with the length along the latitude axis.
 	     If input grid box is partially inside output grid box, we need to recalculate w1 */
 	  icnt=0;   /* initialize the counter for input grid boxes that are within output grid box */
 	  for (jj=jb; jj<=je; jj++) {
 	    pygbflg=0;                 /* not a partial grid box in y */
-	    if (jb!=je && jj==jb) { 
+	    if (jb!=je && jj==jb) {
 	      /* more than one in y range, and this grid box is at bottom of y range */
 	      /* re-calculate length of partial grid box */
 	      pygbflg=1;
@@ -1418,11 +1439,11 @@ gadouble tval;
 	      /* don't let alo be less than min lat of source grid */
 	      if (jb==0 && alo<*(y1b)) alo = *(y1b);
 	      if (opt==1)
-		w1 = fabs(sin(ahi*rad)-sin(alo*rad)); 
-	      else 
+		w1 = fabs(sin(ahi*rad)-sin(alo*rad));
+	      else
 		w1 = fabs((ahi-alo)*rad);
 	    }
-	    else if (je!=jb && jj==je) {                     
+	    else if (je!=jb && jj==je) {
 	      /* more than one in y range, and this grid box is at top of y range */
 	      /* re-calculate length of partial grid box */
 	      pygbflg=1;
@@ -1432,28 +1453,28 @@ gadouble tval;
 	      if (ahi < -90.0) ahi = -90.0; if (ahi > 90.0) ahi = 90.0;
 	      /* don't let ahi be more than max lat of source grid */
 	      if (je==pgr1->jsiz && ahi>*(y1b+je)) ahi=*(y1b+je);
-	      if (opt==1) 
+	      if (opt==1)
 		w1 = fabs(sin(ahi*rad)-sin(alo*rad));
-	      else 
+	      else
 		w1 = fabs((ahi-alo)*rad);
 	    }
 	    else {
-	      /* only one box in y range, or this box is in the middle of the y range. 
+	      /* only one box in y range, or this box is in the middle of the y range.
 		 either way, we will use entire length of output grid box (pygblfg is still 0) */
 	      /* get length anyway in case we have a partial overlap in the x dimension */
 	      alo = *(y1b+jj);
 	      ahi = *(y1b+jj+1);
 	      if (alo < -90.0) alo = -90.0; if (alo > 90.0) alo = 90.0;
 	      if (ahi < -90.0) ahi = -90.0; if (ahi > 90.0) ahi = 90.0;
-	      if (opt==1) 
+	      if (opt==1)
 		w1 = fabs(sin(ahi*rad)-sin(alo*rad));
-	      else 
+	      else
 		w1 = fabs((ahi-alo)*rad);
 	    }
 	    /* Now get the width along the longitude axis.
 	       If input grid box is partially inside the output grid box, we need to recalculate w2 */
 	    for (ii=ib; ii<=ie; ii++) {
-	      pxgbflg=0;                 /* not a partial grid box in x */   
+	      pxgbflg=0;                 /* not a partial grid box in x */
 	      if (ib!=ie && ii==ib) {
 		/* more than one in x range, and this grid box is at left edge of range */
 		pxgbflg=1;
@@ -1473,7 +1494,7 @@ gadouble tval;
 		w2 = fabs((ahi-alo)*rad);
 	      }
 	      else {
-		/* only one box in x range, or this box is in the middle of the x range. 
+		/* only one box in x range, or this box is in the middle of the x range.
 		   either way, we'll use entire width of output grid box (pxgbflg is 0) */
 		if (pygbflg) {
 		  /* get width because we have a partial overlap in the y dimension */
@@ -1481,28 +1502,28 @@ gadouble tval;
 		  ahi = *(x1b+ii+1);
 		  w2 = fabs((ahi-alo)*rad);
 		}
-	      }	
+	      }
 	      /* Set the area and data value for each non-missing input grid box in range */
 	      indx = jj*pgr1->isiz+ii;
 	      if ((*(gr1u+indx)==1) && (*(area1+indx)>0)) {
 		if (pygbflg || pxgbflg) {
 		  /* recalculate area of partial grid box, as long as length and width are non-zero */
 		  if (w1>0 && w2>0) {
-		    *(area_box+icnt) = w1 * w2; 
+		    *(area_box+icnt) = w1 * w2;
 		    *(fld_box+icnt)  = *(gr1+indx);
 		    icnt++;
-		  } 
+		  }
 		}
 		else {
 		  /* the entire input grid box is within output grid, use area1 (already calculated) */
 		  *(area_box+icnt) = *(area1+indx);
 		  *(fld_box+icnt)  = *(gr1+indx);
 		  icnt++;
-		} 
-	      }		
-	      if (icnt > maxgrid) { 
+		}
+	      }
+	      if (icnt > maxgrid) {
 		gaprnt (0,"Error from LTERP: icnt>maxgrid \n");
-		error=1; goto err; 
+		error=1; goto err;
 	      }
 	    }
 	  }
@@ -1530,15 +1551,15 @@ gadouble tval;
       }
     }
   } /* matches if (opt==1 || opt==2) (for box averaging) */
-  
+
   else {
     /* bilinear interpolation based on regrid2.f and re.c */
     /* bilinear/bessel interpolation based on the FNOC routine bssl5 by D. Hensen, FNOC */
-    
+
     /* 1D */
     if (pgr1->jdim<0) {
       /* loop over all points in destination output grid */
-      for (i=0; i<pgr2->isiz; i++) { 	
+      for (i=0; i<pgr2->isiz; i++) {
 	/* check if this destination grid point is outside the source grid */
 	if (gxout[i]<0) {
 	  *(gr2u+i) = 0;
@@ -1557,7 +1578,7 @@ gadouble tval;
 	  if (*(gr1u+ic) == 1 && *(gr1u+ic+1) == 1) {
 	    *(gr2u+i) = 1;
 	    *(gr2+i) = *(gr1+ic)*(1-r) + *(gr1+ic+1)*r;
-	  } 
+	  }
 	  else {
 	    *(gr2u+i) = 0;
 	  }
@@ -1573,13 +1594,13 @@ gadouble tval;
 	  /* check if this destination grid point is outside the source grid */
 	  if (gxout[i]<0 || gyout[j]<0) {
 	    *(gr2u+ij2) = 0;
-	  } 
+	  }
 	  else {
 	    /* ic and jc are index values for input source grid point at bottom left of 4 nearest neighbors */
 	    ic = (int) gxout[i];
 	    jc = (int) gyout[j];
 	    r = gxout[i] - ic;
-	    s = gyout[j] - jc;			
+	    s = gyout[j] - jc;
 	    /* if we're at the top/right edge of the grid, and endpoints of both grids have the same value,
 	       we'll use the endpoints in the result grid -- tweak ic, jc, r, and s to enable this. */
 	    if ((ic==pgr1->isiz-1) && x1[ic]==x2[i]) {
@@ -1592,18 +1613,18 @@ gadouble tval;
 	    }
 	    ij1=ic+jc*pgr1->isiz;
 	    /* make sure surrounding points are valid */
-	    if (*(gr1u+ij1) == 1 && 
-		*(gr1u+ij1+1) == 1 && 
-		*(gr1u+ij1+pgr1->isiz) == 1 && 
+	    if (*(gr1u+ij1) == 1 &&
+		*(gr1u+ij1+1) == 1 &&
+		*(gr1u+ij1+pgr1->isiz) == 1 &&
 		*(gr1u+ij1+pgr1->isiz+1) == 1) {
 	      *(gr2u+ij2) = 1;
-	      *(gr2+ij2) = (1-s)*(*(gr1+ij1)*(1-r) + *(gr1+ij1+1)*r) + 
+	      *(gr2+ij2) = (1-s)*(*(gr1+ij1)*(1-r) + *(gr1+ij1+1)*r) +
 		s*(*(gr1+ij1+pgr1->isiz)*(1-r) + *(gr1+ij1+pgr1->isiz+1)*r);
-	    } 
+	    }
 	    else {
 	      *(gr2u+ij2) = 0;
 	    }
-	    
+
 	    if (bessel==1) {
 	      /* refine interpolation with bessel algorithm */
 	      /* interpolate 4 columns (i-1,i,i+1,i+2) to j+s and store in fr[0] through fr[3]*/
@@ -1619,22 +1640,22 @@ gadouble tval;
 		/* make sure we're far enough away from the grid edges */
 		if (ic==0 || jc==0) { flag=0; break; }
 		if (ic>pgr1->isiz-3 || jc>pgr1->jsiz-3) { flag=0; break; }
-		
+
 		/* set up indices and values for secondary ring -- the nearest 16 grid points */
 		jcp1 = jc+1;
 		jcp2 = jc+2;
 		jcm1 = jc-1;
-		
+
 		fijm1 = *(gr1+ii + jcm1 * pgr1->isiz);
 		fij   = *(gr1+ii + jc   * pgr1->isiz);
 		fijp1 = *(gr1+ii + jcp1 * pgr1->isiz);
 		fijp2 = *(gr1+ii + jcp2 * pgr1->isiz);
-		
+
 		uijm1 = *(gr1u+ii + jcm1 * pgr1->isiz);
 		uij   = *(gr1u+ii + jc   * pgr1->isiz);
 		uijp1 = *(gr1u+ii + jcp1 * pgr1->isiz);
 		uijp2 = *(gr1u+ii + jcp2 * pgr1->isiz);
-		
+
 		/* exit if any value undefined */
 		if (uijm1 == 0 || uij == 0 || uijp1 == 0 || uijp2 == 0) { flag=0; break; }
 		u = (fij + fijp1) * 0.5;
@@ -1644,7 +1665,7 @@ gadouble tval;
 		fr[k] = u + s1*del + s2*del2 + s3*del3;
 		k++;
 	      }
-	      
+
 	      /* interpolate the fr row to ii+r */
 	      if (flag) {
 		u = (fr[1] + fr[2]) * 0.5;
@@ -1740,7 +1761,7 @@ err:
 
   /* release memory */
   gafree (&pst2);
-  if (error) if (pst!=NULL) gafree (pst); 
+  if (error) if (pst!=NULL) gafree (pst);
   if (x1!=NULL) gree(x1,"f400");
   if (x2!=NULL) gree(x2,"f401");
   if (y1!=NULL) gree(y1,"f402");
@@ -1755,9 +1776,9 @@ err:
   if (area2!=NULL) gree(area2,"f403b");
   if (fld_box!=NULL) gree(fld_box,"399a");
   if (area_box!=NULL) gree(area_box,"399b");
-  if (error) 
+  if (error)
     return 1;
-  else 
+  else
     return 0;
 }
 
@@ -1907,7 +1928,7 @@ char *ch,*fnam,resu;
   jconv = pfi->gr2ab[1];
   pst->dmin[1] = jconv(pfi->grvals[1],y1);
   pst->dmax[1] = jconv(pfi->grvals[1],y2);
-  
+
   pst->idim = 0;
   pst->jdim = 1;
 
@@ -1984,9 +2005,9 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
   char *ch,*fnam,resu;
   gadouble *gr;
   char *gru;
-  
+
   fnam = mnmxnam[sel-1];
-  
+
   /* Check for valid number of args       */
   if (pfc->argnum==2 && !strncmp(pfc->argpnt[1],"global",1)) gflag=1;
   if (pfc->argnum!=5 && !gflag) {
@@ -2013,7 +2034,7 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
     ch = dimprs ("lon=360", pst, pfi, &dim, &x2, 1, &wflag);
     if (ch==NULL || dim!=0) goto err1;
     if (!wflag && sel!=4) x2 = x2 + 0.5;
-    ch = dimprs ("lat=-90", pst, pfi, &dim, &y1, 1, &wflag); 
+    ch = dimprs ("lat=-90", pst, pfi, &dim, &y1, 1, &wflag);
     if (ch==NULL || dim!=1) goto err1;
     if (!wflag && sel!=4) y1 = y1 - 0.5;
     ch = dimprs ("lat=90", pst, pfi, &dim, &y2, 1, &wflag);
@@ -2042,7 +2063,7 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
   jconv = pfi->gr2ab[1];
   pst->dmin[1] = jconv(pfi->grvals[1],y1);
   pst->dmax[1] = jconv(pfi->grvals[1],y2);
-  
+
   pst->idim = 0;
   pst->jdim = 1;
 
@@ -2058,7 +2079,7 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
   /* Get the area min/max and its location */
   min =  9.99e35;
   max = -9.99e35;
-  minx = maxx = miny = maxy = -1; 
+  minx = maxx = miny = maxy = -1;
   gr  = pgr->grid;
   gru = pgr->umask;
   cnt = 0;
@@ -2076,15 +2097,15 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
   }
   if (cnt==0) {
     resu = 0;
-    res = pgr->undef; 
-  } 
+    res = pgr->undef;
+  }
   else {
     resu = 1;
     if      (sel==1) res = min;
-    else if (sel==2) res = max; 
-    else if (sel==3) res = minx; 
+    else if (sel==2) res = max;
+    else if (sel==3) res = minx;
     else if (sel==4) res = miny;
-    else if (sel==5) res = maxx; 
+    else if (sel==5) res = maxx;
     else if (sel==6) res = maxy;
   }
 
@@ -2127,7 +2148,7 @@ gaint i,dim,wflag,rc,cnt,gflag=0;
 char *ch,*gr1u,*gr2u,*grid3u,*gr3u,s1u,s2u,mn1u,mn2u,resu,covu;
 size_t sz;
 
-   mn1=mn2=s1=s2=cov=ss=res=0;   
+   mn1=mn2=s1=s2=cov=ss=res=0;
 
   /* Check for valid number of args       */
   if (pfc->argnum==3 && !strncmp(pfc->argpnt[2],"global",1)) gflag=1;
@@ -2234,7 +2255,7 @@ size_t sz;
   /* result from doaave was undefined */
   if (mn1u==0 || mn2u==0) {
     resu = 0;
-  } 
+  }
   else {
 
     /* Remove the mean from the fields */
@@ -2338,20 +2359,97 @@ char doaave(struct gagrid *pgr, gadouble dmin0, gadouble dmax0,
 		gadouble dmin1, gadouble dmax1, gaint sel, gadouble *result) {
 gadouble (*iconv) (gadouble *, gadouble);
 gadouble (*jconv) (gadouble *, gadouble);
-gadouble *ivals, *jvals, *gr;
-gadouble d2r,sum,w1,w2=0,y1,x1,abs,alo,ahi,alen,wt;
-gaint i,j;
+gadouble *ivals, *jvals, *gr, *xw=NULL, *yw=NULL;
+gadouble d2r,sum,w1,w2=0,y1,x1,abs,alo,ahi,alen,wt,cellwt;
+gaint i,j,n,size;
 char *gru,sumu=0;
+size_t sz;
 
   d2r = M_PI/180.0;
   iconv = pgr->igrab;
   jconv = pgr->jgrab;
   ivals = pgr->ivals;
   jvals = pgr->jvals;
-  sum = 0.0; 
+  sum = 0.0;
   wt = 0.0;
   gr  = pgr->grid;
   gru = pgr->umask;
+
+  /* Coordinate weights are independent of the data values.  Calculate
+     them once, then reduce the grid in parallel. */
+  sz = pgr->isiz*sizeof(gadouble);
+  xw = (gadouble *)galloc(sz,"aavexw");
+  sz = pgr->jsiz*sizeof(gadouble);
+  yw = (gadouble *)galloc(sz,"aaveyw");
+  if (xw!=NULL && yw!=NULL) {
+    for (i=0; i<pgr->isiz; i++) {
+      x1 = (gadouble)(i+pgr->dimmin[0]);
+      alo = iconv(ivals, x1-0.5);
+      ahi = iconv(ivals, x1+0.5);
+      alen=fabs(ahi-alo);
+      if (alo < dmin0) alo = dmin0;
+      if (alo > dmax0) alo = dmax0;
+      if (ahi < dmin0) ahi = dmin0;
+      if (ahi > dmax0) ahi = dmax0;
+      if (sel==1 || sel==2) w2 = ahi-alo;
+      else if (sel==5) w2 = d2r*(ahi-alo);
+      else if (sel==3) {
+        if (alen > FUZZ_SCALE) w2=fabs(ahi-alo)/alen;
+        else w2=0.0;
+      }
+      else w2=1.0;
+      xw[i] = w2;
+    }
+    for (j=0; j<pgr->jsiz; j++) {
+      y1 = (gadouble)(j+pgr->dimmin[1]);
+      alo = jconv(jvals, y1-0.5);
+      ahi = jconv(jvals, y1+0.5);
+      alen=fabs(ahi-alo);
+      if (alo < dmin1) alo = dmin1;
+      if (alo > dmax1) alo = dmax1;
+      if (ahi < dmin1) ahi = dmin1;
+      if (ahi > dmax1) ahi = dmax1;
+      if (alo < -90.0) alo = -90.0; if (ahi < -90.0) ahi = -90.0;
+      if (alo >  90.0) alo =  90.0; if (ahi >  90.0) ahi =  90.0;
+      w1 = 1.0;
+      if (sel==1 || sel==5) w1 = fabs(sin(ahi*d2r)-sin(alo*d2r));
+      else if (sel==2) w1 = fabs(ahi-alo);
+      else if (sel==3) {
+        if (alen > FUZZ_SCALE) w1=fabs(ahi-alo)/alen;
+        else w1=0.0;
+      }
+      yw[j] = w1;
+    }
+
+    size = pgr->isiz*pgr->jsiz;
+#if USEOPENMP == 1
+#pragma omp parallel for schedule(static) reduction(+:sum,wt) private(i,j,cellwt) if(ga_omp_parallelize(size))
+#endif
+    for (n=0; n<size; n++) {
+      if (gru[n] != 0) {
+        i = n % pgr->isiz;
+        j = n / pgr->isiz;
+        cellwt = xw[i]*yw[j];
+        if (sel==4) sum += gr[n];
+        else sum += gr[n]*cellwt;
+        wt += cellwt;
+      }
+    }
+    gree(xw,"aavexw");
+    gree(yw,"aaveyw");
+    if (wt>0.0) {
+      sumu = 1;
+      if (sel<=2) sum = sum/wt;
+    }
+    else {
+      sumu = 0;
+      sum = pgr->undef;
+    }
+    *result = sum;
+    return (sumu);
+  }
+  if (xw!=NULL) gree(xw,"aavexw");
+  if (yw!=NULL) gree(yw,"aaveyw");
 
   for (j=0; j<pgr->jsiz; j++) {
     y1 = (gadouble)(j+pgr->dimmin[1]);
@@ -2368,14 +2466,14 @@ char *gru,sumu=0;
     w1 = 1.0;
     if (sel==1 || sel==5) {
       w1 = fabs(sin(ahi*d2r)-sin(alo*d2r));  /* for aave and atot, area weighting by latitude */
-    } 
-    else if (sel==2) { 
+    }
+    else if (sel==2) {
       w1 = fabs(ahi-alo);           /* for amean, weight is length of interval in world coords */
-    } 
+    }
     else if (sel==3) {
       if (alen > FUZZ_SCALE) {    /* grid weighting (asum), weighted by length of interval in grid coords */
-	w1=fabs(ahi-alo)/alen;                 
-      } 
+	w1=fabs(ahi-alo)/alen;
+      }
       else {
 	w1=0.0;
       }
@@ -2392,29 +2490,29 @@ char *gru,sumu=0;
 
       if (sel==1 || sel==2) {
 	w2 = ahi - alo;                      /* for aave and amean */
-      } 
+      }
       else if (sel==5) {
 	w2 = d2r*(ahi - alo);                /* for atot */
-      } 
+      }
       else if (sel==3) {
 	if (alen > FUZZ_SCALE) {             /* grid weighting (asum) */
-	  w2=fabs(ahi-alo)/alen;                 
-	} 
+	  w2=fabs(ahi-alo)/alen;
+	}
 	else {
 	  w2=0.0;
 	}
-      } 
+      }
       else if (sel==4) {
 	w2=1.0;              /* no weighting (asumg) */
       }
 
       if (*gru != 0) {
 	if (sel==4) {
-	  sum = sum + *gr;    /* no weighting for asumg */   
+	  sum = sum + *gr;    /* no weighting for asumg */
 	}
 	else {
 	  sum = sum + (*gr * w1 * w2);  /* otherwise apply weights */
-	} 
+	}
         wt = wt + (w1 * w2);
       }
       gr++; gru++;
@@ -2425,7 +2523,7 @@ char *gru,sumu=0;
     if (sel<=2 ) {
       sum = sum / wt;
     }
-  } 
+  }
   else {
     sumu = 0;
     sum = pgr->undef;
@@ -2574,9 +2672,9 @@ size_t sz;
         }
         if (sel==1) {
           wt = mn1 + siz;
-          for (i=0; i<siz; i++) { 
-	    *(mn1+i)=0.0; 
-	    *(wt+i)=0.0; 
+          for (i=0; i<siz; i++) {
+	    *(mn1+i)=0.0;
+	    *(wt+i)=0.0;
 	  }
         }
         if (sel==2 || sel==3) {
@@ -2593,10 +2691,10 @@ size_t sz;
           covu = s2u + siz;
 
           for (i=0; i<siz; i++) {
-            *(mn1+i) = 0.0; 
+            *(mn1+i) = 0.0;
 	    *(mn2+i) = 0.0;
             *(cnt+i) = 0.0;
-            *(s1+i)  = 0.0; 
+            *(s1+i)  = 0.0;
 	    *(s2+i)  = 0.0;
             *(cov+i) = 0.0;
           }
@@ -2845,7 +2943,7 @@ gadouble gr1, gr2, *sum, *cnt, *val;
 gadouble alo, ahi, alen, wlo=0, whi=0, rd1;
 gadouble d2r, wt, wt1, abs;
 gaint mos, mns, wflag=0;
-gaint i, rc, siz, dim, d, d1, d2, dim2, ilin, incr, bndflg;
+gaint i, rc, siz, dim, d, d1, d2, dim2, ilin, incr, bndflg, normerr;
 char *ch,*fnam,*sumu,*cntu,*valu;
 
   d2r = M_PI/180;
@@ -2898,7 +2996,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
         gaprnt(0,pout);
         return(1);
       }
-    } else {                           
+    } else {
       /* Must be time increment */
       if (dim!=3) {
         snprintf(pout,1255,"Error from %s: Invalid usage of increment value\n",fnam);
@@ -2970,7 +3068,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
   }
 
   /* Figure out weights for 1st grid */
-  wt1 = 1.0;                     
+  wt1 = 1.0;
 
   /*-----  time */
   if (dim==3) {
@@ -2982,7 +3080,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       if (gr2 > rd1-0.5) wt1 = gr2 + 0.5 - rd1;
       if (wt1<0.0) wt1=0.0;
     }
-  } 
+  }
   /*-----  lon,lat,lev,ens */
   else {
     conv = pfi->gr2ab[dim];
@@ -3024,7 +3122,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       } else if (sel==4) {                                            /* sumg */
 	wt1=1.0;
       }
-    } 
+    }
     /* -----   lon,lev,ens scaling */
     else {
       if(sel<=2) {                                        /* ave, mean */
@@ -3038,11 +3136,11 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       } else if (sel==4) {                                /* sumg */
 	wt1=1.0;
       }
-    } 
+    }
   }
-  
+
   /* Get first grid */
-  rc = gaexpr(pfc->argpnt[0],pst);     
+  rc = gaexpr(pfc->argpnt[0],pst);
   if (rc) return (rc);
   if (pst->type == 0) {
     gafree (pst);
@@ -3061,11 +3159,11 @@ char *ch,*fnam,*sumu,*cntu,*valu;
         sum++; sumu++;
       }
     }
-    return (0); 
+    return (0);
   }
 
   /* Figure out weights for 2nd grid */
-  wt = 1.0;                    
+  wt = 1.0;
 
   /*-----    time 22222222222222 */
   if (dim==3) {
@@ -3077,7 +3175,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
       if (wt<0.0) wt=0.0;
     }
-  } 
+  }
   /*----- lon,lat,lev,ens 22222222222 */
   else {
     conv = pfi->gr2ab[dim];
@@ -3119,7 +3217,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       } else if (sel==4) {                                         /* sumg */
 	wt=1.0;
       }
-    } 
+    }
     /* ---- lon,lev,ens  scaling 2222222222222*/
     else {
       if(sel<=2) {                                  /* ave, mean */
@@ -3157,65 +3255,66 @@ char *ch,*fnam,*sumu,*cntu,*valu;
   cnt  = pgr2->grid;
   sumu = pgr1->umask;
   cntu = pgr2->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
+#endif
   for (i=0; i<siz; i++) {
     if (sel>=5 && sel<=8) {
-      if (*sumu==0 || *cntu==0) {  
-        if (*cntu!=0) {
-	  *sum = *cnt; 
-	  *sumu = 1;
-	  *cnt = d;
+      if (sumu[i]==0 || cntu[i]==0) {
+        if (cntu[i]!=0) {
+	  sum[i] = cnt[i];
+	  sumu[i] = 1;
+	  cnt[i] = d;
 	}
-        else if (*sumu!=0) {
-	  *cnt = d1;
-	  *cntu = 1;
+        else if (sumu[i]!=0) {
+	  cnt[i] = d1;
+	  cntu[i] = 1;
 	}
-      } 
+      }
       else {
         if (sel==5 || sel==7) {
-          if (*cnt < *sum) {*sum = *cnt; *cnt = d;} 
-          else *cnt = d1;
+          if (cnt[i] < sum[i]) {sum[i] = cnt[i]; cnt[i] = d;}
+          else cnt[i] = d1;
         }
         if (sel==6 || sel==8) {
-          if (*cnt > *sum) {*sum = *cnt; *cnt = d;}
-          else *cnt = d1;
+          if (cnt[i] > sum[i]) {sum[i] = cnt[i]; cnt[i] = d;}
+          else cnt[i] = d1;
         }
       }
     }
     else {
-      if (*sumu==0) {
-        if (*cntu==0) {
-	  *cnt = 0.0;
-	  *cntu = 1;
+      if (sumu[i]==0) {
+        if (cntu[i]==0) {
+	  cnt[i] = 0.0;
+	  cntu[i] = 1;
 	}
         else {
     	  if (sel<=3) {                                          /* ave, mean sum */
-	    *sum = *cnt*wt;
-	    *sumu = 1;
-	    *cnt = wt;
-          } 
-	  else if (sel==4) {                                   /* sumg */
-	    *sum = *cnt;
-	    *sumu = 1;
+	    sum[i] = cnt[i]*wt;
+	    sumu[i] = 1;
+	    cnt[i] = wt;
           }
-        }
-      } 
-      else if (*cntu==0 && (sel<=3) ) {              /* ave, mean sum */
-        *cnt = wt1;
-	*cntu = 1;
-        *sum = *sum*wt1; 
+	  else if (sel==4) {                                   /* sumg */
+	    sum[i] = cnt[i];
+	    sumu[i] = 1;
+          }
+	}
+      }
+      else if (cntu[i]==0 && (sel<=3) ) {              /* ave, mean sum */
+	cnt[i] = wt1;
+	cntu[i] = 1;
+	sum[i] = sum[i]*wt1;
       } else {
         if (sel<=3) {
-          *sum = *sum*wt1 + *cnt*wt;                            /* ave, mean sum */
-        } 
-	else if (sel==4) {
-          *sum = *sum + *cnt;
+          sum[i] = sum[i]*wt1 + cnt[i]*wt;                       /* ave, mean sum */
         }
-        *cnt = wt1 + wt;
-	*cntu = 1;
+	else if (sel==4) {
+          sum[i] = sum[i] + cnt[i];
+        }
+        cnt[i] = wt1 + wt;
+	cntu[i] = 1;
       }
     }
-    cnt++;  sum++;
-    cntu++; sumu++;
   }
 
   /* Now sum the rest of the grids */
@@ -3223,8 +3322,8 @@ char *ch,*fnam,*sumu,*cntu,*valu;
   rc = 0;
   for (d=d; d<=d2 && !rc; d+=incr) {
     /* Get weight for this grid */
-    wt = 1.0;          
-    
+    wt = 1.0;
+
     /*---- time 3333333*/
     if (dim==3) {
       gr2t (pfi->grvals[3],d,&(pst->tmin));
@@ -3235,7 +3334,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
 	if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
 	if (wt<0.0) wt=0.0;
       }
-    } 
+    }
     /*---- lat,lon,lev,ens 3333333*/
     else {
       conv = pfi->gr2ab[dim];
@@ -3277,7 +3376,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
 	} else if (sel==4) {                                          /* sumg */
 	  wt=1.0;
 	}
-      } 
+      }
       /*---- lon,lev,ens 3333333*/
       else {
 	if(sel<=2) {                        /* ave, mean */
@@ -3293,7 +3392,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
 	}
       }
     }
-    
+
     rc = gaexpr(pfc->argpnt[0],pst);
     if (!rc && pst->type==0) rc = -1;
     if (!rc) {
@@ -3304,43 +3403,44 @@ char *ch,*fnam,*sumu,*cntu,*valu;
       valu = pgr->umask;
       cntu = pgr2->umask;
       sumu = pgr1->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
+#endif
       for (i=0; i<siz; i++) {
 	if (sel>=5 && sel<=8) {
-	  if (*sumu==0 || *valu==0) {  
-	    if (*valu!=0) {
-	      *sum = *val; 
-	      *cnt = d;
-	      *sumu = 1;
-	      *cntu = 1;
+	  if (sumu[i]==0 || valu[i]==0) {
+	    if (valu[i]!=0) {
+	      sum[i] = val[i];
+	      cnt[i] = d;
+	      sumu[i] = 1;
+	      cntu[i] = 1;
 	    }
-	  } 
+	  }
 	  else {
-	    if ((sel==5 || sel==7) && *val < *sum) {*sum = *val; *cnt = d;} 
-	    if ((sel==6 || sel==8) && *val > *sum) {*sum = *val; *cnt = d;}
+	    if ((sel==5 || sel==7) && val[i] < sum[i]) {sum[i] = val[i]; cnt[i] = d;}
+	    if ((sel==6 || sel==8) && val[i] > sum[i]) {sum[i] = val[i]; cnt[i] = d;}
 	  }
 	} else {
-	  if (*valu!=0) {
+	  if (valu[i]!=0) {
 	    /* weight for ave,mean,sum  for sumg just accum */
 	    if (sel<=3) {
-	      *val = *val*wt;
+	      val[i] = val[i]*wt;
 	    }
-	    if (*sumu==0) {
-	      *sum = *val;
-	      *sumu = 1;
-	      *cnt += wt;
+	    if (sumu[i]==0) {
+	      sum[i] = val[i];
+	      sumu[i] = 1;
+	      cnt[i] += wt;
 	    } else {
-	      *sum += *val;
-	      *cnt += wt;
+	      sum[i] += val[i];
+	      cnt[i] += wt;
 	    }
 	  }
 	}
-	sum++;  cnt++;  val++;
-	sumu++; cntu++; valu++;
       }
       gagfre(pgr);
     }
   }
-  
+
   if (rc) {
     if (rc==-1) gafree (pst);
     gagfre(pgr1);
@@ -3354,26 +3454,29 @@ char *ch,*fnam,*sumu,*cntu,*valu;
     cntu = pgr2->umask;
     sumu = pgr1->umask;
     if (sel==1 || sel==2 || sel==7 || sel==8) {
+      normerr = 0;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) reduction(max:normerr) if(ga_omp_parallelize(siz))
+#endif
       for (i=0; i<siz; i++) {
-        if (*sumu!=0) {
-          if (sel < 3 && *cnt==0.0) {
-            snprintf(pout,1255,"Error from %s:  Internal logic check 100\n",fnam);
-            gaprnt(0,pout);
-            return (1);
+        if (sumu[i]!=0) {
+          if (sel < 3 && cnt[i]==0.0) {
+            normerr = 100;
           }
-          if (sel > 6 && *cntu==0) {
-            snprintf(pout,1255,"Error from %s:  Internal logic check 101\n",fnam);
-            gaprnt(0,pout);
-            return (1);
+          else if (sel > 6 && cntu[i]==0) {
+            normerr = 101;
           }
-          if (sel==1 || sel==2) {
-	    *sum = *sum / *cnt;
+          else if (sel==1 || sel==2) {
+	    sum[i] = sum[i] / cnt[i];
           } else {
-            *sum = *cnt;
+            sum[i] = cnt[i];
           }
         }
-        sum++;  cnt++;
-        sumu++; cntu++;
+      }
+      if (normerr) {
+        snprintf(pout,1255,"Error from %s:  Internal logic check %i\n",fnam,normerr);
+        gaprnt(0,pout);
+        return (1);
       }
     }
   }
@@ -3489,9 +3592,11 @@ char *ch,*sumu,*valu;
   siz = pgr1->isiz * pgr1->jsiz;       /* Apply weights to this grid */
   sum  = pgr1->grid;
   sumu = pgr1->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
+#endif
   for (i=0; i<siz; i++) {
-    if (*sumu!=0) *sum = *sum * wt;
-    sum++; sumu++;
+    if (sumu[i]!=0) sum[i] = sum[i] * wt;
   }
 
   d = d1 + 1;
@@ -3530,17 +3635,18 @@ char *ch,*sumu,*valu;
       valu = pgr->umask;
       sum  = pgr1->grid;
       sumu = pgr1->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
+#endif
       for (i=0; i<siz; i++) {
-        if (*valu!=0) {
-          *val = *val*wt;
-          if (*sumu==0) {
-	    *sum  = *val;
-	    *sumu = 1;
+        if (valu[i]!=0) {
+          val[i] = val[i]*wt;
+          if (sumu[i]==0) {
+	    sum[i]  = val[i];
+	    sumu[i] = 1;
 	  }
-          else *sum += *val;
+          else sum[i] += val[i];
         }
-        sum++;  val++;
-        sumu++; valu++;
       }
       gagfre(pgr);
     }
@@ -3682,9 +3788,9 @@ size_t sz;
     lat2 = ltconv(ltvals,rj-1.0) * d2r;
     lat4 = ltconv(ltvals,rj+1.0) * d2r;
     for (i=(pgr1->dimmin[0]+1); i<pgr1->dimmax[0]; i++) {
-      if (*p1u!=0 && 
+      if (*p1u!=0 &&
 	  *p2u!=0 &&
-          *p3u!=0 && 
+          *p3u!=0 &&
 	  *p4u!=0 ) {
         ri = (gadouble)i;
         lon1 = lnconv(lnvals,ri-1.0) * d2r;
@@ -3825,9 +3931,9 @@ size_t sz;
     lat2 = ltconv(ltvals,rj-1.0) * d2r;
     lat4 = ltconv(ltvals,rj+1.0) * d2r;
     for (i=(pgr1->dimmin[0]+1); i<pgr1->dimmax[0]; i++) {
-      if (*p1u!=0 && 
+      if (*p1u!=0 &&
 	  *p2u!=0 &&
-          *p3u!=0 && 
+          *p3u!=0 &&
 	  *p4u!=0 ) {
         ri = (gadouble)i;
         lon1 = lnconv(lnvals,ri-1.0) * d2r;
@@ -3913,9 +4019,9 @@ char *tvu, *rhu;
   }
   pgrrh = pst->result.pgr;
 
-  if ((pgrrh->idim!=pgrtv->idim) || 
-      (pgrrh->jdim!=pgrtv->jdim) || 
-      (pgrrh->idim>-1 && gagchk(pgrrh,pgrtv,pgrrh->idim)) || 
+  if ((pgrrh->idim!=pgrtv->idim) ||
+      (pgrrh->jdim!=pgrtv->jdim) ||
+      (pgrrh->idim>-1 && gagchk(pgrrh,pgrtv,pgrrh->idim)) ||
       (pgrrh->jdim>-1 && gagchk(pgrrh,pgrtv,pgrrh->jdim)) ) {
     gaprnt (0,"Error in TVRH2Q: Grids don't have same scaling");
     gagfre (pgrtv);
@@ -4182,22 +4288,24 @@ char *psu, *varu, *resu;
      It is assumed the vertical coordinate system is mb.    */
   size = pgr->isiz * pgr->jsiz;
   kgm = 100.0/9.8;
-  ps  = pgrb->grid; 
+  ps  = pgrb->grid;
   psu = pgrb->umask;
-  res  = pgr->grid; 
+  res  = pgr->grid;
   resu = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(size))
+#endif
   for (i=0; i<size; i++) {
-    if (*psu==0 || *resu==0) {
-      *resu = 0;
+    if (psu[i]==0 || resu[i]==0) {
+      resu[i] = 0;
     }
-    else if (*ps < clev) {
-      *resu = 0;
+    else if (ps[i] < clev) {
+      resu[i] = 0;
     }
     else {
-      *res = *res * kgm * (*ps - ulev);
-      *resu = 1;
+      res[i] = res[i] * kgm * (ps[i] - ulev);
+      resu[i] = 1;
     }
-    ps++; psu++; res++; resu++;
   }
 
   /* Go through the intermediate levels and apply mass weight. */
@@ -4224,23 +4332,24 @@ char *psu, *varu, *resu;
     psu  = pgrb->umask;
     resu = pgr->umask;
     varu = pgrv->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) private(ulevt,blevt) if(ga_omp_parallelize(size))
+#endif
     for (j=0; j<size; j++) {
-      if ((*psu!=0) && (*varu!=0) && (*ps>=clev)) {
+      if ((psu[j]!=0) && (varu[j]!=0) && (ps[j]>=clev)) {
         ulevt = ulevi;
         if (top>ulev) ulevt = top;
         blevt = blevi;
-        if (*ps<blev) blevt = *ps;
-        if (*resu==0) {
-	  *res = *var * kgm * (blevt - ulevt);
-	  *resu = 1;
+        if (ps[j]<blev) blevt = ps[j];
+        if (resu[j]==0) {
+	  res[j] = var[j] * kgm * (blevt - ulevt);
+	  resu[j] = 1;
 	}
         else {
-	  *res = *res + (*var * kgm * (blevt - ulevt) );
-	  *resu = 1;
+	  res[j] = res[j] + (var[j] * kgm * (blevt - ulevt) );
+	  resu[j] = 1;
 	}
       }
-      ps++;  res++;  var++;
-      psu++; resu++; varu++;
     }
     gafree (pst);
   }
@@ -4267,21 +4376,22 @@ char *psu, *varu, *resu;
     psu  = pgrb->umask;
     resu = pgr->umask;
     varu = pgrv->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) private(blevt) if(ga_omp_parallelize(size))
+#endif
     for (i=0; i<size; i++) {
-      if (*psu!=0 && *varu!=0) {
+      if (psu[i]!=0 && varu[i]!=0) {
         blevt = blevi;
-        if (*ps<blev) blevt = *ps;
-        if (*resu==0) {
-	  *res = *var * kgm * (blevt - top);
-	  *resu = 1;
+        if (ps[i]<blev) blevt = ps[i];
+        if (resu[i]==0) {
+	  res[i] = var[i] * kgm * (blevt - top);
+	  resu[i] = 1;
 	}
         else {
-	  *res = *res + (*var * kgm * (blevt - top) );
-	  *resu = 1;
+	  res[i] = res[i] + (var[i] * kgm * (blevt - top) );
+	  resu[i] = 1;
 	}
       }
-      ps++; res++; var++;
-      psu++; resu++; varu++;
     }
   }
   gafree (pst);
@@ -4699,7 +4809,7 @@ gaint rc,cnt,flag,i;
         }
         ch++; cnt++;
       }
-      if (flag==0) rpt->umask = 0; 
+      if (flag==0) rpt->umask = 0;
       rpt=rpt->rpt;
     }
   }
@@ -4720,7 +4830,7 @@ gadouble gi,gj,w1,w2,lon,lat,lnmin,lnmax,lnscl,ltmin,ltmax,ltscl;
 gadouble w3,w4,wm;
 gaint rc,ig,jg,nearn;
 char *p1u, *p2u, *p3u, *p4u;
- 
+
 
   if (pfc->argnum<2 || pfc->argnum>4) {
     gaprnt (0,"Error from GR2STN:  Too many or too few args \n");
@@ -4729,7 +4839,7 @@ char *p1u, *p2u, *p3u, *p4u;
   }
 
   /* If we are doing the form of gr2stn that involves
-     interpolating to a 1-D profile or time series, 
+     interpolating to a 1-D profile or time series,
      branch to a different routine */
 
   if ( (pst->idim == -1 || pst->idim>1) && pst->jdim == -1) {
@@ -4804,7 +4914,7 @@ char *p1u, *p2u, *p3u, *p4u;
     } else {
       gi = (lon-lnmin)/lnscl;
       gj = (lat-ltmin)/ltscl;
-      ig = (gaint)gi; 
+      ig = (gaint)gi;
       jg = (gaint)gj;
       p1 = pgr->grid + jg*pgr->isiz + ig;
       p1u = pgr->umask + jg*pgr->isiz + ig;
@@ -4876,7 +4986,7 @@ char *p1u, *p2u, *p3u, *p4u;
   return(0);
 }
 
-/* gr2stn where we interpolate to a lat-lon for 
+/* gr2stn where we interpolate to a lat-lon for
    a profile or time series */
 
 gaint ffg2s2  (struct gafunc *pfc, struct gastat *pst) {
@@ -4915,7 +5025,7 @@ size_t sz;
     lon = rpt->lon;
     /* Check for nearest neighbor flag in 3rd arg */
     if (pfc->argnum==3 && strcmp("-n",pfc->argpnt[2])==0) nearn = 1;
-  } 
+  }
   else {
     /* 2nd & 3rd args are lon & lat */
     pgr = pst->result.pgr;
@@ -4955,7 +5065,7 @@ size_t sz;
     gr1 = pgr->dimmin[2];
     gr2 = pgr->dimmax[2];
   } else if (pgr->idim== -1) {
-    gr1 = 1;  
+    gr1 = 1;
     gr2 = 1;
   } else if (pgr->idim==4) {
     gaprnt(0,"Error from GR2STN: 1-D grid may vary only in the Z or T dimension \n");
@@ -5019,9 +5129,9 @@ size_t sz;
     *(stn->tvals+6) = 1.0;
     *(stn->tvals+7) = -999.9;
   } else {                             /* vertical profile */
-    stn->dmin[2] = gr1;  
+    stn->dmin[2] = gr1;
     stn->dmax[2] = gr2;
-    stn->tmin = 1; 
+    stn->tmin = 1;
     stn->tmax = 1;
     *(stn->tvals) = pst->tmin.yr;
     *(stn->tvals+1) = pst->tmin.mo;
@@ -5042,7 +5152,7 @@ size_t sz;
   pst->dmin[1] = lat;
   pst->dmax[1] = lat + 0.1;
   /* loop over grid points in the profile/time series */
-  for (gr=gr1; gr<=gr2; gr++) { 
+  for (gr=gr1; gr<=gr2; gr++) {
     if (pgr->idim==2) {
       lev = iconv(ivars,(gadouble)gr);
       pst->dmin[2] = lev;
@@ -5062,7 +5172,7 @@ size_t sz;
     jcnv = pgr2->jabgr;
     gi = icnv(pgr2->iavals,lon) - (gadouble)pgr2->dimmin[0];
     gj = jcnv(pgr2->javals,lat) - (gadouble)pgr2->dimmin[1];
-    ig = (gaint)gi; 
+    ig = (gaint)gi;
     jg = (gaint)gj;
     p1 = pgr2->grid + jg*pgr2->isiz + ig;
     p1u = pgr2->umask + jg*pgr2->isiz + ig;
@@ -5100,7 +5210,7 @@ size_t sz;
 	if (*p4u==0) umask = 0;
 	else {umask = 1; val = *p4;}
       }
-    } else {                        /* bilinear */ 
+    } else {                        /* bilinear */
       if (*p1u==0 || *p2u==0 || *p3u==0 || *p4u==0) {
 	umask = 0;
       } else {
@@ -5116,8 +5226,8 @@ size_t sz;
     rpt = gaarpt (stn);
     if (rpt==NULL) {
       gaprnt (0,"Memory Allocation Error:  Station Block \n");
-      gagfre(pgr);  
-      gafree(pst); 
+      gagfre(pgr);
+      gafree(pst);
       gasfre(stn);
       return (1);
     }
@@ -5131,7 +5241,7 @@ size_t sz;
     }
     else {
       rpt->umask = 0;
-    }  
+    }
     for (i=0; i<8; i++) *(rpt->stid+i) = *(stn->stid+i);
     stn->rnum++;
     gafree(pst);
@@ -5163,7 +5273,7 @@ gaint ffclgr (struct gafunc *pfc, struct gastat *pst) {
   /* set noundef=1 to use only defined points in vertical interploation
      default is 0 */
   noundef=0;
-  
+
   if (pfc->argnum>3) {
     gaprnt (0,"Error from COLL2GR:  Too many args \n");
     gaprnt (0,"                     One to three arguments expected \n");
@@ -5235,7 +5345,7 @@ gaint ffclgr (struct gafunc *pfc, struct gastat *pst) {
       lev += uu;
     }
     lcnt = cnt;
-  } 
+  }
   else if (lflg==2) {
     /* union of all levels  */
     if (pst->dmin[2] < pst->dmax[2]) rev=1;
@@ -5408,18 +5518,18 @@ gaint ffclgr (struct gafunc *pfc, struct gastat *pst) {
   pgr->jgrab = gr2lev;
   pgr->iabgr = lev2gr;
   pgr->jabgr = lev2gr;
-  pgr->alocf = 1; 
+  pgr->alocf = 1;
 
   pst->type = 1;
   pst->result.pgr = pgr;
-  gree(levs,"f428"); 
+  gree(levs,"f428");
   return (0);
 
  err:
   if (levs) gree(levs,"f429");
   if (gr) gree(gr,"f430");
   if (gru) gree(gru,"f431");
-  if (pgr) gagfre(pgr); 
+  if (pgr) gagfre(pgr);
   if (iv) gree(iv,"f432");
   if (jv) gree(jv,"f433");
   return (1);
@@ -5447,7 +5557,7 @@ gaint *flgbuf, *ii;
 gaint rc,i,j,p,siz,icnt,irad,radflg;
 gadouble fgsum=-1e20;
 gadouble radii[30];
-char sumu,*gru,*nwu,*newbufu; 
+char sumu,*gru,*nwu,*newbufu;
 size_t sz;
 
   if (pfc->argnum<2) {
@@ -5564,9 +5674,9 @@ size_t sz;
     rpt->lat = (lat-ltmin)/ltscl;
     i = (gaint)rpt->lon;
     j = (gaint)rpt->lat;
-    if (i<0 || i>(pgr->isiz-1) || 
+    if (i<0 || i>(pgr->isiz-1) ||
 	j<0 || j>(pgr->jsiz-1) ||
-        rpt->umask==0) 
+        rpt->umask==0)
       rpt->work = -999;
     else {
       rpt->work = j*pgr->isiz + i;
@@ -5583,7 +5693,7 @@ size_t sz;
     gaprnt (1,"Warning from OACRES:  Less than two stations\n");
     gaprnt (1,"    Grid will be all missing values\n");
     sumu = 0;
-  } 
+  }
   else {
     sum = sum/((gadouble)icnt);
     sumu = 1;
@@ -5630,8 +5740,8 @@ size_t sz;
       *nwu = 0;
     }
     *ii = 0;
-    ii++; 
-    gr++; gru++; 
+    ii++;
+    gr++; gru++;
     nw++; nwu++;
   }
   if (sumu==0) goto retrn;
@@ -5656,7 +5766,7 @@ size_t sz;
         sum = 0.0; wsum = 0.0;
         rpt = stn->rpt;
         while (rpt) {
-          if (rpt->work==-999 || 
+          if (rpt->work==-999 ||
 	      rpt->lon < xmin || rpt->lon > xmax ||
               rpt->lat < ymin || rpt->lat > ymax ||
               (d = hypot(x-rpt->lon,y-rpt->lat)) > rad ) rpt = rpt->rpt;
@@ -5678,7 +5788,7 @@ size_t sz;
         }
         if (wsum>1e-6) {
 	  *nw = *gr + sum/wsum;
-	  *nwu = 1; 
+	  *nwu = 1;
 	}
         else if (p==2) *ii = 1;
         nw++; nwu++; gr++; ii++;
@@ -5736,7 +5846,7 @@ gaint ffoabn (struct gafunc *pfc, struct gastat *pst) {
   gaint rc,i,j,siz,icnt,cntflg;
   char *ch, *gru;
   size_t sz;
-  
+
   if (pfc->argnum<2) {
     gaprnt (0,"Error from OABIN:  Too many or too few args \n");
     gaprnt (0,"                   Two arguments expected \n");
@@ -5807,9 +5917,9 @@ gaint ffoabn (struct gafunc *pfc, struct gastat *pst) {
     /* nearest grid point center */
     i = (gaint)(rpt->lon+0.5);
     j = (gaint)(rpt->lat+0.5);
-    if (i<0 || i>(pgr->isiz-1) || 
+    if (i<0 || i>(pgr->isiz-1) ||
 	j<0 || j>(pgr->jsiz-1) ||
-        rpt->umask==0) 
+        rpt->umask==0)
       rpt->work = -999;
     else {
       rpt->work = j*pgr->isiz + i;
@@ -5844,7 +5954,7 @@ gaint ffoabn (struct gafunc *pfc, struct gastat *pst) {
     ii = cnt;
     if (rpt->work==-999) {
       rpt = rpt->rpt;
-    } 
+    }
     else {
       gr += rpt->work;
       ii += rpt->work;
@@ -5855,7 +5965,7 @@ gaint ffoabn (struct gafunc *pfc, struct gastat *pst) {
       rpt = rpt->rpt;
     }
   }
-  
+
   gr=pgr->grid;
   gru=pgr->umask;
   ii=cnt;
@@ -5869,7 +5979,7 @@ gaint ffoabn (struct gafunc *pfc, struct gastat *pst) {
     }
     gr++ ; gru++; ii++;
   }
-  
+
   gafree (&pst2);
   gree(cnt,"f440");
   return(0);
@@ -5887,10 +5997,10 @@ err:
 
 gaint ffsmth  (struct gafunc *pfc, struct gastat *pst) {
 struct gagrid *pgr;
-gadouble *buff, *gr, *nw;
+gadouble *buff, *gr;
 gadouble w,s,mid,sid,cor;
 gaint i,j,k,rc,siz,p;
-char *gru, *nwu, *buffu;
+char *gru, *buffu;
 size_t sz;
 
   if (pfc->argnum!=1 && pfc->argnum!=4) {
@@ -5938,69 +6048,66 @@ size_t sz;
 
   gr = pgr->grid;
   gru = pgr->umask;
-  nw = buff;
-  nwu = buffu;
-  k = 0;
-  for (j=0; j<pgr->jsiz; j++) {
-    for (i=0; i<pgr->isiz; i++) {
+#if USEOPENMP == 1
+#pragma omp parallel for schedule(static) private(i,j,p,s,w) if(ga_omp_parallelize(siz))
+#endif
+  for (k=0; k<siz; k++) {
+      i = k % pgr->isiz;
+      j = k / pgr->isiz;
       if (*(gru+k)!=0) {
         s = *(gr+k)*mid;
         w = mid;
-        if (i!=0 && *(gru+k-1)!=0) { 
-	  s = s + *(gr+k-1)*sid; 
+        if (i!=0 && *(gru+k-1)!=0) {
+	  s = s + *(gr+k-1)*sid;
 	  w+=sid;
 	}
-        if (i!=pgr->isiz-1 && *(gru+k+1)!=0) { 
-	  s = s + *(gr+k+1)*sid; 
+        if (i!=pgr->isiz-1 && *(gru+k+1)!=0) {
+	  s = s + *(gr+k+1)*sid;
 	  w+=sid;
 	}
         if (j!=0) {
           p = k - pgr->isiz;
-          if (*(gru+p)!=0) { 
-	    s = s + *(gr+p)*sid; 
+          if (*(gru+p)!=0) {
+	    s = s + *(gr+p)*sid;
 	    w+=sid;
 	  }
-          if (i!=0 && *(gru+p-1)!=0) { 
-	    s = s + *(gr+p-1)*cor; 
+          if (i!=0 && *(gru+p-1)!=0) {
+	    s = s + *(gr+p-1)*cor;
 	    w+=cor;
 	  }
-          if (i!=pgr->isiz-1 && *(gru+p+1)!=0) { 
-	    s = s + *(gr+p+1)*cor; 
+          if (i!=pgr->isiz-1 && *(gru+p+1)!=0) {
+	    s = s + *(gr+p+1)*cor;
 	    w+=cor;
 	  }
         }
         if (j!=pgr->jsiz-1) {
           p = k + pgr->isiz;
-          if (*(gru+p)!=0) { 
-	    s = s + *(gr+p)*sid; 
+          if (*(gru+p)!=0) {
+	    s = s + *(gr+p)*sid;
 	    w+=sid;
 	  }
-          if (i!=0 && *(gru+p-1)!=0) { 
-	    s = s + *(gr+p-1)*cor; 
+          if (i!=0 && *(gru+p-1)!=0) {
+	    s = s + *(gr+p-1)*cor;
 	    w+=cor;
 	  }
-          if (i!=pgr->isiz-1 && *(gru+p+1)!=0) { 
-	    s = s + *(gr+p+1)*cor; 
+          if (i!=pgr->isiz-1 && *(gru+p+1)!=0) {
+	    s = s + *(gr+p+1)*cor;
 	    w+=cor;
 	  }
         }
-        *nw = s/w;
-	*nwu = 1;
-      } 
-      else {
-	*nwu = 0;
+	buff[k] = s/w;
+	buffu[k] = 1;
       }
-      nw++; nwu++; k++;
-    }
+      else {
+	buffu[k] = 0;
+      }
   }
-  gr = pgr->grid;
-  gru = pgr->umask;
-  nw = buff;
-  nwu = buffu;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
+#endif
   for (i=0; i<siz; i++) {
-    *gr  = *nw;
-    *gru = *nwu; 
-    gr++; gru++; nw++; nwu++;
+    gr[i]  = buff[i];
+    gru[i] = buffu[i];
   }
 
   gree(buff,"f441");
@@ -6060,7 +6167,7 @@ size_t sz;
     return (1);
   }
 
-  /* Get optional arguments:  time increment and min number of times 
+  /* Get optional arguments:  time increment and min number of times
      required for a successful average */
 
   val = pfi->grvals[3];
@@ -6074,7 +6181,7 @@ size_t sz;
       if (i) return (1);
     } else {                           /* Assume time increment */
                                /*  Done differently from grid ave */
-                               /*  to allow increment of 1yr for 
+                               /*  to allow increment of 1yr for
                                    daily data.  Might want to adopts
                                    this for grid ave also.  Think about
                                    a flag to handle leap years?  */
@@ -6126,7 +6233,7 @@ size_t sz;
   gr2t (pfi->grvals[3],d2,&tend);
   gat2ch (&tstrt,5,chs,20);
   gat2ch (&tend,5,che,20);
-  snprintf(pout,1255,"Stn Averaging.  Dim = %i, Start = %s, End = %s Incr(mos,mns) = %i %i\n", 
+  snprintf(pout,1255,"Stn Averaging.  Dim = %i, Start = %s, End = %s Incr(mos,mns) = %i %i\n",
 	   dim, chs, che, mos, mns);
   gaprnt (2,pout);
 
@@ -6171,7 +6278,7 @@ size_t sz;
 	/* check for more reports to include in the average for this time */
         while (rpt2) {
 	  /* additional reports must have same stid and location */
-          if (rpt2->umask!=0 &&           
+          if (rpt2->umask!=0 &&
               !cmpch(rpt->stid,rpt2->stid,8) &&
               rpt->lat == rpt2->lat && rpt->lon == rpt2->lon) {
             sum = sum + rpt2->val;
@@ -6181,7 +6288,7 @@ size_t sz;
           rpt2 = rpt2->rpt;
         }
         rpt->val = sum/cnt;       /* rpt->val now has the average of all reports */
-      } 
+      }
       rpt = rpt->rpt;
     }
 
@@ -6224,7 +6331,7 @@ size_t sz;
       rpt = rpt->rpt;
     }
     gafree(pst);
-   
+
     /*  Apply time increment */
 
     gr2t (pfi->grvals[3],d,&tloc);
@@ -6287,7 +6394,7 @@ char *uval;
       gaprnt (0,"Error from SKIP:  3rd argument must be an integer\n");
       return(1);
     }
-  } 
+  }
   else jskip = iskip;
 
   rc = gaexpr(pfc->argpnt[0],pst);
@@ -6370,7 +6477,7 @@ gaint ffgrarea (struct gafunc *pfc, struct gastat *pst) {
     if (alo < -90.0) alo = -90.0; if (ahi < -90.0) ahi = -90.0;
     if (alo >  90.0) alo =  90.0; if (ahi >  90.0) ahi =  90.0;
     w1 = fabs(sin(ahi*rad)-sin(alo*rad));  /* area weighting (aave) */
-      
+
     for (i=0; i<pgr->isiz; i++) {
       x1 = (gadouble)(i+pgr->dimmin[0]);
       alo = iconv(ivals, x1-0.5);
@@ -6423,26 +6530,28 @@ char *ch, *uval;
     cnt = pgr->isiz * pgr->jsiz;
     val = pgr->grid;
     uval = pgr->umask;
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(cnt))
+#endif
     for (i=0; i<cnt; i++) {
       if (flg==0) {
 	/* change valid data to a constant, missing data unchanged */
-        if (*uval!=0) *val = cnst;
-      } 
+        if (uval[i]!=0) val[i] = cnst;
+      }
       else if (flg==1) {
 	/* change missing data to a constant, update mask value */
-        if (*uval==0) {
-	  *val = cnst;
-	  *uval = 1;       
+        if (uval[i]==0) {
+	  val[i] = cnst;
+	  uval[i] = 1;
 	}
-      } 
+      }
       else if (flg==2) {
 	/* change valid and missing data to a constaont, update mask values */
-        *val = cnst;
-	*uval = 1;
+        val[i] = cnst;
+	uval[i] = 1;
       }
-      val++; uval++;
     }
-  } 
+  }
   else {
     /* station data */
     stn = pst->result.stn;
@@ -6542,7 +6651,7 @@ size_t sz;
     if (i) return (1);
   }
   /* Ave limits are integers */
-  d1 = ceil(gr1-0.001);          
+  d1 = ceil(gr1-0.001);
   d2 = floor(gr2+0.001);
 
   /* Set up the result stn block */
@@ -6660,9 +6769,9 @@ gaint ival;
 
 gaint ffcdif (struct gafunc *pfc, struct gastat *pst) {
 struct gagrid *pgr;
-gaint dim,rc,is,siz,i,j,sflag;
-gadouble *res,*rr,*gr;
-char *resundef, *rru, *gru;
+gaint dim,rc,is,siz,i,j,k,sflag;
+gadouble *res,*gr;
+char *resundef, *gru;
 size_t sz;
 
   /* Check for user errors */
@@ -6686,7 +6795,7 @@ size_t sz;
   sflag = 0;
   if (*(pfc->argpnt[1]+1)=='p') sflag = 1;
   if (*(pfc->argpnt[1]+1)=='m') sflag = 2;
-  
+
 
   /* Get the result grid. */
 
@@ -6728,103 +6837,98 @@ size_t sz;
 
   gr = pgr->grid;
   gru = pgr->umask;
-  rr = res;
-  rru = resundef;
   is = pgr->isiz;
-  if (dim==pgr->jdim) {
-    for (j=0; j<pgr->jsiz; j++) {
-      for (i=0; i<pgr->isiz; i++) {
+#if USEOPENMP == 1
+#pragma omp parallel for schedule(static) private(i,j) if(ga_omp_parallelize(siz))
+#endif
+  for (k=0; k<siz; k++) {
+    i = k % is;
+    j = k / is;
+    if (dim==pgr->jdim) {
         if (sflag == 0) {
           if (j==0 || j==pgr->jsiz-1) {
-	    *rru = 0;
+	    resundef[k] = 0;
 	  }
           else {
-            if (*(gru+is)==0 || *(gru-is)==0) {
-              *rru = 0;
-            } 
+            if (gru[k+is]==0 || gru[k-is]==0) {
+              resundef[k] = 0;
+            }
 	    else {
-	      *rr = *(gr+is) - *(gr-is);
-	      *rru = 1;
+	      res[k] = gr[k+is] - gr[k-is];
+	      resundef[k] = 1;
 	    }
           }
         } else if (sflag == 1) {
           if (j==pgr->jsiz-1) {
-	    *rru = 0;
+	    resundef[k] = 0;
 	  }
           else {
-            if (*(gru+is)==0 || *(gru)==0) {
-              *rru = 0;
-            } 
+            if (gru[k+is]==0 || gru[k]==0) {
+              resundef[k] = 0;
+            }
 	    else {
-	      *rr = *(gr+is) - *(gr);
-	      *rru = 1;
+	      res[k] = gr[k+is] - gr[k];
+	      resundef[k] = 1;
 	    }
           }
         } else {
           if (j==0) {
-	    *rru = 0;
+	    resundef[k] = 0;
 	  }
           else {
-            if (*(gru)==0 || *(gru-is)==0) {
-              *rru = 0;
-            } 
+            if (gru[k]==0 || gru[k-is]==0) {
+              resundef[k] = 0;
+            }
 	    else {
-	      *rr = *(gr) - *(gr-is);
-	      *rru = 1;
+	      res[k] = gr[k] - gr[k-is];
+	      resundef[k] = 1;
 	    }
           }
         }
-        gr++; gru++; rr++; rru++;
-      }
     }
-  } 
-  else {
-    for (j=0; j<pgr->jsiz; j++) {
-      for (i=0; i<pgr->isiz; i++) {
+    else {
         if (sflag==0) {
           if (i==0 || i==pgr->isiz-1) {
-	    *rru = 0;
+	    resundef[k] = 0;
 	  }
           else {
-            if (*(gru+1)==0 || *(gru-1)==0) {
-              *rru = 0;
-            } 
+            if (gru[k+1]==0 || gru[k-1]==0) {
+              resundef[k] = 0;
+            }
 	    else {
-	      *rr = *(gr+1) - *(gr-1);
-	      *rru = 1;
-	    }
-          }
-        } 
-	else if (sflag==1) {
-          if (i==pgr->isiz-1) {
-	    *rru = 0;
-	  }
-          else {
-            if (*(gru+1)==0 || *(gru)==0) {
-              *rru = 0;
-            } 
-	    else {
-	      *rr = *(gr+1) - *(gr);
-	      *rru = 1;
-	    }
-          }
-        } 
-	else {
-          if (i==0) {
-	    *rru = 0;
-	  }
-          else {
-            if (*(gru)==0 || *(gru-1)==0) {
-              *rru = 0;
-            } 
-	    else {
-	      *rr = *(gr) - *(gr-1);
-	      *rru = 1;
+	      res[k] = gr[k+1] - gr[k-1];
+	      resundef[k] = 1;
 	    }
           }
         }
-        gr++; gru++; rr++; rru++;
-      }
+	else if (sflag==1) {
+          if (i==pgr->isiz-1) {
+	    resundef[k] = 0;
+	  }
+          else {
+            if (gru[k+1]==0 || gru[k]==0) {
+              resundef[k] = 0;
+            }
+	    else {
+	      res[k] = gr[k+1] - gr[k];
+	      resundef[k] = 1;
+	    }
+          }
+        }
+	else {
+          if (i==0) {
+	    resundef[k] = 0;
+	  }
+          else {
+            if (gru[k]==0 || gru[k-1]==0) {
+              resundef[k] = 0;
+            }
+	    else {
+	      res[k] = gr[k] - gr[k-1];
+	      resundef[k] = 1;
+	    }
+          }
+        }
     }
   }
 
@@ -6884,7 +6988,7 @@ size_t sz;
     return (1);
   }
   cnt = 0;
-  
+
   lvconv = pfi->gr2ab[2];
   lvvals = pfi->grvals[2];
   clev = lvconv(lvvals, 1.0);
@@ -6898,7 +7002,7 @@ size_t sz;
       lev = lvconv(lvvals, (gadouble)i);
       if ( (flev<llev && (lev>=flev && lev<=llev)) ||
            (flev>llev && (lev<=flev && lev>=llev)) ) {
-        *(levs+cnt) = lev;  cnt++; 
+        *(levs+cnt) = lev;  cnt++;
       }
     }
   } else {                           /* User ordering is reverse of file */
@@ -6906,7 +7010,7 @@ size_t sz;
       lev = lvconv(lvvals, (gadouble)i);
       if ( (flev<llev && (lev>=flev && lev<=llev)) ||
            (flev>llev && (lev<=flev && lev>=llev)) ) {
-        *(levs+cnt) = lev;  cnt++; 
+        *(levs+cnt) = lev;  cnt++;
       }
     }
   }
@@ -6926,9 +7030,9 @@ size_t sz;
     pst->dmax[2] = lev1;
   }
 
-  /* Get the level to find (2nd arg).   Must be an expression that 
-     yields the same grid the 1st arg will yield. */                              
- 
+  /* Get the level to find (2nd arg).   Must be an expression that
+     yields the same grid the 1st arg will yield. */
+
   rc = gaexpr(pfc->argpnt[1],pst);
   if (rc) {
     gree(levs,"f444");
@@ -7001,7 +7105,7 @@ size_t sz;
     pst->dmin[2] = lev2;
     pst->dmax[2] = lev2;
     rc = gaexpr(pfc->argpnt[0],pst);
-    if (rc) {             
+    if (rc) {
       gree(levs,"f451");
       gree(res,"f452");
       gagfre (pgr1);
@@ -7028,7 +7132,7 @@ size_t sz;
        if ((*gr1 <  *gr2 && *grv >= *gr1 && *grv <= *gr2) ||
            (*gr1 >= *gr2 && *grv <= *gr1 && *grv >= *gr2)) { /* and the level falls in this layer... */
          if (fabs(*gr2 - *gr1) < 1e-5) {
-	   *grr = lev1; 
+	   *grr = lev1;
 	   *grru = 1;
 	 }
          else {
@@ -7038,10 +7142,10 @@ size_t sz;
        }
       }
      }
-     gr1++; gr1u++; 
+     gr1++; gr1u++;
      gr2++; gr2u++;
      grr++; grru++;
-     grv++; 
+     grv++;
     }
     gagfre(pgr1);
     pgr1 = pgr2;
@@ -7049,7 +7153,7 @@ size_t sz;
   }
 
   /* Release storage and return */
-  
+
   gagfre (pgr1);
   if (pgrv->idim>-1) gree(pgrv->grid,"f455");
   if (pgrv->idim==-1) {
@@ -7057,7 +7161,7 @@ size_t sz;
     pgrv->umin = *resundef;
     gree(res,"f456");
     gree(resundef,"457");
-  } 
+  }
   else {
     pgrv->grid = res;
     pgrv->umask = resundef;
@@ -7070,8 +7174,8 @@ size_t sz;
 }
 
 
-/*  Convert a station data time series into a grid; 
-    this allows more graphics operations and 
+/*  Convert a station data time series into a grid;
+    this allows more graphics operations and
     analytical comparisons.  */
 
 gaint ffs2g1d (struct gafunc *pfc, struct gastat *pst) {
@@ -7118,11 +7222,11 @@ size_t sz;
   }
 
   /* Fill in gagrid variables */
-  
+
   pgr->pfile = NULL;
   pgr->undef = stn->undef;
   pgr->isiz = 1 + stn->tmax - stn->tmin;
-  pgr->jsiz = 1; 
+  pgr->jsiz = 1;
   idim = stn->idim; jdim = stn->jdim;
   pgr->exprsn = NULL;
   pgr->alocf = 1;
@@ -7194,7 +7298,7 @@ size_t sz;
 
   pst->type = 1;
   pst->result.pgr = pgr;
-  
+
   return (0);
 }
 
@@ -7206,9 +7310,9 @@ gaint rc;
 gaint (*pfunc)(struct gafunc *, struct gastat *, struct gaudpinfo *);
 
   /* set up the pointer to gaexpr */
-  pudpinfo = malloc(sizeof(struct gaudpinfo)); 
+  pudpinfo = malloc(sizeof(struct gaudpinfo));
   pudpinfo->exprptr = gaexpr;
-  pudpinfo->version = UDPVERS; 
+  pudpinfo->version = UDPVERS;
 
   /* load the shared object file and get the function pointer */
   if (upb->pfunc == NULL) {
@@ -7234,7 +7338,7 @@ gaint (*pfunc)(struct gafunc *, struct gastat *, struct gaudpinfo *);
 
   /* call the function */
   rc = (*pfunc)(pfc,pst2,pudpinfo);
-  
+
   free (pudpinfo);
   return (rc);
 }

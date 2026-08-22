@@ -17,3 +17,6 @@
 autom4te.cache
 /AGENTS.md
 /build/
+
+/.release-work/
+/release-dist/

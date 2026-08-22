@@ -13,6 +13,7 @@
 #include <string.h>
 #include <math.h>
 #include "grads.h"
+#include "gaomp.h"
 
 static char pout[1256];     /* Build error msgs here */
 static gaint pass=0;  /* Internal pass number */
@@ -403,8 +404,8 @@ struct gagrid *gagrop (struct gagrid *pgr1, struct gagrid *pgr2,
 gadouble *val1, *val2;
 gaint dnum1,dnum2;
 struct gagrid *pgr;
-gaint incr,imax,omax;
-gaint i,i1,i2,swap;
+gaint emode,omax;
+gaint i,i1,swap;
 char *uval1,*uval2;
 
   /* Figure out how many varying dimensions for each grid.            */
@@ -445,14 +446,12 @@ char *uval1,*uval2;
     if (dnum1>0 && gagchk(pgr1,pgr2,pgr1->idim)) goto err2;
     i = pgr1->jdim;
     if (dnum1>1 && gagchk(pgr1,pgr2,pgr1->jdim)) goto err2;
-    incr = 0;
-    imax = pgr1->isiz * pgr1->jsiz;
+    emode = 0;
 
   /* Case where dnum1=0, dnum2=1 or 2.  */
 
   } else if (dnum1==0) {
-    incr = pgr2->isiz * pgr2->jsiz;
-    imax = 1;
+    emode = 1;
 
   /* Case where dnum1=1, dnum2=2.  */
 
@@ -460,11 +459,9 @@ char *uval1,*uval2;
     i = pgr1->idim;
     if (gagchk(pgr1,pgr2,pgr1->idim)) goto err2;
     if (pgr1->idim==pgr2->idim) {
-      incr = 0;
-      imax = pgr1->isiz;
+      emode = 2;
     } else if (pgr1->idim==pgr2->jdim) {
-      incr = pgr2->isiz;
-      imax = pgr1->isiz;
+      emode = 3;
     } else goto err1;
   }
   omax = pgr2->isiz * pgr2->jsiz;
@@ -475,121 +472,126 @@ char *uval1,*uval2;
      variables which will cause the values in the smaller grid to be
      used multiple times as needed.                                   */
 
-  i1 = 0; i2 = 0;
+  if (!(op==0 || op==1 || op==2 || (op>=10 && op<=15) ||
+        (op>=20 && op<=27))) {
+    gaprnt (0,"Internal logic check 17: invalid oper value\n");
+    return (NULL);
+  }
+
+#if USEOPENMP == 1
+#pragma omp parallel for simd schedule(static) private(i1) if(ga_omp_parallelize(omax))
+#endif
   for (i=0; i<omax; i++) {
-    if (*uval1==0 || *uval2==0) {
-      *uval2=0;
+    if (emode==0) i1 = i;
+    else if (emode==1) i1 = 0;
+    else if (emode==2) i1 = i % pgr1->isiz;
+    else i1 = i / pgr2->isiz;
+
+    if (uval1[i1]==0 || uval2[i]==0) {
+      uval2[i]=0;
     }
     else {
-      if (op==2) *val2 = *val1 + *val2;
-      else if (op==0) *val2 = *val1 * *val2;
+      if (op==2) val2[i] = val1[i1] + val2[i];
+      else if (op==0) val2[i] = val1[i1] * val2[i];
       else if (op==1) {
         if (swap) {
-          if (dequal(*val1,0.0,1e-08)==0) {
-	    *uval2 = 0;
+          if (dequal(val1[i1],0.0,1e-08)==0) {
+	    uval2[i] = 0;
 	  }
           else {
-	    *val2 = *val2 / *val1;
+	    val2[i] = val2[i] / val1[i1];
 	  }
         } else {
-          if (dequal(*val2,0.0,1e-08)==0) *uval2 = 0;
-          else *val2 = *val1 / *val2;
+          if (dequal(val2[i],0.0,1e-08)==0) uval2[i] = 0;
+          else val2[i] = val1[i1] / val2[i];
         }
       } else if (op==10) {
         if (swap) {
-	  if (isnan(pow(*val2,*val1))) *uval2 = 0;
-	  else *val2 = pow(*val2,*val1);
+	  if (isnan(pow(val2[i],val1[i1]))) uval2[i] = 0;
+	  else val2[i] = pow(val2[i],val1[i1]);
 	}
         else {
-	  if (isnan(pow(*val1,*val2))) *uval2 = 0;
-	  else *val2 = pow(*val1,*val2);
+	  if (isnan(pow(val1[i1],val2[i]))) uval2[i] = 0;
+	  else val2[i] = pow(val1[i1],val2[i]);
 	}
-      } else if (op==11)  *val2 = hypot(*val1,*val2);
+      } else if (op==11)  val2[i] = hypot(val1[i1],val2[i]);
       else if (op==12) {
-        if (*val1==0.0 && *val2==0.0) *val2 = 0.0;
+        if (val1[i1]==0.0 && val2[i]==0.0) val2[i] = 0.0;
         else {
-        if (swap) *val2 = atan2(*val2,*val1);
-        else *val2 = atan2(*val1,*val2);
+        if (swap) val2[i] = atan2(val2[i],val1[i1]);
+        else val2[i] = atan2(val1[i1],val2[i]);
         }
       } else if (op==13) {
         if (swap) {
-          if (*val1<0.0) *uval2 = 0;
+          if (val1[i1]<0.0) uval2[i] = 0;
         } else {
-          if (*val2<0.0) *uval2 = 0;
-          else *val2 = *val1;
+          if (val2[i]<0.0) uval2[i] = 0;
+          else val2[i] = val1[i1];
         }
       } else if (op==14) {   /* for if function.  pairs with op 15 */
         if (swap) {
-          if (*val2<0.0) *val2 = 0.0;
-          else *val2 = *val1;
+          if (val2[i]<0.0) val2[i] = 0.0;
+          else val2[i] = val1[i1];
         } else {
-          if (*val1<0.0) *val2 = 0.0;
+          if (val1[i1]<0.0) val2[i] = 0.0;
         }
       } else if (op==15) { 
         if (swap) {
-          if (*val2<0.0) *val2 = *val1;
-          else *val2 = 0.0;
+          if (val2[i]<0.0) val2[i] = val1[i1];
+          else val2[i] = 0.0;
         } else {
-          if (!(*val1<0.0)) *val2 = 0.0;
+          if (!(val1[i1]<0.0)) val2[i] = 0.0;
         }
       } else if (op>=21 && op<=24 ) {
         if (swap) {
           if (op==21) {
-            if (*val2 < *val1) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val2[i] < val1[i1]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==22) {
-            if (*val2 > *val1) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val2[i] > val1[i1]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==23) {
-            if (*val2 <= *val1) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val2[i] <= val1[i1]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==24) {
-            if (*val2 >= *val1) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val2[i] >= val1[i1]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
         } else {
           if (op==21) {
-            if (*val1 < *val2) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val1[i1] < val2[i]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==22) {
-            if (*val1 > *val2) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val1[i1] > val2[i]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==23) {
-            if (*val1 <= *val2) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val1[i1] <= val2[i]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
           if (op==24) {
-            if (*val1 >= *val2) *val2 = 1.0;
-            else *val2 = -1.0;
+            if (val1[i1] >= val2[i]) val2[i] = 1.0;
+            else val2[i] = -1.0;
           }
         }
       } else if (op==20) {
-        if (*val1 == *val2) *val2 = 1.0;
-        else *val2 = -1.0;
+        if (val1[i1] == val2[i]) val2[i] = 1.0;
+        else val2[i] = -1.0;
       } else if (op==25) {
-        if (*val1 != *val2) *val2 = 1.0;
-        else *val2 = -1.0;
+        if (val1[i1] != val2[i]) val2[i] = 1.0;
+        else val2[i] = -1.0;
       } else if (op==26) {
-        if ( (*val1<0.0)&&(*val2<0.0) ) *val2 = -1.0;
-        else *val2 = 1.0;
+        if ( (val1[i1]<0.0)&&(val2[i]<0.0) ) val2[i] = -1.0;
+        else val2[i] = 1.0;
       } else if (op==27) {
-        if ( (*val1>=0.0)&&(*val2>=0.0) ) *val2 = 1.0;
-        else *val2 = -1.0;
-      }
-
-      else {
-        gaprnt (0,"Internal logic check 17: invalid oper value\n");
-        return (NULL);
+        if ( (val1[i1]>=0.0)&&(val2[i]>=0.0) ) val2[i] = 1.0;
+        else val2[i] = -1.0;
       }
     }
-    val2++; uval2++; i2++;
-    if (i2>=incr) {i2=0; val1++; uval1++; i1++;}        /* Special increment for*/
-    if (i1>=imax) {i1=0; val1=pgr1->grid; uval1=pgr1->umask;}     /*   the smaller grid   */
   }
 
   /* If requested, release the storage for operand 1 (which does not

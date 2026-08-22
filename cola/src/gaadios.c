@@ -52,10 +52,7 @@ static const char *gaadios_varname (struct gavar *pvar) {
 }
 
 static gaint gaadios_rank (struct gavar *pvar) {
-  gaint rank;
-  rank = 0;
-  while (rank<GA_ADIOS_MAX_DIMS && pvar->units[rank]!=-999) rank++;
-  return rank;
+  return pvar->nh5vardims;
 }
 
 static gaint gaadios_numeric_type (adios2_type type) {
@@ -229,6 +226,35 @@ static gaint gaadios_expected_size (struct gafile *pfi, struct gavar *pvar,
   if (unit==-103) return pfi->dnum[3];
   if (unit==-104) return pfi->dnum[4];
   return -1;
+}
+
+/* Return 1 when the requested T index is currently readable, 0 when the
+   descriptor declares a future time that has not been written yet, and -1
+   when ADIOS2 metadata cannot be queried. */
+static gaint gaadios_time_available (struct gavar *pvar,
+                                     adios2_variable *variable, gaint t) {
+  size_t shape[GA_ADIOS_MAX_DIMS], steps;
+  gaint i, rank;
+
+  if (t<1) return 0;
+  rank = gaadios_rank(pvar);
+  for (i=0;i<rank;i++) {
+    if (pvar->units[i]==-103) {
+      if (adios2_variable_shape(shape,variable)!=adios2_error_none) return -1;
+      return (size_t)t<=shape[i];
+    }
+  }
+  if (adios2_variable_steps(&steps,variable)!=adios2_error_none) return -1;
+  return (size_t)t<=steps;
+}
+
+static void gaadios_set_undefined (struct gafile *pfi, size_t count,
+                                   gadouble *gr, char *gru) {
+  size_t i;
+  for (i=0;i<count;i++) {
+    gr[i] = pfi->undef;
+    gru[i] = 0;
+  }
 }
 
 static void gaadios_make_alias(struct gaadios_meta_var *vars, size_t current) {
@@ -732,7 +758,8 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
       return 1;
     }
     expected = gaadios_expected_size(pfi,pvar,pvar->units[i]);
-    if (expected>=0 && shape[i]!=(size_t)expected) {
+    if (expected>=0 && shape[i]!=(size_t)expected &&
+        !(pvar->units[i]==-103 && shape[i]<(size_t)expected)) {
       snprintf(pout,1255,
                "BP5 Open Error: Variable '%s' dimension %d has size %lu, expected %d\n",
                name,i+1,(unsigned long)shape[i],expected);
@@ -769,10 +796,9 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
     return 1;
   }
   if (has_t==0) {
-    if (adios2_variable_steps(&steps,variable)!=adios2_error_none ||
-        steps<(size_t)pfi->dnum[3]) {
+    if (adios2_variable_steps(&steps,variable)!=adios2_error_none) {
       snprintf(pout,1255,
-               "BP5 Open Error: Variable '%s' has fewer ADIOS2 steps than TDEF\n",
+               "BP5 Open Error: Unable to determine ADIOS2 steps for '%s'\n",
                name);
       gaprnt(0,pout);
       return 1;
@@ -853,7 +879,7 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
   adios2_error error;
   size_t ndims, start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
   size_t bytes, i;
-  gaint rank, has_t, yy, zz;
+  gaint rank, has_t, time_status, yy, zz;
   void *native;
   gadouble value;
   const char *name;
@@ -877,6 +903,17 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
     snprintf(pout,1255,"BP5 I/O Error: Metadata changed for variable '%s'\n",name);
     gaprnt(0,pout);
     return 1;
+  }
+
+  time_status = gaadios_time_available(pvar,variable,t);
+  if (time_status<0) {
+    snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
+    gaprnt(0,pout);
+    return 1;
+  }
+  if (time_status==0) {
+    gaadios_set_undefined(pfi,(size_t)len,gr,gru);
+    return 0;
   }
 
   yy = pfi->yrflg ? pfi->dnum[1]-y : y-1;
@@ -948,7 +985,7 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
   size_t ndims, start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
   size_t native_index, output_index, points, type_size;
   size_t gx, gy, native_y, nx, ny, i;
-  gaint rank, has_t, xdim, ydim, yy, zz, t, e;
+  gaint rank, has_t, time_status, xdim, ydim, yy, zz, t, e;
   void *native;
   gadouble value;
   const char *name;
@@ -994,6 +1031,17 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
   else zz = pgrid->dimmin[2]-1;
   t = pgrid->dimmin[3];
   e = pgrid->dimmin[4];
+  time_status = gaadios_time_available(pvar,variable,t);
+  if (time_status<0) {
+    snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
+    gaprnt(0,pout);
+    return 1;
+  }
+  if (time_status==0) {
+    gaadios_set_undefined(pfi,points,gr,gru);
+    pgrid->undef = pfi->undef;
+    return 0;
+  }
   has_t = 0;
   xdim = ydim = -1;
   for (i=0;i<ndims;i++) {

@@ -1,8 +1,10 @@
 # ADIOS2 BP5 support
 
-This fork adds an optional, serial ADIOS2 backend to OpenGrADS 2.2.1.oga.1. It can discover and open many BP5 datasets directly with `bpopen`, or use an explicit GrADS descriptor when the dataset needs unambiguous dimension metadata.
+This fork adds a serial ADIOS2 backend to OpenGrADS 2.2.1.oga.1. It can discover and open many BP5 datasets directly with `bpopen`, or use an explicit GrADS descriptor when the dataset needs unambiguous dimension metadata.
 
-The backend is CPU-only. ADIOS2 is not copied into this repository; users build or install it separately.
+The backend is CPU-only. Self-contained release archives include its runtime;
+the maintainer release builder downloads and builds the pinned source
+automatically.
 
 ## What works
 
@@ -22,7 +24,7 @@ An explicit descriptor takes precedence. Its `UNDEF` line controls masking unles
 
 ## Prerequisites
 
-A source build needs a C/C++ toolchain, Autoconf/Automake when generated files are changed, and an ADIOS2 installation containing the serial C API and `adios2-config`. ADIOS2 2.11.0 was used for the verified build.
+A manual source build needs a C/C++ toolchain and an ADIOS2 installation containing the serial C API and `adios2-config`. The release builder supplies the pinned dependency automatically. ADIOS2 2.11.0 was used for the verified build.
 
 A small CPU-only ADIOS2 configuration is sufficient:
 
@@ -61,7 +63,6 @@ cd "$build_root"
   --disable-dyn-supplibs \
   --with-opengrads \
   --without-gadap \
-  --without-gui \
   --with-adios2="$adios2_root"
 make -C src -j4 grads libgxdummy.la
 ```
@@ -118,6 +119,13 @@ The name before `=>` is the exact, case-sensitive BP variable name. The name aft
 
 When the array omits T, ADIOS2 engine steps map to GrADS T. When it contains an explicit T array dimension, the reader selects ADIOS2 step zero and indexes that dimension.
 
+`TDEF` may declare the planned length of a running simulation even when fewer
+BP5 steps have been completed. For example, a descriptor with `tdef 144` can
+open when only 100 steps currently exist. Times 1 through 100 are readable;
+requests for 101 through 144 return undefined data instead of preventing the
+dataset from opening. Close and reopen the dataset to refresh random-access
+metadata after the writer adds more steps.
+
 To request missing-value attributes explicitly while retaining descriptor control, use:
 
 ```text
@@ -133,7 +141,8 @@ OPENGRADS_ADIOS2_ROOT=/opt/adios2-cpu \
   ./TestBP5.sh
 ```
 
-The test creates a temporary two-step BP5 fixture. It covers attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup.
+The test creates a temporary two-step BP5 fixture. It covers a planned TDEF
+that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup.
 
 For sanitizer testing, configure a separate build with:
 
@@ -149,7 +158,6 @@ CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer" \
   --disable-dyn-supplibs \
   --with-opengrads \
   --without-gadap \
-  --without-gui \
   --with-adios2="$adios2_root"
 make -C src -j4 grads libgxdummy.la
 

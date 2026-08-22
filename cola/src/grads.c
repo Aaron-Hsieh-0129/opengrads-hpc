@@ -35,6 +35,7 @@
 #include <math.h>
 #include <signal.h>
 #include "grads.h"
+#include "gaomp.h"
 
 #if USEGUI == 1
 #include "gagui.h"
@@ -80,7 +81,7 @@ int main (int argc, char *argv[])  {
   
   char cmd[1024];
   gaint rc,i,j,land,port,cmdflg,hstflg,gflag,killflg,ratioflg;
-  gaint metabuff,size=0,g2size=0,geomflg=0;
+  gaint metabuff,size=0,g2size=0,geomflg=0,threadflg=0,threads=0;
   gaint gxd=0,gxp=0;
   char gxdopt[16],gxpopt[16],xgeom[100]; 
   gaint txtcs=-2;
@@ -108,6 +109,7 @@ int main (int argc, char *argv[])  {
   gxdopt[0] = '\0';
   gxpopt[0] = '\0';
   xgeom[0] = '\0';
+  ga_omp_init();
   
   
 #if READLINE == 1
@@ -146,9 +148,18 @@ int main (int argc, char *argv[])  {
 	icmd = argv[i];
 	cmdflg = 0;
       } else if (metabuff) {     /* next arg is the metafile buffer size */
-	arg = argv[i];
-	rc1 = intprs(arg,&size);
-	if (rc1!=NULL) metabuff = 0;
+        arg = argv[i];
+        rc1 = intprs(arg,&size);
+        if (rc1!=NULL) metabuff = 0;
+      } else if (threadflg) {    /* next arg is the calculation thread count */
+        arg = argv[i];
+        rc1 = intprs(arg,&threads);
+        if (rc1==NULL || threads<1) {
+          printf("Invalid calculation thread count: %s\n",arg);
+        } else if (ga_omp_set_threads(threads)==2) {
+          printf("This build does not include OpenMP; calculation threads remain 1\n");
+        }
+        threadflg = 0;
       } else if (gxd) {     /* next arg is the graphics display back end choice */
 	snprintf(gxdopt,15,"%s",argv[i]);
 	gxd=0;
@@ -182,6 +193,7 @@ int main (int argc, char *argv[])  {
 	  else if (*(argv[i]+j)=='h') gxp = 1;         /* graphics hardcopy printing back end choice */
 	  else if (*(argv[i]+j)=='H') wrhstflg = 1;    /* write history to log file */
 	  else if (*(argv[i]+j)=='l') land = 1;        /* landscape mode */
+	  else if (*(argv[i]+j)=='j') threadflg = 1;   /* calculation thread count to follow */
 	  else if (*(argv[i]+j)=='m') metabuff = 1;    /* metafile buffer size to follow */
 	  else if (*(argv[i]+j)=='p') port = 1;        /* portrait mode */
 	  else if (*(argv[i]+j)=='u') {                /* unbuffer output: needed for IPC via pipes */
@@ -205,6 +217,7 @@ int main (int argc, char *argv[])  {
   if (cmdflg==1)   printf ("Note: -c option was specified, but no command was provided\n");
   if (geomflg==1)  printf ("Note: -g option was specified, but no geometry specification was provided\n");
   if (metabuff==1) printf ("Note: -m option was specified, but no metafile buffer size was provided\n");
+  if (threadflg==1) printf ("Note: -j option was specified, but no calculation thread count was provided\n");
   
   if (ipcflg) printf("\n<IPC>" );  /* delimit splash screen */
  
@@ -604,13 +617,13 @@ static const char *ga_set_words[] = {
   "background", "ccolor", "cint", "clevs", "clopts", "color", "csmooth",
   "display", "dfile", "e", "font", "frame", "gxout", "lat", "lev", "lon",
   "mpdraw", "mpdset", "mpvals", "parea", "poli", "rgb", "t", "time",
-  "undef", "x", "xaxis", "xflip", "xlint", "xsize", "y", "yaxis",
+  "threads", "undef", "x", "xaxis", "xflip", "xlint", "xsize", "y", "yaxis",
   "yflip", "ylint", "z", NULL
 };
 
 static const char *ga_query_words[] = {
   "attr", "config", "ctlinfo", "define", "dims", "file", "files",
-  "font", "gxconfig", "gxout", "pos", "shades", "time", "udct", "udft",
+  "font", "gxconfig", "gxout", "pos", "shades", "threads", "time", "udct", "udft",
   "vars", NULL
 };
 
@@ -694,6 +707,7 @@ void command_line_help (void) {
   printf("    -H fname    Enables command line logging to file 'fname' (default fname is $HOME/.grads.log) \n");
   printf("    -h name     Name of the graphics hardcopy printing package, given in 'gxprint' entry of UDPT\n");
   printf("    -l          Starts in landscape mode with real page size 11 x 8.5 \n");
+  printf("    -j N        Uses N worker threads for accelerated calculations (default 4)\n");
   printf("    -p          Starts in portrait mode with real page size 8.5 x 11 \n");
   printf("    -m NNN      Sets metafile buffer size to NNN (must be an integer) \n");
   printf("    -u          Unbuffers stdout/stderr, disables command line editing \n");
@@ -891,4 +905,3 @@ struct gaupb *upb;
   }
   return (NULL);
 }
-

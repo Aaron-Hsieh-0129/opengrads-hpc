@@ -1,19 +1,21 @@
 OpenGrADS BP5 development fork
 ------------------------------
 
-This source tree adds optional serial ADIOS2 BP5 input to OpenGrADS
-2.2.1.oga.1. Supported datasets can be opened directly with `bpopen`, with
+This source tree adds serial ADIOS2 BP5 input to OpenGrADS 2.2.1.oga.1.
+It is enabled automatically when available and required by release builds. Supported datasets can be opened directly with `bpopen`, with
 no user-written CTL, or with an explicit `dtype bp5` descriptor.
 
 Start here:
 
-* `docs/BP5.md` -- portable build, use, tests, and limitations
+* `docs/RELEASES.md` -- unpack-and-run binaries and release automation
+* `docs/BP5.md` -- BP5 use, tests, and limitations
 * `docs/CHANGES-BP5.md` -- complete change summary for this revision
 * `docs/INSTALL.md` -- complete new-machine installation and direct-use guide
+* `docs/PERFORMANCE.md` -- OpenMP acceleration and CPU-count controls
 * `docs/ARCHITECTURE.md` -- repository structure, runtime architecture,
   contributor constraints, and engineering roadmap
 * `docs/PUBLISHING.md` -- GitHub source-publication checklist
-* `THIRD_PARTY_NOTICES.md` -- optional dependency attribution and important
+* `THIRD_PARTY_NOTICES.md` -- dependency attribution and important
   binary-redistribution cautions
 * `COPYING` and `COPYRIGHT` -- OpenGrADS license and copyright terms
 
@@ -26,28 +28,32 @@ Quick interactive use after building:
     ga-> set gxout shaded
     ga-> display variable_name
 
-This repository does not include ADIOS2, GNU Readline, build outputs, or the
-RCEMIP verification data. They remain separate dependencies/data.
+This repository does not commit third-party source or build outputs. The release
+builder downloads checksum-pinned dependencies automatically; RCEMIP data remains
+separate.
 
 Obtaining this fork
 -------------------
 
-Clone the BP5-enabled source repository:
+Clone the BP5-enabled source repository into the unified installation tree:
 
-    git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git
-    cd opengrads-update
+    mkdir -p "$HOME/opengrads"
+    git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git \
+      "$HOME/opengrads/source"
+    cd "$HOME/opengrads/source"
 
-This fork does not currently publish a universal Linux binary. Build it once
-with `docs/INSTALL.md`, then run it directly with `./opengrads`. The historical
+Native x86_64 and aarch64 Linux release archives are built by the gated workflow
+described in `docs/RELEASES.md`. Until redistribution approval enables public
+artifacts, maintainers can create the same archives with one command. The historical
 SourceForge downloads contain the original OpenGrADS releases, not the BP5
 changes in this repository.
 
 Installation
 ------------
 
-For this BP5-enabled fork, follow `docs/INSTALL.md`. It covers a pinned
-CPU-only ADIOS2 build, graphical Cairo/X11 plug-ins by default, an explicit
-headless fallback, verification, updates, and runtime troubleshooting.
+For an unpack-and-run archive, start with `docs/RELEASES.md`. For a source
+installation, follow `docs/INSTALL.md`. Both paths enable BP5 and OpenMP by
+default; the release archive contains its runtime libraries.
 
 The historical `BUILD` and `INSTALL` files describe the original
 supplemental-library and bundle workflows.

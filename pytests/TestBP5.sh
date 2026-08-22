@@ -37,6 +37,7 @@ read -r -a adios2_libs <<< "$("$adios2_config" --serial --c-libs)"
 
 cp "$fixture_ctl" "$test_root/bp5_fixture.ctl"
 sed 's/^xdef 4 /xdef 5 /' "$fixture_ctl" > "$test_root/bp5_invalid_shape.ctl"
+sed 's/^tdef 2 /tdef 4 /' "$fixture_ctl" > "$test_root/bp5_future_times.ctl"
 mkdir -p "$test_root/empty" "$test_root/multiple"
 LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
   "$test_root/bp5_writer" "$test_root/bp5_fixture.bp"
@@ -109,6 +110,17 @@ d surface_pressur
 set t 2
 d temperature
 reinit
+open $test_root/bp5_future_times.ctl
+q ctlinfo
+set gxout print
+set x 4
+set y 3
+set z 2
+set t 2
+d temp
+set t 3
+d temp
+reinit
 bpopen $test_root/bp5_fixture.bp
 close 1
 bpopen $test_root/bp5_fixture.bp
@@ -149,6 +161,7 @@ check_text 'Surface pressure [hPa]'
 check_text 'Air temperature [K]'
 check_text 'xdef 4 linear 0 0.001'
 check_text 'BP5 dataset opened without a descriptor: 2 fields, 4x3x2, 2 steps'
+check_text 'tdef 4 linear 00Z01JAN2000 60mn'
 check_text 'Undef count = 1  Valid count = 11'
 check_text 'Min, Max = 0 23'
 check_text 'Stats[sum,sumsqr,root(sumsqr),n]:     126 2258'
@@ -172,4 +185,4 @@ if (( open_count < 3 )); then
   exit 1
 fi
 
-printf 'BP5 regression test passed: attributes, descriptor precedence, bulk 2-D/shaded reads, errors, and repeated lifecycle.\n'
+printf 'BP5 regression test passed: partial TDEF, attributes, descriptor precedence, bulk 2-D/shaded reads, errors, and repeated lifecycle.\n'

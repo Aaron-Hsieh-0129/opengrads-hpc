@@ -28,7 +28,7 @@ This is a mature, global-state-heavy C codebase. Prefer small, well-tested seams
    - X is the fastest-varying on-disk dimension for the legacy row reader.
    - Dimension indexes are `0=X`, `1=Y`, `2=Z`, `3=T`, `4=E`; `-1` means non-varying.
 3. Use the project allocation wrappers (`galloc`, `gree`) in core code unless an external API owns the memory. Every new external handle must have a close path for `close`, `reinit`, error unwinding, and normal process shutdown.
-4. Keep optional features compile-time optional. A machine without ADIOS2, NetCDF, Cairo, or X11 must either build a documented reduced configuration or fail at configure time with a useful message.
+4. Release builds require ADIOS2 and OpenMP. Ordinary source configuration auto-detects ADIOS2 and retains an explicit `--without-adios2` escape hatch; other optional formats must fail or disable with a useful message.
 5. Do not make a new format masquerade as an existing flag such as `ncflg`. Add a named backend/type flag or, preferably, a backend operations interface.
 6. Add a small reproducible data fixture and an automated test for every new reader, grid topology, or accelerated kernel. Test missing values, edge dimensions, cleanup, and error paths, not only a successful plot.
 7. Measure performance changes against a fixed dataset and command script. Record wall time, peak memory, build flags, hardware, and output-equivalence checks.
@@ -184,6 +184,15 @@ Current ADIOS2 references:
 ### CPU I/O and plotting performance
 
 Profile first. Likely hotspots are row dispatch/conversion in `gaio.c`, expression loops in `gaexpr.c`/`gafunc.c`, and polygon/topology work in `gxcntr.c`, `gxshad.c`, and `gxshad2.c`.
+
+OpenMP acceleration is now implemented for independent expression cells,
+common unary functions, temporal/vertical and area reductions, integration,
+and several grid transforms. Runtime selection is provided by `-j N`,
+`GA_NUM_THREADS`, and `set threads N`, with a four-thread default and a
+small-grid serial cutoff. The parser, file backends, coordinate setup, and
+graphics remain outside parallel regions because their global state is not
+thread-safe. See [PERFORMANCE.md](PERFORMANCE.md) for the user interface and
+current kernel list.
 
 Priorities:
 

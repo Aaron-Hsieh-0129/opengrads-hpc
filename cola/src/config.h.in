@@ -1,5 +1,4 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
-/* Modified in 2026 for optional ADIOS2 BP5 build support; see ../../COPYING. */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
@@ -49,9 +48,6 @@
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
-/* Define to 1 if you have the <memory.h> header file. */
-#undef HAVE_MEMORY_H
-
 /* Define to 1 if you have the <readline.h> header file. */
 #undef HAVE_READLINE_H
 
@@ -66,6 +62,9 @@
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#undef HAVE_STDIO_H
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
@@ -121,10 +120,12 @@
 /* Enabled command line editing */
 #undef READLINE
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
 
-/* Enable ADIOS2 BP5 */
+/* Disable ADIOS2 BP5 */
 #undef USEADIOS2
 
 /* Enable cairo */
@@ -151,6 +152,9 @@
 /* Enable netcdf */
 #undef USENETCDF
 
+/* Define to 1 to enable OpenMP calculation acceleration */
+#undef USEOPENMP
+
 /* Enable shapefile */
 #undef USESHP
 
@@ -168,11 +172,6 @@
 
 /* Define to 1 if the X Window System is missing or not being used. */
 #undef X_DISPLAY_MISSING
-
-/* Enable large inode numbers on Mac OS X 10.5.  */
-#ifndef _DARWIN_USE_64_BIT_INODE
-# define _DARWIN_USE_64_BIT_INODE 1
-#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS

@@ -1,0 +1,77 @@
+name: Self-contained Linux release candidates
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            artifact: linux-x86_64
+          - runner: ubuntu-22.04-arm
+            artifact: linux-aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake build-essential ca-certificates cmake curl gawk \
+            libtool pkg-config libice-dev libsm-dev libx11-dev libxext-dev libcairo2-dev \
+            libgeotiff-dev libtiff-dev libhdf5-dev libjpeg-dev zlib1g-dev
+
+      - name: Build, test, and package
+        env:
+          OPENGRADS_BUILD_JOBS: 4
+        run: ./release/build-release.sh
+
+      - name: Show archive contents and checksum
+        run: |
+          sha256sum -c release-dist/*.sha256
+          tar -tzf release-dist/*.tar.gz | sed -n '1,80p'
+
+      - name: Upload approved binary artifact
+        if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengrads-${{ matrix.artifact }}
+          path: |
+            release-dist/*.tar.gz
+            release-dist/*.sha256
+          if-no-files-found: error
+
+      - name: Explain publication gate
+        if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED != 'true' }}
+        run: |
+          echo 'Build and tests passed, but binary upload is disabled.'
+          echo 'Set repository variable BINARY_REDISTRIBUTION_APPROVED=true only after the GPL-2.0-only/Apache-2.0 redistribution issue is resolved.'
+
+  publish:
+    name: Attach approved binaries to GitHub release
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: opengrads-linux-*
+          path: artifacts
+          merge-multiple: true
+      - name: Create release and upload archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/* --generate-notes

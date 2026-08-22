@@ -1,0 +1,20 @@
+<!-- OpenMP calculation controls added in 2026. See COPYRIGHT. -->
+<html>
+<head><title>GrADS Command: set threads</title></head>
+<body bgcolor="e0f0ff" text="#000000">
+<h2><b>set threads</b></h2>
+<p><code>set threads <i>N</i></code></p>
+<p>Sets the number of CPU threads used by accelerated in-memory grid
+calculations. <code>N</code> must be a positive integer. The default is 4.</p>
+<p><code>q threads</code> reports the current setting and whether OpenMP was
+enabled when GrADS was built.</p>
+<h3>Other ways to select the count</h3>
+<p><code>grads -j <i>N</i></code> selects the count at process startup, and the
+<code>GA_NUM_THREADS</code> environment variable changes the startup default.
+The <code>-j</code> option takes precedence over the environment variable.</p>
+<h3>Usage notes</h3>
+<p>Use <code>set threads 1</code> to run calculations serially. Small grids may
+remain serial even when a larger value is selected because thread startup
+would cost more than the calculation.</p>
+</body>
+</html>
