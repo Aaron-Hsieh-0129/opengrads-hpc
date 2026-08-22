@@ -34,8 +34,14 @@ export CXX="$(dirname -- "$gcc_bin")/g++-$gcc_suffix"
 export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
 export PKG_CONFIG_PATH="$(brew --prefix adios2)/lib/pkgconfig:$(brew --prefix cairo)/lib/pkgconfig:$(brew --prefix libgeotiff)/lib/pkgconfig:$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig:$(brew --prefix udunits)/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 
-export CPPFLAGS="-I$(brew --prefix udunits)/include${CPPFLAGS:+ $CPPFLAGS}"
-export LDFLAGS="-L$(brew --prefix udunits)/lib${LDFLAGS:+ $LDFLAGS}"
+# Homebrew symlinks every non-keg-only formula's headers and libraries into its
+# own prefix, but Homebrew GCC does not search there by default. configure's
+# NetCDF, HDF5, Cairo, GeoTIFF, and UDUNITS probes try an empty include
+# directory first and then fall back to hardcoded /usr/local and /opt paths
+# that do not match Homebrew's layout, so without this they all miss.
+brew_prefix="$(brew --prefix)"
+export CPPFLAGS="-I$brew_prefix/include${CPPFLAGS:+ $CPPFLAGS}"
+export LDFLAGS="-L$brew_prefix/lib${LDFLAGS:+ $LDFLAGS}"
 
 rm -rf -- "$build_root"
 mkdir -p "$build_root/src" "$build_root/lib" "$output_root"
