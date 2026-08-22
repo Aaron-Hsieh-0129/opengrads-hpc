@@ -1,7 +1,7 @@
 # Self-contained binary releases
 
 The modern release path produces archives that users unpack and run directly.
-ADIOS2, ncurses, libedit, Cairo/X11, OpenMP runtime support, and every other
+ADIOS2, ncurses, Readline, Cairo/X11, OpenMP runtime support, and every other
 non-glibc shared-library dependency discovered at build time are included.
 Users do not install ADIOS2 or set library paths.
 
@@ -99,8 +99,8 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 ./release/build-release.sh
 ```
 
-The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and libedit
-20240808-3.1 source archives; builds them into `.release-work`; builds opengrads-hpc with
+The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and Readline
+8.2 source archives; builds them into `.release-work`; builds opengrads-hpc with
 ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
 OpenMP regressions; assembles the runtime closure; and writes the archive and
 checksum to `release-dist`.
@@ -110,7 +110,7 @@ For offline validation with existing private prefixes:
 
 ```bash
 OPENGRADS_RELEASE_ADIOS2_ROOT=/path/to/adios2 \
-OPENGRADS_RELEASE_DEPS_ROOT=/path/to/libedit-and-ncurses \
+OPENGRADS_RELEASE_DEPS_ROOT=/path/to/readline-and-ncurses \
   ./release/build-release.sh
 ```
 
@@ -123,7 +123,7 @@ The macOS builder uses Homebrew dependencies and must run on a Mac:
 
 ```bash
 brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
-  libedit libomp libtool netcdf pkgconf udunits
+  libomp libtool netcdf pkgconf readline udunits
 ./release/build-release-macos.sh
 ```
 
@@ -153,8 +153,8 @@ creation occur only when the repository variable
 That variable is the deliberate control over binary publication. GrADS is
 treated as GPL-2.0-only while ADIOS2 is Apache-2.0, a combination the FSF and
 ASF both describe as incompatible, and this project publishes those binaries
-with the question documented rather than resolved. (The Readline half was
-removed in 2026 by switching to BSD libedit.) See
+with the question documented rather than resolved. GNU Readline is GPLv3 and
+raises the same question independently. See
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) for the full position.
 
 Turning the gate off is how you pause binary publication -- for example if a

@@ -73,8 +73,8 @@ copy_notice "$work_root/sources/ADIOS2-$ADIOS2_VERSION/LICENSE" \
   "$bundle_root/licenses/ADIOS2-LICENSE"
 copy_notice "$work_root/sources/ADIOS2-$ADIOS2_VERSION/Copyright.txt" \
   "$bundle_root/licenses/ADIOS2-Copyright.txt"
-copy_notice "$work_root/sources/libedit-$LIBEDIT_VERSION/COPYING" \
-  "$bundle_root/licenses/libedit-COPYING"
+copy_notice "$work_root/sources/readline-$READLINE_VERSION/COPYING" \
+  "$bundle_root/licenses/Readline-COPYING"
 copy_notice "$work_root/sources/ncurses-$NCURSES_VERSION/COPYING" \
   "$bundle_root/licenses/ncurses-COPYING"
 

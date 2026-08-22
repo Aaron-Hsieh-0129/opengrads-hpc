@@ -39,14 +39,14 @@ extract()
 }
 
 ncurses_archive="$download_root/ncurses-$NCURSES_VERSION.tar.gz"
-libedit_archive="$download_root/libedit-$LIBEDIT_VERSION.tar.gz"
+readline_archive="$download_root/readline-$READLINE_VERSION.tar.gz"
 adios2_archive="$download_root/adios2-$ADIOS2_VERSION.tar.gz"
 
 fetch "$NCURSES_URL" "$NCURSES_SHA256" "$ncurses_archive"
-fetch "$LIBEDIT_URL" "$LIBEDIT_SHA256" "$libedit_archive"
+fetch "$READLINE_URL" "$READLINE_SHA256" "$readline_archive"
 fetch "$ADIOS2_URL" "$ADIOS2_SHA256" "$adios2_archive"
 extract "$ncurses_archive" "$source_root/ncurses-$NCURSES_VERSION"
-extract "$libedit_archive" "$source_root/libedit-$LIBEDIT_VERSION"
+extract "$readline_archive" "$source_root/readline-$READLINE_VERSION"
 extract "$adios2_archive" "$source_root/ADIOS2-$ADIOS2_VERSION"
 
 if [[ ! -f "$deps_root/lib/libncurses.so" ]]; then
@@ -65,16 +65,16 @@ if [[ ! -f "$deps_root/lib/libncurses.so" ]]; then
   make install
 fi
 
-if [[ ! -f "$deps_root/lib/libedit.so" ]]; then
-  libedit_build="$build_root/libedit-$LIBEDIT_VERSION"
-  mkdir -p "$libedit_build"
-  cd "$libedit_build"
+if [[ ! -f "$deps_root/lib/libreadline.so" ]]; then
+  readline_build="$build_root/readline-$READLINE_VERSION"
+  mkdir -p "$readline_build"
+  cd "$readline_build"
   CPPFLAGS="-I$deps_root/include" \
   LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib" \
-    "$source_root/libedit-$LIBEDIT_VERSION/configure" \
+    "$source_root/readline-$READLINE_VERSION/configure" \
       --prefix="$deps_root" --enable-shared --disable-static
-  make --jobs "$jobs"
-  make install
+  make --jobs "$jobs" SHLIB_LIBS=-lncurses
+  make install SHLIB_LIBS=-lncurses
 fi
 
 if [[ ! -x "$adios2_root/bin/adios2-config" ]]; then

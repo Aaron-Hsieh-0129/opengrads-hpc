@@ -49,11 +49,11 @@ incrementally.
 export OPENGRADS_WORK="$HOME/opengrads-deps"
 ./release/build-dependencies.sh "$OPENGRADS_WORK"
 
-deps_root="$OPENGRADS_WORK/deps"        # ncurses, libedit
+deps_root="$OPENGRADS_WORK/deps"        # ncurses, readline
 adios2_root="$OPENGRADS_WORK/adios2"    # serial ADIOS2
 ```
 
-This builds ncurses, libedit, and ADIOS2 from checksum-pinned upstream
+This builds ncurses, GNU Readline, and ADIOS2 from checksum-pinned upstream
 releases recorded in [`release/versions.env`](../release/versions.env). It is
 incremental: components already installed are skipped.
 
@@ -101,8 +101,8 @@ The configuration summary should report:
 + NETCDF4 enabled        + READLINE enabled
 ```
 
-`READLINE enabled` means line editing is available; it is provided by BSD
-libedit rather than GNU Readline. See [LICENSING.md](LICENSING.md) for why.
+`READLINE enabled` means line editing, history, and Tab completion are
+available, provided by GNU Readline.
 
 To build without BP5, pass `--without-adios2`. Note the flag defaults to
 `auto`, so omitting it is not enough — a system ADIOS2 on `PATH` is still

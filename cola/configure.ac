@@ -326,7 +326,6 @@ esac
 
 # Initialize. The assumption is that we have none of the needed libs.
 use_readline=no
-use_editline=no
 use_gui=no
 use_freq=no
 use_xaw_xlibs=no
@@ -376,27 +375,8 @@ echo "Checking for libraries to support extra features ..."
 echo 
 echo readline
 echo --------
-# BSD libedit is preferred over GNU Readline. Readline is GPLv3, which is
-# incompatible with this GPLv2-only program, so a binary linking it cannot be
-# redistributed; libedit is BSD and supplies every symbol GrADS uses.
-# See THIRD_PARTY_NOTICES.md.
-echo looking for libedit
-AC_CHECK_HEADER([editline/readline.h],
-[ AC_CHECK_LIB([edit], [readline],
-  [ use_readline=yes
-    use_editline=yes
-    readline_libs="-ledit"
-  ],
-  [ AC_CHECK_LIB([edit], [readline],
-    [ use_readline=yes
-      use_editline=yes
-      readline_libs="-ledit -lncurses"
-    ], [], [-lncurses])
-  ])
-])
-
 # check in supplibs directory 
-if test "Z$ga_supplib_dir" != "Z" -a "$use_readline" != "yes" ; then 
+if test "Z$ga_supplib_dir" != "Z" ; then 
   echo looking in $ga_supplib_dir
   GA_SET_FLAGS([readline],[$host_cppflags])
   AC_CHECK_HEADER(readline.h,
@@ -428,11 +408,6 @@ if test $use_readline != "yes" ; then
 else
   AC_DEFINE(READLINE, 1, [Enabled command line editing]) 
   AC_SUBST(readline_libs)
-fi
-if test "$use_editline" = "yes" ; then
-  AC_DEFINE(USE_EDITLINE, 1, [Command line editing uses BSD libedit])
-else
-  AC_DEFINE(USE_EDITLINE, 0, [Command line editing uses GNU Readline])
 fi
 
 

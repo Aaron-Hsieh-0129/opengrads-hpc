@@ -83,9 +83,11 @@ is why this problem would not exist if GrADS had used the customary "version 2
 **or any later version**" wording. It did not, and only the copyright holders
 (George Mason University / COLA, and Arlindo da Silva) can change that.
 
-The Readline half of this problem was removed in 2026 by replacing GNU
-Readline (GPLv3) with BSD libedit. No such substitution exists for ADIOS2:
-BP5 is ADIOS2's own format and there is no independent implementation.
+GNU Readline raises the same question independently: it is GPLv3, which is
+also incompatible with GPLv2-only. Neither has a usable substitute. BP5 is
+ADIOS2's own format with no independent implementation, and the BSD libedit
+alternative to Readline was trialled and reverted because it degrades the
+interactive prompt and Tab completion.
 
 ### What that means for you
 

@@ -6,7 +6,7 @@ record.
 
 opengrads-hpc is distributed under GNU GPL version 2 only, inherited from GrADS; see `COPYING` and `COPYRIGHT`. This file records the third-party libraries it uses. It does not change the license of any of them.
 
-No ADIOS2 or libedit source or binary is committed in this repository.
+No ADIOS2 or GNU Readline source or binary is committed in this repository.
 The release builder downloads checksum-pinned sources into ignored build
 directories and copies their license texts into each generated archive.
 
@@ -25,23 +25,19 @@ runtime libraries inside the archive; source builders may use automatic
 detection or the pinned release bootstrap. Redistributors must follow the
 upstream license and notices.
 
-## BSD libedit (editline)
+## GNU Readline
 
-- Project: libedit, the NetBSD command line editor library
-- Upstream: https://thrysoee.dk/editline/
-- Version used for verification: 20240808-3.1
-- License stated by upstream: BSD 3-Clause (Regents of the University of California)
+- Project: GNU Readline
+- Upstream: https://tiswww.case.edu/php/chet/readline/rltop.html
+- Version used for verification: 8.2
+- License stated for current releases: GNU GPL version 3
 - Purpose here: command history, line editing, and Tab completion
 
-libedit replaced GNU Readline in 2026. Readline is GPLv3, which is
-incompatible with this GPLv2-only program, so a binary linking it cannot be
-redistributed. libedit is BSD licensed and therefore GPLv2-compatible, and its
-Readline emulation supplies every symbol GrADS uses, so the feature set is
-unchanged.
-
-Source builds still accept GNU Readline if libedit is absent; `configure`
-prefers libedit when both are present. Anyone who builds against Readline
-should not redistribute the resulting binary.
+Readline is used because it is what GrADS has always used, and because the
+line editor's prompt handling and Tab completion behave the way this project
+expects. BSD libedit was trialled as a GPLv2-compatible substitute and
+reverted: it mangles the ANSI escape sequences in the coloured prompt and
+appends a space after ambiguous completions.
 
 ## GNU ncurses
 
@@ -49,7 +45,7 @@ should not redistribute the resulting binary.
 - Upstream: https://ftp.gnu.org/gnu/ncurses/
 - Version used for verification: 6.5
 - License stated by upstream: MIT-style permissive (X11-like)
-- Purpose here: terminal capability database required by libedit
+- Purpose here: terminal capability database required by Readline
 
 ## Other bundled runtime libraries
 
@@ -101,9 +97,9 @@ packaging them for a distribution channel that performs license review,
 should evaluate the question independently first.
 
 The Readline half of this problem was removed in 2026 by replacing GNU
-Readline (GPLv3) with BSD libedit. That substitution is not available for
-ADIOS2: BP5 is ADIOS2's own format and no independently licensed
-implementation exists.
+Readline (GPLv3) with BSD libedit, but that was reverted because it degrades
+the interactive prompt. No substitute exists for ADIOS2 either: BP5 is
+ADIOS2's own format and no independently licensed implementation exists.
 
 Everything else the GPL requires of these archives is satisfied: changed
 files carry modification notices, fork-authored files carry the same license

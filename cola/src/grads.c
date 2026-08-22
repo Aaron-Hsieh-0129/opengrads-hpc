@@ -43,7 +43,8 @@
 
 #if READLINE ==1
 #include <time.h>
-#include "gaedit.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 extern gaint history_length;
 void write_command_log(char *logfile);
 static void ga_readline_init(void);

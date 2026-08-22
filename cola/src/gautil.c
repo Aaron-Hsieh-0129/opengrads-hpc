@@ -2394,7 +2394,8 @@ off_t ftello(FILE *stream) {
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
-#include "gaedit.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 
 /* Retrieves the next command from the user.  Leading blanks
    are stripped.  The number of characters entered before the
