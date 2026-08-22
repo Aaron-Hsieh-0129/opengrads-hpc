@@ -880,6 +880,7 @@ with_gui
 with_opengrads
 with_adios2
 enable_openmp
+enable_sdfopen
 with_x
 enable_largefile
 enable_dyn_supplibs
@@ -1562,6 +1563,8 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --disable-openmp        build without OpenMP calculation acceleration
+  --enable-sdfopen        require NetCDF/UDUNITS support for sdfopen and
+                          xdfopen
   --disable-largefile     omit support for large files
   --enable-dyn-supplibs  Use dynamic system libraries to support optional features when
                           required libs are not present in "supplibs" directory. [default=yes]
@@ -12967,6 +12970,15 @@ else $as_nop
 fi
 
 
+# Check whether --enable-sdfopen was given.
+if test ${enable_sdfopen+y}
+then :
+  enableval=$enable_sdfopen;
+else $as_nop
+  enable_sdfopen=auto
+fi
+
+
 # ----------------------------------------------------
 # Checks for programs
 # ----------------------------------------------------
@@ -22672,19 +22684,22 @@ then :
 
   ac_udunits_lib='no'
 
-  ac_check_lib_nocache_ok_udunits_main='no'
-  ac_check_lib_nocache_udunits_main_LIBS=$LIBS
+  ac_check_lib_nocache_ok_udunits_utInit='no'
+  ac_check_lib_nocache_udunits_utInit_LIBS=$LIBS
   LIBS="-ludunits  $LIBS"
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for main in -ludunits" >&5
-printf %s "checking for main in -ludunits... " >&6; }
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for utInit in -ludunits" >&5
+printf %s "checking for utInit in -ludunits... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char utInit ();
 int
 main (void)
 {
-return main ();
+return utInit ();
   ;
   return 0;
 }
@@ -22692,7 +22707,7 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-    ac_check_lib_nocache_ok_udunits_main="yes"
+    ac_check_lib_nocache_ok_udunits_utInit="yes"
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -22704,8 +22719,8 @@ printf "%s\n" "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
-  LIBS=$ac_check_lib_nocache_udunits_main_LIBS
-  if test $ac_check_lib_nocache_ok_udunits_main = "yes"
+  LIBS=$ac_check_lib_nocache_udunits_utInit_LIBS
+  if test $ac_check_lib_nocache_ok_udunits_utInit = "yes"
 then :
    ac_udunits_lib="yes"
     UDUNITS_LIBS="-ludunits $UDUNITS_LIBS"
@@ -22714,6 +22729,56 @@ else $as_nop
   :
 fi
 
+  if test "$ac_udunits_lib" != "yes"
+then :
+
+  ac_check_lib_nocache_ok_udunits2_utInit='no'
+  ac_check_lib_nocache_udunits2_utInit_LIBS=$LIBS
+  LIBS="-ludunits2  $LIBS"
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for utInit in -ludunits2" >&5
+printf %s "checking for utInit in -ludunits2... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char utInit ();
+int
+main (void)
+{
+return utInit ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+    ac_check_lib_nocache_ok_udunits2_utInit="yes"
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else $as_nop
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS=$ac_check_lib_nocache_udunits2_utInit_LIBS
+  if test $ac_check_lib_nocache_ok_udunits2_utInit = "yes"
+then :
+   ac_udunits_lib="yes"
+      UDUNITS_LIBS="-ludunits2 $UDUNITS_LIBS"
+
+else $as_nop
+  :
+fi
+
+
+fi
   LIBS=$ac_udunits_save_LIBS
 
   if test "$ac_udunits_lib" = "yes"
@@ -22749,19 +22814,22 @@ fi
 
   ac_udunits_lib='no'
 
-  ac_check_lib_nocache_ok_udunits_main='no'
-  ac_check_lib_nocache_udunits_main_LIBS=$LIBS
+  ac_check_lib_nocache_ok_udunits_utInit='no'
+  ac_check_lib_nocache_udunits_utInit_LIBS=$LIBS
   LIBS="-ludunits  $LIBS"
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for main in -ludunits" >&5
-printf %s "checking for main in -ludunits... " >&6; }
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for utInit in -ludunits" >&5
+printf %s "checking for utInit in -ludunits... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char utInit ();
 int
 main (void)
 {
-return main ();
+return utInit ();
   ;
   return 0;
 }
@@ -22769,7 +22837,7 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-    ac_check_lib_nocache_ok_udunits_main="yes"
+    ac_check_lib_nocache_ok_udunits_utInit="yes"
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -22781,8 +22849,8 @@ printf "%s\n" "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
-  LIBS=$ac_check_lib_nocache_udunits_main_LIBS
-  if test $ac_check_lib_nocache_ok_udunits_main = "yes"
+  LIBS=$ac_check_lib_nocache_udunits_utInit_LIBS
+  if test $ac_check_lib_nocache_ok_udunits_utInit = "yes"
 then :
    ac_udunits_lib="yes"
     UDUNITS_LIBS="-ludunits $UDUNITS_LIBS"
@@ -22791,6 +22859,56 @@ else $as_nop
   :
 fi
 
+  if test "$ac_udunits_lib" != "yes"
+then :
+
+  ac_check_lib_nocache_ok_udunits2_utInit='no'
+  ac_check_lib_nocache_udunits2_utInit_LIBS=$LIBS
+  LIBS="-ludunits2  $LIBS"
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for utInit in -ludunits2" >&5
+printf %s "checking for utInit in -ludunits2... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char utInit ();
+int
+main (void)
+{
+return utInit ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+    ac_check_lib_nocache_ok_udunits2_utInit="yes"
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else $as_nop
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS=$ac_check_lib_nocache_udunits2_utInit_LIBS
+  if test $ac_check_lib_nocache_ok_udunits2_utInit = "yes"
+then :
+   ac_udunits_lib="yes"
+      UDUNITS_LIBS="-ludunits2 $UDUNITS_LIBS"
+
+else $as_nop
+  :
+fi
+
+
+fi
   LIBS=$ac_udunits_save_LIBS
 
   if test "$ac_udunits_lib" = "yes"
@@ -24763,6 +24881,10 @@ printf "%s\n" "#define USEDAP 0" >>confdefs.h
   fi
 
 
+fi
+
+if test "x$enable_sdfopen" = "xyes" -a "x$use_nc" != "xyes" ; then
+  as_fn_error $? "sdfopen was required but NetCDF support was not detected. Install the NetCDF and UDUNITS development libraries, or provide their prefixes with --with-netcdf and --with-udunits." "$LINENO" 5
 fi
 
 

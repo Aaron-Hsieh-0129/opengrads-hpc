@@ -39,3 +39,6 @@ bp5-check:
 
 openmp-check:
 	OPENGRADS_BUILD_ROOT=${OPENGRADS_BUILD_ROOT} ./TestOpenMP.sh
+
+sdfopen-check:
+	OPENGRADS_BUILD_ROOT=${OPENGRADS_BUILD_ROOT} ./TestSDFOpen.sh

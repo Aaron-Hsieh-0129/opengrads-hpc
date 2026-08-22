@@ -782,8 +782,8 @@ FILE *pdefid=NULL;
     if (!retcod) mygreta(cmd);
     goto retrn;
 #endif
-#if (USENETCDF==1 || USEHDF ==1)
   } else if (cmpwrd("sdfopen", cmd)) {
+#if (USENETCDF==1 || USEHDF ==1)
     if ((cmd = nxtwrd(com)) == NULL) {
       gaprnt(0, "SDFOPEN error:  missing self-describing file pathname\n") ;
       retcod = 1;
@@ -791,9 +791,15 @@ FILE *pdefid=NULL;
     }
     retcod = gasdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
+#else
+    gaprnt(0, "SDFOPEN error: this GrADS build has no NetCDF or HDF4 support.\n");
+    gaprnt(0, "Reconfigure with NetCDF and UDUNITS development libraries installed.\n");
+    retcod = 1;
+#endif
     goto retrn;
   }
   else if (cmpwrd("xdfopen", cmd)) {
+#if (USENETCDF==1 || USEHDF ==1)
     if ((cmd = nxtwrd(com)) == NULL) {
         gaprnt(0, "XDFOPEN error:  missing data descriptor file name\n") ;
         retcod = 1 ;
@@ -801,8 +807,12 @@ FILE *pdefid=NULL;
     }
     retcod = gaxdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
-    goto retrn ;
+#else
+    gaprnt(0, "XDFOPEN error: this GrADS build has no NetCDF or HDF4 support.\n");
+    gaprnt(0, "Reconfigure with NetCDF and UDUNITS development libraries installed.\n");
+    retcod = 1;
 #endif
+    goto retrn ;
   } else if (cmpwrd("d",cmd) || cmpwrd("display",cmd)) {
     if (pcm->pfid==NULL) {
       gaprnt (0,"DISPLAY error:  no file open yet\n");

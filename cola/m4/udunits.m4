@@ -102,9 +102,15 @@ AC_DEFUN([AC_CHECK_UDUNITS_LIB],
   ac_udunits_save_LIBS=$LIBS
 
   ac_udunits_lib='no'
-  AC_CHECK_LIB_NOCACHE_UDUNITS([udunits],[main],
+  AC_CHECK_LIB_NOCACHE_UDUNITS([udunits],[utInit],
   [ ac_udunits_lib="yes"
     UDUNITS_LIBS="-ludunits $UDUNITS_LIBS"
+  ])
+  AS_IF([test "$ac_udunits_lib" != "yes"],
+  [ AC_CHECK_LIB_NOCACHE_UDUNITS([udunits2],[utInit],
+    [ ac_udunits_lib="yes"
+      UDUNITS_LIBS="-ludunits2 $UDUNITS_LIBS"
+    ])
   ])
   LIBS=$ac_udunits_save_LIBS
   

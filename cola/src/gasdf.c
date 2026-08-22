@@ -276,6 +276,7 @@ char *ch,*utname,*pos=NULL,*pos1=NULL,*pos2=NULL;
 char *time_units=NULL,*trunc_units=NULL,*temp_str ;
 utUnit timeunit ;
 
+  utIni(&timeunit);
   /* Enable griping, disable aborting, from within NetCDF library */
 #if USENETCDF==1
   ncopts = NC_VERBOSE ;
@@ -860,7 +861,7 @@ utUnit timeunit ;
 	  if (!temp_str) {
 	    trunc_point = strlen(time_units) ;
 	  } else {
-	    trunc_point = strlen(time_units)-strlen(temp_str)+1;
+	    trunc_point = strlen(time_units)-strlen(temp_str);
 	  }
 	  sz = trunc_point+1;
           trunc_units = (char *) galloc(sz,"trunc_units");
@@ -1392,20 +1393,29 @@ int compare_units(char *test_unit, char *trunc_unit) {
   utUnit testing_unit, truncated_unit ;
   gaint rc ;
   gadouble slope, intercept ;
-    
+
+  utIni(&testing_unit);
+  utIni(&truncated_unit);
   rc = utScan(test_unit, &testing_unit) ;
-  if (rc != 0) return Failure ;
+  if (rc != 0) goto failure ;
 
   rc = utScan(trunc_unit, &truncated_unit) ;
-  if (rc != 0) return Failure;
+  if (rc != 0) goto failure;
 
   rc = utConvert(&truncated_unit, &testing_unit, &slope, &intercept) ;
-  if (rc != 0) return Failure;
+  if (rc != 0) goto failure;
 
-  if (dequal(slope, 1.0, (gadouble)1.0e-8)==0 && dequal(intercept, 0.0, (gadouble)1.0e-8)==0) 
-    return Success;
-  else 
-    return Failure;
+  if (dequal(slope, 1.0, (gadouble)1.0e-8)==0 && dequal(intercept, 0.0, (gadouble)1.0e-8)==0)
+    rc = Success;
+  else
+    rc = Failure;
+  goto cleanup;
+failure:
+  rc = Failure;
+cleanup:
+  utFree(&testing_unit);
+  utFree(&truncated_unit);
+  return rc;
 }
 
 
@@ -1878,6 +1888,11 @@ gaint findZ(struct gafile *pfi, struct gavar **Zcoordptr, gaint *ispressptr) {
   struct utUnit feet, thisguy, pascals, kelvins ;
   gadouble slope, intcept ;
 
+  utIni(&feet);
+  utIni(&thisguy);
+  utIni(&pascals);
+  utIni(&kelvins);
+
   if (utScan("feet", &feet) != 0) {
     gaprnt(0, "The udunits library doesn't know feet; giving up...\n") ;
     return Failure;
@@ -1982,6 +1997,7 @@ gaint findT(struct gafile *pfi, struct gavar **Tcoordptr) {
   gaint iscoordvar, i, j, match;
   utUnit timeunit ;
 
+  utIni(&timeunit);
   i=0;
   lclvar=pfi->pvar1;
   while (i<pfi->vnum) {
@@ -2473,6 +2489,7 @@ gaint set_time_type (struct gafile *pfi) {
   struct gaattr *attr;
   gaint i,flag;
 
+  utIni(&timeunit);
   time = NULL;
   time = find_var (pfi, cdc_vars[TIME_IX]);
   if (time == NULL) {

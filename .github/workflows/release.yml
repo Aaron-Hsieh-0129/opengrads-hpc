@@ -31,7 +31,8 @@ jobs:
             autoconf automake build-essential ca-certificates cmake curl gawk \
             libtool pkg-config libice-dev libsm-dev libx11-dev libxext-dev libxmu-dev \
             libcairo2-dev \
-            libgeotiff-dev libtiff-dev libhdf5-dev libjpeg-dev zlib1g-dev
+            libgeotiff-dev libtiff-dev libhdf5-dev libjpeg-dev libnetcdf-dev \
+            libudunits2-dev zlib1g-dev
 
       - name: Build, test, and package
         env:

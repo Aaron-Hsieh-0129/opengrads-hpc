@@ -43,8 +43,9 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 
 The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and Readline
 8.2 source archives; builds them into `.release-work`; builds OpenGrADS with
-ADIOS2 and OpenMP required; runs the BP5 and OpenMP regressions; assembles the
-runtime closure; and writes the archive and checksum to `release-dist`.
+ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
+OpenMP regressions; assembles the runtime closure; and writes the archive and
+checksum to `release-dist`.
 Nothing is installed system-wide.
 
 For offline validation with existing private prefixes:

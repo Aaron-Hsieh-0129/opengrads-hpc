@@ -4713,7 +4713,11 @@ gadouble *dval=NULL;
   rc = h5openvar(fid, vname, &vid, &dsid);
   if (rc) err=1;
   if (!err) {
+#if H5_VERSION_GE(1,12,0)
+    if ((rc = H5Oget_info3(vid,&oinfo,H5O_INFO_NUM_ATTRS))<0) err=1;
+#else
     if ((rc = H5Oget_info(vid,&oinfo))<0) err=1;
+#endif
   }
   if (err) return (0); /* zero attributes printed */
 

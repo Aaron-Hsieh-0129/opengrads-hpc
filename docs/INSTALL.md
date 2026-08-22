@@ -70,8 +70,9 @@ For the recommended graphical build, Cairo, X11, Xext, and Xmu development
 files and `pkg-config` must also be installed. On Ubuntu or Debian, install them with:
 
 ```bash
-sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev libxmu-dev
-pkg-config --modversion cairo x11 xext xmu
+sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev libxmu-dev \
+  libnetcdf-dev libudunits2-dev
+pkg-config --modversion cairo x11 xext xmu netcdf udunits
 ```
 
 On other distributions, install the corresponding GUI development packages.

@@ -43,6 +43,7 @@ cd "$build_root"
 "$repo_root/cola/configure" \
   --enable-dyn-supplibs \
   --enable-openmp \
+  --enable-sdfopen \
   --with-opengrads \
   --without-gadap \
   --with-adios2="$adios2_root"
@@ -53,6 +54,7 @@ make -C src --jobs "$jobs" \
 OPENGRADS_BUILD_ROOT="$build_root" \
 OPENGRADS_ADIOS2_ROOT="$adios2_root" \
   "$repo_root/pytests/TestBP5.sh"
+OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestSDFOpen.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestOpenMP.sh"
 
 "$repo_root/release/package-linux.sh" \

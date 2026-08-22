@@ -133,6 +133,7 @@ GRADS
 )"
 grep -Fq 'adios2-bp5' <<< "$smoke_output"
 grep -Fq 'openmp' <<< "$smoke_output"
+grep -Fq 'netcdf' <<< "$smoke_output"
 grep -Fq 'Calculation threads = 4' <<< "$smoke_output"
 
 mkdir -p "$output_root"

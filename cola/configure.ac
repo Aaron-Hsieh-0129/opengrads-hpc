@@ -95,6 +95,12 @@ AC_ARG_ENABLE([openmp],
               [],
               [enable_openmp=auto])
 
+AC_ARG_ENABLE([sdfopen],
+              [AS_HELP_STRING([--enable-sdfopen],
+                              [require NetCDF/UDUNITS support for sdfopen and xdfopen])],
+              [],
+              [enable_sdfopen=auto])
+
 # ----------------------------------------------------
 # Checks for programs
 # ----------------------------------------------------
@@ -865,6 +871,10 @@ else
   fi
   AC_SUBST(nc_inc)
   AC_SUBST(nc_libs)
+fi
+
+if test "x$enable_sdfopen" = "xyes" -a "x$use_nc" != "xyes" ; then
+  AC_MSG_ERROR([sdfopen was required but NetCDF support was not detected. Install the NetCDF and UDUNITS development libraries, or provide their prefixes with --with-netcdf and --with-udunits.])
 fi
 
 
