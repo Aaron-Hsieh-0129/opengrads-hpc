@@ -15,7 +15,7 @@ build_root="$work_root/opengrads-build"
 jobs="${OPENGRADS_BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
 udunits_root="$work_root/udunits1"
 
-for formula in adios2 autoconf automake cairo coreutils gcc geotiff hdf5 libomp \
+for formula in adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 libomp \
                libtool netcdf pkgconf; do
   if ! brew list --versions "$formula" >/dev/null 2>&1; then
     printf 'Required Homebrew formula is not installed: %s\n' "$formula" >&2
@@ -33,7 +33,7 @@ gcc_suffix="${gcc_bin##*-}"
 export CC="$gcc_bin"
 export CXX="$(dirname -- "$gcc_bin")/g++-$gcc_suffix"
 export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
-export PKG_CONFIG_PATH="$(brew --prefix adios2)/lib/pkgconfig:$(brew --prefix cairo)/lib/pkgconfig:$(brew --prefix geotiff)/lib/pkgconfig:$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export PKG_CONFIG_PATH="$(brew --prefix adios2)/lib/pkgconfig:$(brew --prefix cairo)/lib/pkgconfig:$(brew --prefix libgeotiff)/lib/pkgconfig:$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 
 "$repo_root/release/build-udunits1.sh" "$work_root"
 

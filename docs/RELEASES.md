@@ -28,15 +28,13 @@ The release matrix is:
 - Linux aarch64, built natively on Ubuntu 22.04 ARM64;
 - macOS arm64, built natively on macOS 15;
 - macOS x86_64, built natively on macOS 15 Intel;
-- Windows x86_64, built natively with MSYS2/MinGW64.
 
 
 Using Ubuntu 22.04 establishes an older glibc baseline than newer runner
 images. glibc itself and the dynamic loader are deliberately not bundled;
 release archives therefore require a glibc-based Linux system at least as new
-as the build baseline. macOS and Windows are native builds, not cross-compiled
-Linux archives. The macOS archive starts with `./opengrads`; Windows users
-start `opengrads.cmd` after extracting the ZIP.
+as the build baseline. macOS archives are native builds, not cross-compiled
+Linux archives, and start with `./opengrads`.
 
 ### Graphics drivers per platform
 
@@ -48,7 +46,6 @@ executable, which constrains what each platform can carry:
 | --- | --- | --- |
 | Linux | `Cairo`, `X11`, `gxdummy` | `Cairo`, `gxdummy` |
 | macOS | `gxdummy` | `Cairo`, `gxdummy` |
-| Windows | `gxdummy` | `gxdummy` |
 
 macOS archives therefore run headless but keep the full Cairo hardcopy path,
 so `printim` and `print` produce PNG, PS, PDF, and SVG output without
@@ -56,11 +53,24 @@ XQuartz. Both launchers pass the drivers their archive actually carries, so
 `./opengrads` and `opengrads.cmd` work without extra flags; anything the
 caller passes still wins.
 
-Windows is currently compute-and-query only. On PE targets a DLL cannot leave
-symbols undefined at link time, so the Cairo plug-ins — which call `gxdb*`
-routines that live in `grads.exe` — do not link natively under MinGW. Only
-the self-contained `gxdummy` driver does. Adding Windows hardcopy means
-exporting the executable's symbols (`-Wl,--export-all-symbols
+### Windows status
+
+Windows is **not built by CI and not published**. The builder scripts
+(`release/build-release-windows.sh`, `release/package-windows.sh`) are kept
+because the work is mostly done, but two things remain:
+
+- The MSYS2 package is named `mingw-w64-x86_64-libgeotiff`, not
+  `mingw-w64-x86_64-geotiff`. The scripts are correct; the CI install list was
+  not, which is what stopped the first run.
+- A native MinGW build of GrADS is unproven. There are no `_WIN32` guards
+  anywhere in `cola/src`, and the historical port went through Cygwin, so
+  portability errors beyond the package name are likely.
+
+Even once it builds, Windows would be compute-and-query only. On PE targets a
+DLL cannot leave symbols undefined at link time, so the Cairo plug-ins — which
+call `gxdb*` routines that live in `grads.exe` — do not link natively under
+MinGW; only the self-contained `gxdummy` driver does. Adding Windows hardcopy
+means exporting the executable's symbols (`-Wl,--export-all-symbols
 -Wl,--out-implib`) and linking the plug-ins against that import library, or
 returning to a Cygwin port as the historical OpenGrADS Windows builds did.
 
@@ -107,7 +117,7 @@ OPENGRADS_RELEASE_DEPS_ROOT=/path/to/libedit-and-ncurses \
 `release/versions.env` is the dependency lock file. Update a version, URL, and
 SHA-256 together and re-run both architecture jobs before accepting a change.
 
-## Native macOS and Windows builds
+## Native macOS build
 
 The macOS builder uses Homebrew dependencies and must run on a Mac:
 
@@ -117,11 +127,7 @@ brew install adios2 autoconf automake cairo coreutils gcc geotiff hdf5 \
 ./release/build-release-macos.sh
 ```
 
-The Windows builder runs from an MSYS2 **MINGW64** shell:
-
-```bash
-./release/build-release-windows.sh
-```
+The Windows builder is not currently exercised; see **Windows status** above.
 
 Both builders compile a private, checksum-pinned UDUNITS 1.12.11 dependency so
 `sdfopen` and `xdfopen` retain the legacy GrADS API. They run the BP5, SDF, and
@@ -135,7 +141,7 @@ not reach back into the Homebrew prefix it was built from.
 
 ## GitHub Actions and publication gate
 
-`.github/workflows/release.yml` builds and tests all five native archives on
+`.github/workflows/release.yml` builds and tests all four native archives on
 a version tag or manual dispatch. Binary artifact upload and GitHub Release
 creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.

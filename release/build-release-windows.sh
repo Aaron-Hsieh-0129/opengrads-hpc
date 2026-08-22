@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # Build, test, and package a native Windows opengrads-hpc release in MSYS2/MinGW.
+#
+# NOT exercised by CI. Requires these MSYS2 packages -- note libgeotiff, not
+# geotiff, which is the name that broke the first CI attempt:
+#   autoconf automake libtool make zip mingw-w64-x86_64-{adios2,cairo,dlfcn,
+#   libgeotiff,gcc,hdf5,netcdf,pkgconf}
+# See docs/RELEASES.md for remaining known blockers.
 
 set -euo pipefail
 

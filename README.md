@@ -3,8 +3,8 @@
 opengrads-hpc is a maintained fork of OpenGrADS 2.2.1.oga.1, GrADS built for
 modern simulation output. It keeps the interactive GrADS workflow — the same
 descriptors, commands, and `.gs` scripts — while adding an ADIOS2/BP5 reader,
-OpenMP-threaded calculations, and self-contained releases for Linux, macOS,
-and Windows.
+OpenMP-threaded calculations, and self-contained releases for Linux and
+macOS.
 
 **"HPC" means the ADIOS2/BP5 engine plus OpenMP threading on a single node.**
 There is no MPI or GPU support and none is planned; ADIOS2 is deliberately
@@ -57,10 +57,10 @@ libraries are available.
   retained under [extensions](extensions).
 
 - **Modern interactive and release experience.** Optional BSD libedit adds
-  command history and Tab completion. The release builders produce five
-  self-contained archives — Linux x86_64 and aarch64, macOS arm64 and x86_64,
-  and Windows x86_64 — carrying BP5, OpenMP, the graphics plug-ins available
-  on that platform, and every required runtime library.
+  command history and Tab completion. The release builders produce four
+  self-contained archives — Linux x86_64 and aarch64, macOS arm64 and x86_64 —
+  carrying BP5, OpenMP, the graphics plug-ins available on that platform, and
+  every required runtime library.
 
 ## Quick start
 

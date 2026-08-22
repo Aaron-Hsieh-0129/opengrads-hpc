@@ -97,7 +97,7 @@ copy_formula_notice()
     -type f 2>/dev/null)
 }
 
-for formula in adios2 cairo geotiff hdf5 libomp netcdf gcc; do
+for formula in adios2 cairo libgeotiff hdf5 libomp netcdf gcc; do
   copy_formula_notice "$formula"
 done
 install -m 0755 "$repo_root/release/opengrads-macos" "$bundle_root/opengrads"
