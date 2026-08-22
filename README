@@ -1,134 +1,88 @@
-OpenGrADS BP5 development fork
-------------------------------
+# OpenGrADS Update
 
-This source tree adds serial ADIOS2 BP5 input to OpenGrADS 2.2.1.oga.1.
-It is enabled automatically when available and required by release builds. Supported datasets can be opened directly with `bpopen`, with
-no user-written CTL, or with an explicit `dtype bp5` descriptor.
+OpenGrADS Update is a development fork of OpenGrADS 2.2.1.oga.1. It keeps the
+interactive GrADS workflow while adding modern data access, faster calculations,
+and a practical Linux release path for scientific analysis and visualization.
 
-Start here:
+## What is GrADS?
 
-* `docs/RELEASES.md` -- unpack-and-run binaries and release automation
-* `docs/BP5.md` -- BP5 use, tests, and limitations
-* `docs/CHANGES-BP5.md` -- complete change summary for this revision
-* `docs/INSTALL.md` -- complete new-machine installation and direct-use guide
-* `docs/PERFORMANCE.md` -- OpenMP acceleration and CPU-count controls
-* `docs/ARCHITECTURE.md` -- repository structure, runtime architecture,
-  contributor constraints, and engineering roadmap
-* `docs/PUBLISHING.md` -- GitHub source-publication checklist
-* `THIRD_PARTY_NOTICES.md` -- dependency attribution and important
-  binary-redistribution cautions
-* `COPYING` and `COPYRIGHT` -- OpenGrADS license and copyright terms
+The Grid Analysis and Display System (GrADS) is an interactive environment for
+working with gridded and station earth-science data. It lets users open data,
+select a longitude/latitude/level/time domain, evaluate expressions, and make
+maps, contours, vectors, time series, and other scientific plots. GrADS also
+has a scripting language for repeatable analysis and batch graphics.
 
-Quick interactive use after building:
+This fork retains the familiar GrADS data model and commands, including support
+for common binary, GRIB, NetCDF, HDF, and BUFR workflows when their optional
+libraries are available.
 
-    ga-> bpopen /path/to/output.bp
-    ga-> q vars
-    ga-> set t 1
-    ga-> set z 1
-    ga-> set gxout shaded
-    ga-> display variable_name
+## What this project adds
 
-This repository does not commit third-party source or build outputs. The release
-builder downloads checksum-pinned dependencies automatically; RCEMIP data remains
-separate.
+- **ADIOS2 BP5 reader.** Open supported BP5 output directly with
+  `bpopen /path/to/data.bp`, without writing a CTL file, or use an explicit
+  descriptor with `dtype bp5`. Coordinate, variable, unit, title, and
+  missing-value metadata are discovered where available. See
+  [BP5 documentation](docs/BP5.md).
 
-Obtaining this fork
--------------------
+- **OpenMP calculation engine.** Common grid arithmetic, functions, and
+  reductions can use multiple CPU cores. The default is four calculation
+  threads; control it with `set threads N`, `./opengrads -j N`, or
+  `GA_NUM_THREADS=N`. See [performance notes](docs/PERFORMANCE.md).
 
-Clone the BP5-enabled source repository into the unified installation tree:
+- **Restored self-describing-file access.** Release builds require NetCDF and
+  UDUNITS support, so `sdfopen` and `xdfopen` remain available for compatible
+  NetCDF and HDF data instead of disappearing from the command set. Confirm
+  enabled features with `q config`.
 
-    mkdir -p "$HOME/opengrads"
-    git clone https://github.com/Aaron-Hsieh-0129/opengrads-update.git \
-      "$HOME/opengrads/source"
-    cd "$HOME/opengrads/source"
+- **Advanced scripts and extensions.** The bundled OpenGrADS/Kodama script
+  collection in [lib/scripts](lib/scripts) provides reusable plotting and
+  analysis tools, including maps, panels, colour bars, meteorograms,
+  trajectories, and interpolation helpers. Existing OpenGrADS extensions are
+  retained under [extensions](extensions).
 
-Native x86_64 and aarch64 Linux release archives are built by the gated workflow
-described in `docs/RELEASES.md`. Until redistribution approval enables public
-artifacts, maintainers can create the same archives with one command. The historical
-SourceForge downloads contain the original OpenGrADS releases, not the BP5
-changes in this repository.
+- **Modern interactive and release experience.** Optional GNU Readline adds
+  command history and Tab completion. The Linux release builder produces
+  self-contained x86_64 and aarch64 archives with BP5, OpenMP, graphics, and
+  required runtime libraries.
 
-Installation
-------------
+## Quick start
 
-For an unpack-and-run archive, start with `docs/RELEASES.md`. For a source
-installation, follow `docs/INSTALL.md`. Both paths enable BP5 and OpenMP by
-default; the release archive contains its runtime libraries.
+For a packaged Linux release, follow [RELEASES.md](docs/RELEASES.md). For a
+source build, follow [INSTALL.md](docs/INSTALL.md). Once started, a BP5 session
+can look like this:
 
-The historical `BUILD` and `INSTALL` files describe the original
-supplemental-library and bundle workflows.
+```text
+ga-> bpopen /path/to/output.bp
+ga-> q vars
+ga-> set t 1
+ga-> set z 1
+ga-> set threads 8
+ga-> set gxout shaded
+ga-> display temperature
+```
 
-Overview of GrADS
------------------
+Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
+`netcdf`, graphics devices, and other optional components.
 
-The Grid Analysis and Display System (GrADS) is an interactive desktop
-tool that is used for easy access, manipulation, and visualization of
-earth science data. GrADS has two data models for handling gridded and
-station data. GrADS supports many data file formats, including binary
-(stream or sequential), GRIB (version 1 and 2), NetCDF, HDF (version 4
-and 5), and BUFR (for station data). GrADS has been implemented
-worldwide on a variety of commonly used operating systems and is
-freely distributed over the Internet.
+## Documentation
 
-GrADS uses a 5-Dimensional data environment: the four conventional
-dimensions (longitude, latitude, vertical level, and time) plus an
-optional 5th dimension for grids that is generally implemented but
-designed to be used for ensembles. Data sets are placed within the 5-D
-space by use of a data descriptor file. GrADS handles grids that are
-regular, non-linearly spaced, gaussian, or of variable
-resolution. Data from different data sets may be graphically overlaid,
-with correct spatial and time registration. Operations are executed
-interactively by entering FORTRAN-like expressions at the command
-line. A rich set of built-in functions are provided, but users may
-also add their own functions as external routines written in any
-programming language.
+- [Installation guide](docs/INSTALL.md)
+- [Release and packaging guide](docs/RELEASES.md)
+- [BP5 reader guide and limitations](docs/BP5.md)
+- [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)
+- [Architecture and development roadmap](docs/ARCHITECTURE.md)
+- [Detailed BP5 change record](docs/CHANGES-BP5.md)
 
-Data may be displayed using a variety of graphical techniques: line
-and bar graphs, scatter plots, smoothed contours, shaded contours,
-streamlines, wind vectors, grid boxes, shaded grid boxes, and station
-model plots. Graphics may be output in PostScript or image
-formats. GrADS provides geophysically intuitive defaults, but the user
-has the option to control all aspects of graphics output.
+## Legacy OpenGrADS documentation
 
-GrADS has a programmable interface (scripting language) that allows
-for sophisticated analysis and display applications. Use scripts to
-display buttons and dropmenus as well as graphics, and then take
-action based on user point-and-clicks. GrADS can be run in batch mode,
-and the scripting language facilitates using GrADS to do long
-overnight batch jobs.
+The [pre-fork OpenGrADS README](https://github.com/Aaron-Hsieh-0129/opengrads-update/blob/3c0ea22b3c592ccfcc876da442da61a37bb1d23c/README)
+is retained in the repository history for the original project overview and
+older installation guidance. The historical [BUILD](BUILD) and [INSTALL](INSTALL)
+files are also preserved, but the documentation above describes this fork's
+supported build and release process.
 
-What is OpenGrADS?
-------------------
+## License and notices
 
-The OpenGrADS Project seeks to develop advanced interfaces and
-extensions based on the main GrADS engine.  The OpenGrADS Project aims
-at improving GrADS extensibility by
-
-* developing a framework for high performance user defined commands
-  and user defined functions, allowing users to add their own
-  dynamically linked plugins;
-
-* developing interfaces to modern scripting languages such as Perl and
-  Python, as as well as to scientific tools such as IDL, Octave and
-  Matlab, so that more powerful GrADS based applications can be
-  developed and integrated into other existing community efforts;
-
-* establishing a central location for collaborative development of
-  packages for GrADS, coordinating the development of extensions in
-  critical areas;
-
-* providing a central repository of such extensions for the end-user.
-
-The OpenGrADS Project intends to complement the GrADS development
-going on at COLA/GMU, although from time to time patches to COLA
-releases will be necessary to enable the latest OpenGrADS extensions.
-
-
-Additional Information
-----------------------
-
-   Consult the GrADS website: http://cola.gmu.edu/grads/grads.php
-
-   For information on OpenGrADS extensions and interfaces to Perl and 
-   Python consult the OpenGrADS wesite:  http://opengrads.org/
- 
+OpenGrADS license and copyright terms are in [COPYING](COPYING) and
+[COPYRIGHT](COPYRIGHT). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for dependency attribution and binary-redistribution cautions.
