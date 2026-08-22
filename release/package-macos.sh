@@ -72,6 +72,34 @@ cat > "$bundle_root/VERSION" <<VERSIONFILE
 opengrads-hpc $dist_version
 GrADS base $grads_version
 VERSIONFILE
+
+"$repo_root/release/write-source-offer.sh" "$bundle_root" "$dist_version" \
+  "$grads_version"
+
+# Homebrew does not install license files to a predictable path for every
+# formula, so record what is bundled either way and copy whatever is found.
+mkdir -p "$bundle_root/licenses"
+: > "$bundle_root/licenses/BUNDLED-LIBRARIES.txt"
+
+copy_formula_notice()
+{
+  local formula="$1"
+  local prefix notice
+  prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
+  [[ -n "$prefix" && -d "$prefix" ]] || return 0
+  while IFS= read -r notice; do
+    [[ -n "$notice" ]] || continue
+    install -m 0644 "$notice" \
+      "$bundle_root/licenses/$formula-$(basename -- "$notice")"
+    return 0
+  done < <(find "$prefix" -maxdepth 2 \
+    \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'NOTICE*' \) \
+    -type f 2>/dev/null)
+}
+
+for formula in adios2 cairo geotiff hdf5 libomp netcdf gcc; do
+  copy_formula_notice "$formula"
+done
 install -m 0755 "$repo_root/release/opengrads-macos" "$bundle_root/opengrads"
 
 executable_dir="$bundle_root/bin"
@@ -154,6 +182,8 @@ while (( index < ${#queue[@]} )); do
     bundled_names+=("$soname")
     cp -L "$resolved" "$lib_root/$soname"
     chmod 0755 "$lib_root/$soname"
+    printf '%s\t%s\n' "$soname" "$resolved" \
+      >> "$bundle_root/licenses/BUNDLED-LIBRARIES.txt"
     queue+=("$resolved")
   done < <(otool -L "$binary" | awk 'NR > 1 { print $1 }')
 done

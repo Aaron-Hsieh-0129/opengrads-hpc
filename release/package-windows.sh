@@ -68,6 +68,21 @@ cat > "$bundle_root/VERSION" <<VERSIONFILE
 opengrads-hpc $dist_version
 GrADS base $grads_version
 VERSIONFILE
+
+"$repo_root/release/write-source-offer.sh" "$bundle_root" "$dist_version" \
+  "$grads_version"
+
+# MSYS2 installs every package's license under share/licenses/<package>, so
+# the notices for bundled DLLs can be copied wholesale.
+mkdir -p "$bundle_root/licenses"
+: > "$bundle_root/licenses/BUNDLED-LIBRARIES.txt"
+
+for package in adios2 cairo geotiff gcc-libs hdf5 netcdf dlfcn zlib libwinpthread; do
+  license_dir="$MINGW_PREFIX/share/licenses/$package"
+  if [[ -d "$license_dir" ]]; then
+    cp -a "$license_dir" "$bundle_root/licenses/$package"
+  fi
+done
 install -m 0644 "$repo_root/release/opengrads.cmd" "$bundle_root/opengrads.cmd"
 
 # Breadth-first copy of every non-system DLL the binaries need. MSYS2 reports
@@ -102,6 +117,8 @@ while (( ${#queue[@]} )); do
     bundled[$soname]=1
     cp -L "$resolved" "$lib_root/$soname"
     chmod 0755 "$lib_root/$soname"
+    printf '%s\t%s\n' "$soname" "$resolved" \
+      >> "$bundle_root/licenses/BUNDLED-LIBRARIES.txt"
     queue+=("$lib_root/$soname")
   done < <(ldd "$binary" | awk '$2 == "=>" && $3 ~ /^\// { print $3 }')
 done

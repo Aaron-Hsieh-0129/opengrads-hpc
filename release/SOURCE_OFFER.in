@@ -1,0 +1,51 @@
+Written offer for complete corresponding source
+===============================================
+
+This archive contains opengrads-hpc @DIST_VERSION@, a binary distribution of
+GrADS @GRADS_VERSION@ and its supporting libraries. GrADS is licensed under
+the GNU General Public License, version 2; see the accompanying COPYING file.
+
+GPLv2 section 3 requires that a binary distribution be accompanied by the
+complete corresponding source code, or by a written offer to supply it. This
+file is that written offer.
+
+Complete corresponding source
+-----------------------------
+
+The complete corresponding source for the GrADS executable and the graphics
+plug-ins in this archive, including the scripts used to control compilation
+and installation, is the following commit of the public repository:
+
+    Repository: @REPO_URL@
+    Commit:     @COMMIT@
+    Built:      @BUILD_ID@
+
+Every third-party dependency bundled here is built from an unmodified,
+checksum-pinned upstream release. The exact version, download URL, and
+SHA-256 of each one is recorded in `release/versions.env` at the commit
+above, and the build that consumes them is `release/build-dependencies.sh`.
+Platform libraries taken from Homebrew (macOS) or MSYS2 (Windows) are
+unmodified upstream builds; `licenses/` records what this archive carries.
+
+The offer
+---------
+
+For a period of three years from the date this archive was distributed, the
+maintainer will supply, to any third party who asks, a complete
+machine-readable copy of the corresponding source described above, for no
+more than the cost of physically performing the distribution.
+
+Requests may be sent to:
+
+    @CONTACT@
+
+If the repository above is reachable, downloading that commit is the fastest
+way to obtain the same source and requires no request.
+
+Licensing note
+--------------
+
+See THIRD_PARTY_NOTICES.md in this archive for the licenses of every bundled
+component, and for a documented, unresolved GPLv2/Apache-2.0 compatibility
+question affecting the ADIOS2 BP5 support in this binary. Building from
+source does not carry that question.

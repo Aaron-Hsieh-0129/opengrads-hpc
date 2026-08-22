@@ -49,6 +49,9 @@ opengrads-hpc $dist_version
 GrADS base $grads_version
 VERSIONFILE
 
+"$repo_root/release/write-source-offer.sh" "$bundle_root" "$dist_version" \
+  "$grads_version"
+
 for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxpCairo.so; do
   if [[ ! -r "$build_root/src/.libs/$plugin" ]]; then
     printf 'Required release plug-in is missing: %s\n' "$plugin" >&2

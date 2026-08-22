@@ -140,10 +140,14 @@ a version tag or manual dispatch. Binary artifact upload and GitHub Release
 creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.
 
-Do not set that variable merely because the build passes. OpenGrADS is treated
-as GPL-2.0-only, while ADIOS2 is Apache-2.0. (The Readline half of this problem
-was removed in 2026 by switching to BSD libedit.) The current project notices
-identify unresolved linked-binary compatibility for ADIOS2. The
-gate may be enabled only after permission, a valid relicensing/exception, or
-qualified legal advice establishes a distributable combination. Local builds
-and tests do not themselves authorize public redistribution.
+That variable is the deliberate control over binary publication. GrADS is
+treated as GPL-2.0-only while ADIOS2 is Apache-2.0, a combination the FSF and
+ASF both describe as incompatible, and this project publishes those binaries
+with the question documented rather than resolved. (The Readline half was
+removed in 2026 by switching to BSD libedit.) See
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) for the full position.
+
+Turning the gate off is how you pause binary publication -- for example if a
+copyright holder objects, or while a compatibility grant is pending. Builds
+and tests still run on every platform when it is off; only upload and release
+creation stop.

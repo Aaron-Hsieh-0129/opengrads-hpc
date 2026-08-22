@@ -4,7 +4,11 @@ This checklist prepares the source tree for a GitHub repository. It does not upl
 
 ## Recommended publication scope
 
-Publish the modified source tree, tests, documentation, and existing OpenGrADS license files. Do not publish binaries linked with ADIOS2 until a qualified review or permission from the relevant copyright holders resolves the license-compatibility questions described in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). Command line editing now uses BSD libedit, so GNU Readline is no longer part of that question.
+Publish the modified source tree, tests, documentation, and existing OpenGrADS license files, together with the binary archives produced by the release workflow.
+
+Binary archives contain ADIOS2, whose Apache-2.0 license raises an unresolved compatibility question against GrADS's GPL-2.0-only terms. That question is documented in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and shipped inside every archive rather than concealed; a compatibility grant is being sought from the relevant copyright holders. Publish with that documentation intact. Command line editing uses BSD libedit, so GNU Readline is no longer part of the question.
+
+Every archive must carry: `COPYING`, `COPYRIGHT`, `THIRD_PARTY_NOTICES.md`, a `SOURCE_OFFER` naming the exact commit, and a `licenses/` directory covering the bundled runtime libraries. Do not remove any of these to make the archive tidier -- the source offer is required by GPLv2 section 3, and the attribution notices are required by the Apache-2.0 and BSD licenses of the bundled libraries.
 
 The repository does not commit ADIOS2 or libedit source. The release builder
 downloads checksum-pinned source archives and packages their runtime libraries.
