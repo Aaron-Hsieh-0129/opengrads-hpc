@@ -1,9 +1,17 @@
-## opengrads-hpc 1.0.1
+## opengrads-hpc 1.0.2
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.0
+### Fixed since 1.0.1
+
+- **Prompt colour and Tab completion.** 1.0.0 and 1.0.1 linked BSD libedit,
+  which mangles the ANSI escape sequences in the coloured prompt (printing
+  `[32mga-> [39m` as literal text) and appends a space after ambiguous
+  completions. GNU Readline is restored, so the green prompt and Tab
+  behaviour match the earlier `bp5.*` releases again.
+
+### Fixed in 1.0.1
 
 - **Terminal handling at the `ga->` prompt.** The bundled ncurses carried the
   build machine's terminfo path compiled into it. That directory does not
@@ -55,9 +63,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.1-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.1-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.1-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.2-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.2-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.2-linux-x86_64
 ./opengrads
 ```
 
