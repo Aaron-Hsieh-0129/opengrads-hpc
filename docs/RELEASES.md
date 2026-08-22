@@ -123,15 +123,19 @@ The macOS builder uses Homebrew dependencies and must run on a Mac:
 
 ```bash
 brew install adios2 autoconf automake cairo coreutils gcc geotiff hdf5 \
-  libomp libtool netcdf pkgconf
+  libomp libtool netcdf pkgconf udunits
 ./release/build-release-macos.sh
 ```
 
 The Windows builder is not currently exercised; see **Windows status** above.
 
-Both builders compile a private, checksum-pinned UDUNITS 1.12.11 dependency so
-`sdfopen` and `xdfopen` retain the legacy GrADS API. They run the BP5, SDF, and
-OpenMP regressions before packaging their archive.
+`sdfopen` and `xdfopen` need the legacy UDUNITS 1 API (`utInit`, `utScan`).
+UDUNITS-2 ships that API and its `udunits.h` compatibility header, so every
+platform uses UDUNITS-2 — `libudunits2-dev` on Linux, the `udunits` formula on
+macOS. An earlier attempt to build UDUNITS 1.12.11 from source was dropped: it
+fails against modern bison on Linux and on the Fortran probe on macOS, and it
+was never necessary. The builders run the BP5, SDF, and OpenMP regressions
+before packaging their archive.
 
 The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
 re-signs the result, because editing a Mach-O header invalidates the ad-hoc

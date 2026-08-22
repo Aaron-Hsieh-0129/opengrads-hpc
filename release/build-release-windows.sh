@@ -4,7 +4,7 @@
 # NOT exercised by CI. Requires these MSYS2 packages -- note libgeotiff, not
 # geotiff, which is the name that broke the first CI attempt:
 #   autoconf automake libtool make zip mingw-w64-x86_64-{adios2,cairo,dlfcn,
-#   libgeotiff,gcc,hdf5,netcdf,pkgconf}
+#   libgeotiff,gcc,hdf5,netcdf,pkgconf,udunits}
 # See docs/RELEASES.md for remaining known blockers.
 
 set -euo pipefail
@@ -23,7 +23,6 @@ work_root="${OPENGRADS_RELEASE_WORK_ROOT:-$repo_root/.release-work-windows}"
 output_root="${OPENGRADS_RELEASE_OUTPUT_ROOT:-$repo_root/release-dist}"
 build_root="$work_root/opengrads-build"
 jobs="${OPENGRADS_BUILD_JOBS:-$(nproc)}"
-udunits_root="$work_root/udunits1"
 
 if [[ ! -x "$MINGW_PREFIX/bin/adios2-config" ]]; then
   printf 'MSYS2 ADIOS2 is not installed in %s.\n' "$MINGW_PREFIX" >&2
@@ -37,7 +36,6 @@ if [[ ! -r "$MINGW_PREFIX/include/dlfcn.h" ]]; then
   exit 1
 fi
 
-"$repo_root/release/build-udunits1.sh" "$work_root"
 rm -rf -- "$build_root"
 mkdir -p "$build_root/src" "$build_root/lib" "$output_root"
 export PATH="$MINGW_PREFIX/bin:$PATH"
@@ -49,7 +47,6 @@ cd "$build_root"
   --enable-sdfopen \
   --with-opengrads \
   --without-gadap \
-  --with-udunits="$udunits_root" \
   --with-adios2="$MINGW_PREFIX"
 make -C src --jobs "$jobs" grads libgxdummy.la
 
