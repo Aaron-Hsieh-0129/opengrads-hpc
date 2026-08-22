@@ -89,7 +89,6 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 - [BP5 reader guide and limitations](docs/BP5.md)
 - [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)
 - [Architecture and development roadmap](docs/ARCHITECTURE.md)
-- [Detailed BP5 change record](docs/CHANGES-BP5.md)
 
 ## Legacy OpenGrADS documentation
 

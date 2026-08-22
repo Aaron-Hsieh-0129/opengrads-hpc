@@ -1,5 +1,5 @@
 #
-# Modified in 2026; see ../COPYING and docs/CHANGES-BP5.md.
+# Modified in 2026; see ../COPYING.
 # Tests an opengrads bundle.
 #
 
