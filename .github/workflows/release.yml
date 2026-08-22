@@ -1,4 +1,4 @@
-name: Self-contained Linux release candidates
+name: Cross-platform release candidates
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  linux:
     name: ${{ matrix.artifact }}
     strategy:
       fail-fast: false
@@ -39,7 +39,7 @@ jobs:
           OPENGRADS_BUILD_JOBS: 4
         run: ./release/build-release.sh
 
-      - name: Show archive contents and checksum
+      - name: Verify archive
         run: |
           cd release-dist
           sha256sum -c -- *.sha256
@@ -57,23 +57,104 @@ jobs:
             release-dist/*.sha256
           if-no-files-found: error
 
-      - name: Explain publication gate
-        if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED != 'true' }}
+  macos:
+    name: ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            artifact: macos-arm64
+          - runner: macos-15-intel
+            artifact: macos-x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build prerequisites
         run: |
-          echo 'Build and tests passed, but binary upload is disabled.'
-          echo 'Set repository variable BINARY_REDISTRIBUTION_APPROVED=true only after the GPL-2.0-only/Apache-2.0 redistribution issue is resolved.'
+          brew update
+          brew install adios2 autoconf automake cairo coreutils gcc geotiff hdf5 \
+            libomp libtool netcdf pkgconf
+
+      - name: Build, test, and package
+        env:
+          OPENGRADS_BUILD_JOBS: 4
+        run: ./release/build-release-macos.sh
+
+      - name: Verify archive
+        run: |
+          cd release-dist
+          shasum -a 256 -c -- *.sha256
+          for archive in *.tar.gz; do
+            tar -tzf "$archive"
+          done | sed -n '1,80p'
+
+      - name: Upload approved binary artifact
+        if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: opengrads-${{ matrix.artifact }}
+          path: |
+            release-dist/*.tar.gz
+            release-dist/*.sha256
+          if-no-files-found: error
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up MSYS2/MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            autoconf automake libtool make zip
+            mingw-w64-x86_64-adios2 mingw-w64-x86_64-cairo
+            mingw-w64-x86_64-dlfcn mingw-w64-x86_64-geotiff
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-hdf5
+            mingw-w64-x86_64-netcdf mingw-w64-x86_64-pkgconf
+
+      - name: Build, test, and package
+        env:
+          OPENGRADS_BUILD_JOBS: 4
+        run: ./release/build-release-windows.sh
+
+      - name: Verify archive
+        run: |
+          cd release-dist
+          sha256sum -c -- *.sha256
+          for archive in *.zip; do
+            unzip -l "$archive"
+          done | sed -n '1,80p'
+
+      - name: Upload approved binary artifact
+        if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: opengrads-windows-x86_64
+          path: |
+            release-dist/*.zip
+            release-dist/*.sha256
+          if-no-files-found: error
 
   publish:
     name: Attach approved binaries to GitHub release
     if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
-    needs: build
+    needs: [linux, macos, windows]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: opengrads-linux-*
+          pattern: opengrads-*
           path: artifacts
           merge-multiple: true
       - name: Create release and upload archives

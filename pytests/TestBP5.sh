@@ -15,12 +15,16 @@ else
   fi
 fi
 grads_binary="$build_root/src/grads"
+launcher="${OPENGRADS_LAUNCHER:-$repo_root/opengrads}"
 fixture_writer="$repo_root/pytests/bp5_writer.c"
 fixture_ctl="$repo_root/pytests/data/bp5_fixture.ctl"
 
 if [[ ! -x "$adios2_config" ]]; then
   printf 'ADIOS2 config helper not found: %s\n' "$adios2_config" >&2
   exit 1
+fi
+if [[ ! -x "$grads_binary" && -x "$grads_binary.exe" ]]; then
+  grads_binary="$grads_binary.exe"
 fi
 if [[ ! -x "$grads_binary" ]]; then
   printf 'ADIOS2-enabled GrADS binary not found: %s\n' "$grads_binary" >&2
@@ -48,7 +52,7 @@ output="$(
   OPENGRADS_BUILD_ROOT="$build_root" \
   OPENGRADS_ADIOS2_ROOT="$adios2_root" \
   OPENGRADS_COLOR=0 \
-    "$repo_root/opengrads" -bl -d gxdummy -h gxdummy <<GRADS_COMMANDS
+    "$launcher" -bl -d gxdummy -h gxdummy <<GRADS_COMMANDS
 open $test_root/bp5_fixture.ctl
 q config
 q ctlinfo

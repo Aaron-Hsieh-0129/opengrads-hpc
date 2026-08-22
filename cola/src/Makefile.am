@@ -108,34 +108,43 @@ AM_CFLAGS               = $(openmp_cflags)
 grads_LDADD	      = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 			$(hdf_libs) $(hdf5_libs) $(nc_libs) $(geotiff_libs) \
 			$(shp_libs) $(gadap_libs) $(gui_libs) $(adios2_libs) \
-			$(openmp_cflags) -ldl -lpthread $(host_ldflags)
+			$(openmp_cflags) $(host_runtime_libs) $(host_ldflags)
+
+## Windows DLLs must resolve every symbol at link time, so libtool refuses to
+## build a shared plug-in there unless -no-undefined is requested explicitly.
+if MINGW
+plugin_ldflags = -no-undefined
+else
+plugin_ldflags =
+endif
 
 # print with GD
 if USEGD
 libgxpGD_la_CPPFLAGS = -I. $(host_cppflags) $(gd_inc)
 libgxpGD_la_LIBADD = $(LDADD) $(gd_libs)
-libgxpGD_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxpGD_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 endif
 
 # display X11 
 libgxdX11_la_CPPFLAGS = -I. $(host_cppflags) -I$(SUPPLIBS)/include
 libgxdX11_la_LIBADD = $(X11_ldadd)
-libgxdX11_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxdX11_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
  
 # print with Cairo
 libgxpCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxpCairo_la_LIBADD = $(LDADD) $(cairo_libs)
-libgxpCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxpCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 ## display X11 with Cairo 
 libgxdCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxdCairo_la_LIBADD = $(X11_ldadd) $(LDADD) $(cairo_libs)
-libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 ## dummy (for display and print)
 libgxdummy_la_CPPFLAGS = -I. $(host_cppflags)  
+libgxdummy_la_LDFLAGS = $(plugin_ldflags)
 
 
 

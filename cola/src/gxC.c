@@ -18,7 +18,6 @@
 #include <cairo-ps.h>
 #include <cairo-svg.h>
 #include <cairo-pdf.h>
-#include <cairo-xlib.h>
 #include <cairo-ft.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H

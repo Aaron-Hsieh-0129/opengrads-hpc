@@ -6,25 +6,31 @@ set -euo pipefail
 repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 build_root="${OPENGRADS_BUILD_ROOT:-/tmp/opengrads-build-cpu}"
 grads_binary="$build_root/src/grads"
+launcher="${OPENGRADS_LAUNCHER:-$repo_root/opengrads}"
 netcdf_fixture="$repo_root/pytests/data/model.nc"
 test_root="$(mktemp -d /tmp/opengrads-sdf-test.XXXXXX)"
 trap 'rm -rf -- "$test_root"' EXIT
 xdf_fixture="$test_root/model.xdf"
 printf 'dset %s\n' "$netcdf_fixture" > "$xdf_fixture"
 
+if [[ ! -x "$grads_binary" && -x "$grads_binary.exe" ]]; then
+  grads_binary="$grads_binary.exe"
+fi
 if [[ ! -x "$grads_binary" ]]; then
   printf 'NetCDF-enabled GrADS binary not found: %s\n' "$grads_binary" >&2
   exit 1
 fi
-if [[ ! -r "$build_root/src/.libs/libgxdummy.so" ]]; then
-  printf 'Headless GrADS plug-in not found: %s\n' \
-    "$build_root/src/.libs/libgxdummy.so" >&2
+if ! find "$build_root/src/.libs" -maxdepth 1 \
+  \( -name 'libgxdummy*.so' -o -name 'libgxdummy*.dylib' -o -name 'libgxdummy*.dll' \) \
+  -print -quit | grep -q .; then
+  printf 'Headless GrADS plug-in not found in: %s\n' \
+    "$build_root/src/.libs" >&2
   exit 1
 fi
 
 output="$(
   OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 \
-    "$repo_root/opengrads" -bl -d gxdummy -h gxdummy <<GRADS_COMMANDS
+    "$launcher" -bl -d gxdummy -h gxdummy <<GRADS_COMMANDS
 q config
 sdfopen $netcdf_fixture
 q file

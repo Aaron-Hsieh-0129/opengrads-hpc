@@ -209,6 +209,9 @@ libgxdX11_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 libgxdummy_la_LIBADD =
 am_libgxdummy_la_OBJECTS = libgxdummy_la-gxdummy.lo
 libgxdummy_la_OBJECTS = $(am_libgxdummy_la_OBJECTS)
+libgxdummy_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgxdummy_la_LDFLAGS) $(LDFLAGS) -o $@
 libgxpCairo_la_DEPENDENCIES = $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_1)
 am__libgxpCairo_la_SOURCES_DIST = gxprint.c gxC.c
@@ -582,29 +585,32 @@ AM_CFLAGS = $(openmp_cflags)
 grads_LDADD = $(common_ldadd) $(readline_libs) $(grib2_libs) \
 			$(hdf_libs) $(hdf5_libs) $(nc_libs) $(geotiff_libs) \
 			$(shp_libs) $(gadap_libs) $(gui_libs) $(adios2_libs) \
-			$(openmp_cflags) -ldl -lpthread $(host_ldflags)
+			$(openmp_cflags) $(host_runtime_libs) $(host_ldflags)
 
+@MINGW_TRUE@plugin_ldflags = -no-undefined
+@MINGW_FALSE@plugin_ldflags = 
 
 # print with GD
 @USEGD_TRUE@libgxpGD_la_CPPFLAGS = -I. $(host_cppflags) $(gd_inc)
 @USEGD_TRUE@libgxpGD_la_LIBADD = $(LDADD) $(gd_libs)
-@USEGD_TRUE@libgxpGD_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+@USEGD_TRUE@libgxpGD_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 # display X11 
 libgxdX11_la_CPPFLAGS = -I. $(host_cppflags) -I$(SUPPLIBS)/include
 libgxdX11_la_LIBADD = $(X11_ldadd)
-libgxdX11_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxdX11_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 # print with Cairo
 libgxpCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxpCairo_la_LIBADD = $(LDADD) $(cairo_libs)
-libgxpCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxpCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 libgxdCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxdCairo_la_LIBADD = $(X11_ldadd) $(LDADD) $(cairo_libs)
-libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION)
+libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 libgxdummy_la_CPPFLAGS = -I. $(host_cppflags)  
+libgxdummy_la_LDFLAGS = $(plugin_ldflags)
 libgradspy_la_SOURCES = grads.c gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c gxdb.c \
 		gxwmap.c gxshad.c gxshad2.c gaexpr.c gafunc.c gautil.c gagx.c \
 		gscrpt.c gamach.c gatxt.c   galloc.c gaomp.c gaddes.c gacfg.c  gaio.c \
@@ -778,7 +784,7 @@ libgxdX11.la: $(libgxdX11_la_OBJECTS) $(libgxdX11_la_DEPENDENCIES) $(EXTRA_libgx
 	$(AM_V_CCLD)$(libgxdX11_la_LINK) -rpath $(libdir) $(libgxdX11_la_OBJECTS) $(libgxdX11_la_LIBADD) $(LIBS)
 
 libgxdummy.la: $(libgxdummy_la_OBJECTS) $(libgxdummy_la_DEPENDENCIES) $(EXTRA_libgxdummy_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(LINK) -rpath $(libdir) $(libgxdummy_la_OBJECTS) $(libgxdummy_la_LIBADD) $(LIBS)
+	$(AM_V_CCLD)$(libgxdummy_la_LINK) -rpath $(libdir) $(libgxdummy_la_OBJECTS) $(libgxdummy_la_LIBADD) $(LIBS)
 
 libgxpCairo.la: $(libgxpCairo_la_OBJECTS) $(libgxpCairo_la_DEPENDENCIES) $(EXTRA_libgxpCairo_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libgxpCairo_la_LINK) $(am_libgxpCairo_la_rpath) $(libgxpCairo_la_OBJECTS) $(libgxpCairo_la_LIBADD) $(LIBS)

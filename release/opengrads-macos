@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Launcher for the relocatable macOS OpenGrADS release archive.
+
+set -euo pipefail
+
+bundle_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export GA_ROOT="$bundle_root/plugins"
+export GAUDPT="$bundle_root/etc/udpt"
+export GADDIR="$bundle_root/cola/data"
+export GASCRP="$bundle_root/lib/scripts${GASCRP:+:$GASCRP}"
+
+# This archive ships no interactive display driver, so the GrADS default of
+# "Cairo" for the display would fail to load. Fill in the drivers the archive
+# actually carries unless the caller named them.
+args=("$@")
+if [[ "$#" -eq 0 ]]; then
+  args=(-bl)
+fi
+
+have_display=0
+have_print=0
+for arg in "$@"; do
+  case "$arg" in
+    -d) have_display=1 ;;
+    -h) have_print=1 ;;
+  esac
+done
+(( have_display )) || args+=(-d gxdummy)
+(( have_print )) || args+=(-h Cairo)
+
+exec "$bundle_root/bin/grads" "${args[@]}"

@@ -21,16 +21,48 @@ With an X display, the launcher selects the Cairo graphical plug-ins. Without
 an X display it uses the bundled noninteractive device. `./opengrads -j N`
 selects the calculation CPU count; the default remains four.
 
-The initial release matrix is:
+The release matrix is:
+
 
 - Linux x86_64, built natively on Ubuntu 22.04;
-- Linux aarch64, built natively on Ubuntu 22.04 ARM64.
+- Linux aarch64, built natively on Ubuntu 22.04 ARM64;
+- macOS arm64, built natively on macOS 15;
+- macOS x86_64, built natively on macOS 15 Intel;
+- Windows x86_64, built natively with MSYS2/MinGW64.
+
 
 Using Ubuntu 22.04 establishes an older glibc baseline than newer runner
 images. glibc itself and the dynamic loader are deliberately not bundled;
 release archives therefore require a glibc-based Linux system at least as new
-as the build baseline. macOS and Windows need separate native packagers and
-are not yet claimed by this workflow.
+as the build baseline. macOS and Windows are native builds, not cross-compiled
+Linux archives. The macOS archive starts with `./opengrads`; Windows users
+start `opengrads.cmd` after extracting the ZIP.
+
+### Graphics drivers per platform
+
+Only Linux ships an interactive display driver. GrADS graphics plug-ins are
+loaded with `dlopen()` and call back into symbols defined in the `grads`
+executable, which constrains what each platform can carry:
+
+| Platform | Display (`-d`) | Hardcopy (`-h`) |
+| --- | --- | --- |
+| Linux | `Cairo`, `X11`, `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `gxdummy` | `Cairo`, `gxdummy` |
+| Windows | `gxdummy` | `gxdummy` |
+
+macOS archives therefore run headless but keep the full Cairo hardcopy path,
+so `printim` and `print` produce PNG, PS, PDF, and SVG output without
+XQuartz. Both launchers pass the drivers their archive actually carries, so
+`./opengrads` and `opengrads.cmd` work without extra flags; anything the
+caller passes still wins.
+
+Windows is currently compute-and-query only. On PE targets a DLL cannot leave
+symbols undefined at link time, so the Cairo plug-ins — which call `gxdb*`
+routines that live in `grads.exe` — do not link natively under MinGW. Only
+the self-contained `gxdummy` driver does. Adding Windows hardcopy means
+exporting the executable's symbols (`-Wl,--export-all-symbols
+-Wl,--out-implib`) and linking the plug-ins against that import library, or
+returning to a Cygwin port as the historical OpenGrADS Windows builds did.
 
 ## Maintainer one-command build
 
@@ -59,11 +91,37 @@ OPENGRADS_RELEASE_DEPS_ROOT=/path/to/readline-and-ncurses \
 `release/versions.env` is the dependency lock file. Update a version, URL, and
 SHA-256 together and re-run both architecture jobs before accepting a change.
 
+## Native macOS and Windows builds
+
+The macOS builder uses Homebrew dependencies and must run on a Mac:
+
+```bash
+brew install adios2 autoconf automake cairo coreutils gcc geotiff hdf5 \
+  libomp libtool netcdf pkgconf
+./release/build-release-macos.sh
+```
+
+The Windows builder runs from an MSYS2 **MINGW64** shell:
+
+```bash
+./release/build-release-windows.sh
+```
+
+Both builders compile a private, checksum-pinned UDUNITS 1.12.11 dependency so
+`sdfopen` and `xdfopen` retain the legacy GrADS API. They run the BP5, SDF, and
+OpenMP regressions before packaging their archive.
+
+The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
+re-signs the result, because editing a Mach-O header invalidates the ad-hoc
+signature that arm64 macOS requires. Its smoke test runs the archive under
+`env -i` and asserts that Cairo wrote a real PNG, which proves the bundle does
+not reach back into the Homebrew prefix it was built from.
+
 ## GitHub Actions and publication gate
 
-`.github/workflows/release.yml` builds and tests native x86_64 and aarch64
-archives on a version tag or manual dispatch. Binary artifact upload and
-GitHub Release creation occur only when the repository variable
+`.github/workflows/release.yml` builds and tests all five native archives on
+a version tag or manual dispatch. Binary artifact upload and GitHub Release
+creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.
 
 Do not set that variable merely because the build passes. OpenGrADS is treated

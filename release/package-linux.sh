@@ -39,7 +39,7 @@ install -m 0644 "$repo_root/etc/udpt-local" "$bundle_root/etc/udpt-local"
 cp -a "$repo_root/cola/data/." "$bundle_root/cola/data/"
 cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
 cp -a "$repo_root/docs/." "$bundle_root/docs/"
-install -m 0644 "$repo_root/README" "$repo_root/COPYING" \
+install -m 0644 "$repo_root/README.md" "$repo_root/COPYING" \
   "$repo_root/COPYRIGHT" "$repo_root/THIRD_PARTY_NOTICES.md" "$bundle_root/"
 
 for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxpCairo.so; do

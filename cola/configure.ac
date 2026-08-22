@@ -160,6 +160,7 @@ AC_CANONICAL_HOST()
 
 host_cppflags=""
 host_ldflags=""
+host_runtime_libs="-ldl -lpthread"
 
 echo Host machine: "$host"
 case "$host" in 
@@ -194,6 +195,13 @@ dnl    guilibadd="-lSM -lICE"
     is_cygwin="yes"
     host_cppflags="-I/usr/include/readline"
     host_ldflags="-lrpclib"
+  ;;
+
+  *-*-mingw*)
+    # MinGW has no libdl of its own; dlopen() comes from the dlfcn-win32
+    # compatibility package, and threads from winpthreads.
+    is_mingw="yes"
+    host_runtime_libs="-ldl -lwinpthread"
   ;;
 
   *darwin*)
@@ -1033,11 +1041,13 @@ AM_CONDITIONAL(USEGD,     [ test "$use_gd" = "yes" ] )
 AM_CONDITIONAL(USECAIRO,  [ test "$use_cairo" = "yes" ] )
 AM_CONDITIONAL(USEADIOS2, [ test "$use_adios2" = "yes" ] )
 AM_CONDITIONAL(OPENGRADS, [ test "$with_opengrads" = "yes" ] )
+AM_CONDITIONAL(MINGW,     [ test "$is_mingw" = "yes" ] )
 
 
 # Host specific linker flags
 AC_SUBST(host_cppflags)
 AC_SUBST(host_ldflags)
+AC_SUBST(host_runtime_libs)
 
 # ----------------------------------------------------
 # Write output files

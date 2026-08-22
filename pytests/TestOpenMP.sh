@@ -6,14 +6,20 @@ set -euo pipefail
 repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 build_root="${OPENGRADS_BUILD_ROOT:-/tmp/opengrads-build-cpu}"
 grads_binary="$build_root/src/grads"
+launcher="${OPENGRADS_LAUNCHER:-$repo_root/opengrads}"
 
+if [[ ! -x "$grads_binary" && -x "$grads_binary.exe" ]]; then
+  grads_binary="$grads_binary.exe"
+fi
 if [[ ! -x "$grads_binary" ]]; then
   printf 'OpenMP-enabled GrADS binary not found: %s\n' "$grads_binary" >&2
   exit 1
 fi
-if [[ ! -r "$build_root/src/.libs/libgxdummy.so" ]]; then
-  printf 'Headless GrADS plug-in not found: %s\n' \
-    "$build_root/src/.libs/libgxdummy.so" >&2
+if ! find "$build_root/src/.libs" -maxdepth 1 \
+  \( -name 'libgxdummy*.so' -o -name 'libgxdummy*.dylib' -o -name 'libgxdummy*.dll' \) \
+  -print -quit | grep -q .; then
+  printf 'Headless GrADS plug-in not found in: %s\n' \
+    "$build_root/src/.libs" >&2
   exit 1
 fi
 
@@ -85,7 +91,7 @@ quit
 GRADS_COMMANDS
 
   env -u GA_NUM_THREADS OPENGRADS_BUILD_ROOT="$build_root" \
-    OPENGRADS_COLOR=0 "$repo_root/opengrads" \
+    OPENGRADS_COLOR=0 "$launcher" \
     -blu -d gxdummy -h gxdummy < "$command_file" > "$log_file"
 
   if ! grep -Fq "Calculation threads = $threads (OpenMP enabled)" "$log_file"; then
@@ -103,7 +109,7 @@ GRADS_COMMANDS
 printf 'q threads\nquit\n' > "$test_root/default-commands.txt"
 default_output="$(
   env -u GA_NUM_THREADS OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 \
-    "$repo_root/opengrads" -blu -d gxdummy -h gxdummy \
+    "$launcher" -blu -d gxdummy -h gxdummy \
     < "$test_root/default-commands.txt"
 )"
 if ! grep -Fq 'Calculation threads = 4 (OpenMP enabled)' <<< "$default_output"; then
@@ -113,7 +119,7 @@ fi
 
 environment_output="$(
   GA_NUM_THREADS=3 OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 \
-    "$repo_root/opengrads" -blu -d gxdummy -h gxdummy \
+    "$launcher" -blu -d gxdummy -h gxdummy \
     < "$test_root/default-commands.txt"
 )"
 if ! grep -Fq 'Calculation threads = 3 (OpenMP enabled)' <<< "$environment_output"; then
@@ -123,7 +129,7 @@ fi
 
 option_output="$(
   GA_NUM_THREADS=3 OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 \
-    "$repo_root/opengrads" -blu -j 2 -d gxdummy -h gxdummy \
+    "$launcher" -blu -j 2 -d gxdummy -h gxdummy \
     < "$test_root/default-commands.txt"
 )"
 if ! grep -Fq 'Calculation threads = 2 (OpenMP enabled)' <<< "$option_output"; then
