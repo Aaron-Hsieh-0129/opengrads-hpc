@@ -16,6 +16,10 @@ Releases are versioned independently of GrADS: archives are named
 matches (`2.2.1.oga.1`). Each archive carries a `VERSION` file with both. See
 [release documentation](docs/RELEASES.md).
 
+Licensed under **GPL-2.0-only**, inherited from GrADS. Using it and building it
+carry no obligations; redistributing the BP5-enabled binaries has one
+documented caveat. See [licensing and usage rules](docs/LICENSING.md).
+
 ## What is GrADS?
 
 The Grid Analysis and Display System (GrADS) is an interactive environment for
@@ -80,6 +84,7 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 ## Documentation
 
 - [Installation guide](docs/INSTALL.md)
+- [Licensing and usage rules](docs/LICENSING.md)
 - [Release and packaging guide](docs/RELEASES.md)
 - [BP5 reader guide and limitations](docs/BP5.md)
 - [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)

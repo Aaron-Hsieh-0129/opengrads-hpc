@@ -45,7 +45,10 @@ way to obtain the same source and requires no request.
 Licensing note
 --------------
 
-See THIRD_PARTY_NOTICES.md in this archive for the licenses of every bundled
-component, and for a documented, unresolved GPLv2/Apache-2.0 compatibility
-question affecting the ADIOS2 BP5 support in this binary. Building from
-source does not carry that question.
+docs/LICENSING.md in this archive explains, in plain language, what you may
+do with this software and what is asked of you in return. It also documents
+an unresolved GPLv2/Apache-2.0 compatibility question affecting the ADIOS2
+BP5 support in this binary. Using this software and building from source do
+not carry that question; redistributing the binary does.
+
+THIRD_PARTY_NOTICES.md lists the license of every bundled component.

@@ -1,5 +1,9 @@
 # Third-party notices
 
+For a plain-language summary of what you may do with this software, see
+[docs/LICENSING.md](docs/LICENSING.md). This file is the component-by-component
+record.
+
 OpenGrADS itself is distributed under GNU GPL version 2 only; see `COPYING` and `COPYRIGHT`. This file records optional libraries used by this development revision. It does not change the license of OpenGrADS.
 
 No ADIOS2 or libedit source or binary is committed in this repository.
