@@ -48,7 +48,7 @@ jobs:
 
       - name: Upload approved binary artifact
         if: ${{ vars.BINARY_REDISTRIBUTION_APPROVED == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opengrads-${{ matrix.artifact }}
           path: |
@@ -70,7 +70,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: opengrads-linux-*
           path: artifacts
@@ -78,4 +78,4 @@ jobs:
       - name: Create release and upload archives
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" artifacts/* --generate-notes
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/* --generate-notes --repo "${GITHUB_REPOSITORY}"
