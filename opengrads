@@ -98,6 +98,15 @@ else
   export GASCRP="$script_dir"
 fi
 
+# The bundled ncurses has the build machine's terminfo path compiled into it,
+# and that directory does not exist here, so terminal lookup fails and the
+# prompt falls back to dumb terminal settings. Point it at the usual system
+# locations; the trailing empty entry keeps the compiled-in default as a last
+# resort. An explicit TERMINFO or TERMINFO_DIRS from the caller always wins.
+if [[ -z "${TERMINFO:-}" && -z "${TERMINFO_DIRS:-}" ]]; then
+  export TERMINFO_DIRS="/usr/share/terminfo:/lib/terminfo:/etc/terminfo:"
+fi
+
 platform="$(uname -s)"
 if [[ "$platform" == Darwin ]]; then
   if [[ -n "${DYLD_LIBRARY_PATH:-}" ]]; then

@@ -9,6 +9,15 @@ export GAUDPT="$bundle_root/etc/udpt"
 export GADDIR="$bundle_root/cola/data"
 export GASCRP="$bundle_root/lib/scripts${GASCRP:+:$GASCRP}"
 
+# The bundled ncurses has the build machine's terminfo path compiled into it,
+# and that directory does not exist here, so terminal lookup fails and the
+# prompt falls back to dumb terminal settings. Point it at the usual system
+# locations; the trailing empty entry keeps the compiled-in default as a last
+# resort. An explicit TERMINFO or TERMINFO_DIRS from the caller always wins.
+if [[ -z "${TERMINFO:-}" && -z "${TERMINFO_DIRS:-}" ]]; then
+  export TERMINFO_DIRS="/usr/share/terminfo:/lib/terminfo:/etc/terminfo:"
+fi
+
 # This archive ships no interactive display driver, so the GrADS default of
 # "Cairo" for the display would fail to load. Fill in the drivers the archive
 # actually carries unless the caller named them.

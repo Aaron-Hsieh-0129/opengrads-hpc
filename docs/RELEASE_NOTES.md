@@ -1,9 +1,18 @@
-## opengrads-hpc 1.0.0
+## opengrads-hpc 1.0.1
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-This is the first release under the `opengrads-hpc` name and its own version
+### Fixed since 1.0.0
+
+- **Terminal handling at the `ga->` prompt.** The bundled ncurses carried the
+  build machine's terminfo path compiled into it. That directory does not
+  exist on your machine, so terminal lookup failed and the prompt fell back to
+  dumb terminal settings, printing `No entry for terminal type ...`. The
+  launcher now points `TERMINFO_DIRS` at the usual system locations. An
+  explicit `TERMINFO` or `TERMINFO_DIRS` you set yourself still wins.
+
+1.0.0 was the first release under the `opengrads-hpc` name and its own version
 line. Earlier `v2.2.1.oga.1-bp5.*` tags remain available and are unaffected.
 
 **Based on GrADS 2.2.1 / OpenGrADS 2.2.1.oga.1.** Descriptor files, `.gs`
@@ -46,9 +55,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.0-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.0-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.0-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.1-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.1-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.1-linux-x86_64
 ./opengrads
 ```
 
