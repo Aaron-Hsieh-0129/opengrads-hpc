@@ -66,12 +66,12 @@ All six commands must succeed. If the compiler or `make` is missing, load a
 site-provided toolchain module or ask the machine administrator for a basic
 build toolchain. No root privileges are needed after that bootstrap.
 
-For the recommended graphical build, Cairo, X11, and Xext development files
-and `pkg-config` must also be installed. On Ubuntu or Debian, install them with:
+For the recommended graphical build, Cairo, X11, Xext, and Xmu development
+files and `pkg-config` must also be installed. On Ubuntu or Debian, install them with:
 
 ```bash
-sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev
-pkg-config --modversion cairo x11 xext
+sudo apt install pkg-config libcairo2-dev libx11-dev libxext-dev libxmu-dev
+pkg-config --modversion cairo x11 xext xmu
 ```
 
 On other distributions, install the corresponding GUI development packages.

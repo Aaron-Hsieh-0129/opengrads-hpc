@@ -22,14 +22,15 @@ jobs:
             artifact: linux-aarch64
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             autoconf automake build-essential ca-certificates cmake curl gawk \
-            libtool pkg-config libice-dev libsm-dev libx11-dev libxext-dev libcairo2-dev \
+            libtool pkg-config libice-dev libsm-dev libx11-dev libxext-dev libxmu-dev \
+            libcairo2-dev \
             libgeotiff-dev libtiff-dev libhdf5-dev libjpeg-dev zlib1g-dev
 
       - name: Build, test, and package
