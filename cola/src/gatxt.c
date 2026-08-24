@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2009 by Arlindo da Silva <dasilva@opengrads.org>
+    Modified in 2026 to mark prompt escape sequences non-printing; see COPYING.
     All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
@@ -131,38 +132,65 @@ void gatxt(char *color) {
 }
 
 static char buffer[256];
-#define COLORIZE(c) snprintf(buffer,255,"%s%s%s",c,str,reset)
 
-char *gatxts(char *str, char *color) { /* colorize the string */
+/* Map a color name to its ANSI sequence. Bright names share the normal
+   sequences because the bright table above is commented out. */
+static char *ga_color_sequence(char *color) {
 
+       if ( color[0]=='b' && 
+            color[2]=='a' ) return black;
+  else if ( color[0]=='r' ) return red;
+  else if ( color[0]=='g' ) return green;
+  else if ( color[0]=='y' ) return yellow;
+  else if ( color[0]=='b' ) return blue;
+  else if ( color[0]=='m' ) return magenta;
+  else if ( color[0]=='c' ) return cyan;
+  else if ( color[0]=='w' ) return white;
+
+  else if ( color[0]=='B' && 
+            color[2]=='a' ) return black;
+  else if ( color[0]=='R' ) return red;
+  else if ( color[0]=='G' ) return green;
+  else if ( color[0]=='Y' ) return yellow;
+  else if ( color[0]=='B' ) return blue;
+  else if ( color[0]=='M' ) return magenta;
+  else if ( color[0]=='C' ) return cyan;
+  else if ( color[0]=='W' ) return white;
+
+  return NULL;
+}
+
+/* Colorize a line editor prompt. \001 and \002 are readline's
+   RL_PROMPT_START_IGNORE and RL_PROMPT_END_IGNORE: they tell it the enclosed
+   bytes occupy no screen columns, and readline strips them before printing.
+   Without them readline counts the escape sequences as visible width and
+   miscalculates every redraw, leaving fragments of the previous line behind
+   on history recall and cursor movement.
+
+   Only for prompts handed to readline. Anything printed with printf must use
+   gatxts, or the \001 and \002 bytes reach the terminal. */
+char *gatxtp(char *str, char *color) {
+  char *seq;
 
   if ( !color_on ) return str;
+  seq = ga_color_sequence(color);
+  if ( seq==NULL ) return str;
 
-  /* Normal */
-       if ( color[0]=='b' && 
-            color[2]=='a' ) COLORIZE(black);
-  else if ( color[0]=='r' ) COLORIZE(red);
-  else if ( color[0]=='g' ) COLORIZE(green);
-  else if ( color[0]=='y' ) COLORIZE(yellow);
-  else if ( color[0]=='b' ) COLORIZE(blue);
-  else if ( color[0]=='m' ) COLORIZE(magenta);
-  else if ( color[0]=='c' ) COLORIZE(cyan);
-  else if ( color[0]=='w' ) COLORIZE(white);
-
-  /* Bright colors */
-  else if ( color[0]=='B' && 
-            color[2]=='a' ) COLORIZE(black);
-  else if ( color[0]=='R' ) COLORIZE(red);
-  else if ( color[0]=='G' ) COLORIZE(green);
-  else if ( color[0]=='Y' ) COLORIZE(yellow);
-  else if ( color[0]=='B' ) COLORIZE(blue);
-  else if ( color[0]=='M' ) COLORIZE(magenta);
-  else if ( color[0]=='C' ) COLORIZE(cyan);
-  else if ( color[0]=='W' ) COLORIZE(white);
-
+  snprintf(buffer,255,"\001%s\002%s\001%s\002",seq,str,reset);
   buffer[255] = '\0';
   return (char *) buffer;
+}
 
+char *gatxts(char *str, char *color) { /* colorize the string */
+  char *seq;
+
+  if ( !color_on ) return str;
+  seq = ga_color_sequence(color);
+  if ( seq==NULL ) return str;
+
+  snprintf(buffer,255,"%s%s%s",seq,str,reset);
+  buffer[255] = '\0';
+  return (char *) buffer;
 }
 
 char *gatxtl(char *str, gaint level) { /* colorize according to level */
@@ -185,5 +213,14 @@ char *gatxtl(char *str, gaint level) { /* colorize according to level */
     if (level==1) return gatxts(str,"magenta");
     if (level==2) return gatxts(str,"white");
   } 
+  return (str);
+}
+
+/* Prompt colorizer for the line editor. Same scheme choice as gatxtl(str,-1),
+   but with the escape sequences marked non-printing. */
+char *gatxtlp(char *str) {
+
+  if ( scheme==0 || scheme==1 ) return gatxtp(str,"Green");
+  else if ( scheme==2 )         return gatxtp(str,"Blue");
   return (str);
 }

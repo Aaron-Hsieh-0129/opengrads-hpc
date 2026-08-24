@@ -34,6 +34,7 @@ struct gamfcmn mfcmn;
 static char pout[1256];   /* Build Error msgs here */
 
 char *gatxtl(char *str, gaint color);
+char *gatxtlp(char *str);
 
 /* Retrieves the next command from the user.  Leading blanks
    are stripped.  The number of characters entered before the
@@ -2404,7 +2405,7 @@ off_t ftello(FILE *stream) {
 gaint nxrdln (char *cmd, char *prompt) {
 char *ch, *ch2;
 
-  ch=readline(gatxtl(prompt,-1));
+  ch=readline(gatxtlp(prompt));
   if ( ch== NULL) {
     return(-1);
   } else {

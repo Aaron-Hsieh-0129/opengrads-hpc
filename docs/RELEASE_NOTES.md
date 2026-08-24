@@ -10,6 +10,12 @@ calculations, and native archives for Linux and macOS.
   GrADS stored HDF5 object ids in a 32-bit `gaint`, but HDF5 widened `hid_t`
   to 64 bits in version 1.10, so every id was truncated. The ids are now held
   in a 64-bit type. Verified against hdf5-1.10.5.
+- **Line editing no longer corrupts the display.** The coloured prompt handed
+  readline 15 bytes for something 5 columns wide, so it counted the ANSI
+  escapes as visible width and every cursor calculation on a wrapped line was
+  off by ten columns, leaving stray spaces and fragments of the previous
+  command. The escapes are now marked non-printing with readline's
+  `RL_PROMPT_START_IGNORE`/`RL_PROMPT_END_IGNORE`.
 
 ### Fixed in 1.0.3
 
