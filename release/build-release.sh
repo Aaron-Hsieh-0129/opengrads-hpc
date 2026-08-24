@@ -40,6 +40,15 @@ export CPPFLAGS="-I$deps_root/include"
 if [[ -r /usr/include/udunits2/udunits.h ]]; then
   export CPPFLAGS="$CPPFLAGS -I/usr/include/udunits2"
 fi
+# Debian hides HDF5 under a serial/parallel multiarch subdirectory, so the
+# configure probe misses it and dtype hdf5_grid is silently unavailable.
+if [[ ! -r /usr/include/hdf5.h && -r /usr/include/hdf5/serial/hdf5.h ]]; then
+  export CPPFLAGS="$CPPFLAGS -I/usr/include/hdf5/serial"
+  hdf5_libdir="/usr/lib/$(uname -m)-linux-gnu/hdf5/serial"
+  if [[ -d "$hdf5_libdir" ]]; then
+    export LDFLAGS="${LDFLAGS:+$LDFLAGS }-L$hdf5_libdir -Wl,-rpath,$hdf5_libdir"
+  fi
+fi
 export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
 export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig"
 export LD_LIBRARY_PATH="$adios2_root/lib:$adios2_root/lib64:$deps_root/lib:$deps_root/lib64"

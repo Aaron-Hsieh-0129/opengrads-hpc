@@ -16,6 +16,12 @@ calculations, and native archives for Linux and macOS.
 - **`sdfopen` on RHEL-family builds.** UDUNITS headers live in
   `/usr/include/udunits2/` there rather than `/usr/include`, so the probe
   missed them.
+- **`dtype hdf5_grid` now works.** HDF5 was disabled in every previous Linux
+  archive. Debian hides its headers under `/usr/include/hdf5/serial/`, which
+  the configure probe does not search, so `USEHDF5` was 0 and the descriptor
+  keyword was rejected with `Data file type invalid`. The AlmaLinux build
+  finds HDF5 in the standard location, and source builds on Debian now add
+  the multiarch path explicitly.
 
 ### Fixed in 1.0.2
 
