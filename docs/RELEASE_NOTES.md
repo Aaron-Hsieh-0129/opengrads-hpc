@@ -1,21 +1,24 @@
-## opengrads-hpc 1.0.4
+## opengrads-hpc 1.0.5
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.3
+### Fixed since 1.0.4
 
-- **`dtype hdf5_grid` now reads data.** 1.0.3 could open an HDF5 file but
-  failed on every variable with `invalid object ID` and `H5Dopen2 failed`.
-  GrADS stored HDF5 object ids in a 32-bit `gaint`, but HDF5 widened `hid_t`
-  to 64 bits in version 1.10, so every id was truncated. The ids are now held
-  in a 64-bit type. Verified against hdf5-1.10.5.
 - **Line editing no longer corrupts the display.** The coloured prompt handed
   readline 15 bytes for something 5 columns wide, so it counted the ANSI
   escapes as visible width and every cursor calculation on a wrapped line was
   off by ten columns, leaving stray spaces and fragments of the previous
   command. The escapes are now marked non-printing with readline's
   `RL_PROMPT_START_IGNORE`/`RL_PROMPT_END_IGNORE`.
+
+### Fixed in 1.0.4
+
+- **`dtype hdf5_grid` now reads data.** 1.0.3 could open an HDF5 file but
+  failed on every variable with `invalid object ID` and `H5Dopen2 failed`.
+  GrADS stored HDF5 object ids in a 32-bit `gaint`, but HDF5 widened `hid_t`
+  to 64 bits in version 1.10, so every id was truncated. The ids are now held
+  in a 64-bit type. Verified against hdf5-1.10.5.
 
 ### Fixed in 1.0.3
 
@@ -97,9 +100,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.4-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.4-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.4-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.5-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.5-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.5-linux-x86_64
 ./opengrads
 ```
 
