@@ -23,9 +23,13 @@ if [[ -z "$commit" ]]; then
   commit="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || true)"
 fi
 if [[ -z "$commit" ]]; then
-  printf 'Cannot determine the source commit for the written offer.\n' >&2
-  printf 'Set GITHUB_SHA or build from a git checkout.\n' >&2
-  exit 1
+  # A local build from an unpacked tarball has no commit to name. That is fine
+  # for private use, which the GPL does not restrict; say so plainly rather
+  # than failing a build that is probably not going to be redistributed.
+  printf 'Warning: no source commit available, so %s\n' \
+    "$bundle_root/SOURCE_OFFER cannot name one." >&2
+  printf 'Set GITHUB_SHA or build from a git checkout before redistributing.\n' >&2
+  commit="unknown (built from an unpacked source tree, not a git checkout)"
 fi
 if [[ -n "$(git -C "$repo_root" status --porcelain 2>/dev/null || true)" ]]; then
   commit="$commit (plus uncommitted local changes)"

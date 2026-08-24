@@ -1,9 +1,23 @@
-## opengrads-hpc 1.0.2
+## opengrads-hpc 1.0.3
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.1
+### Fixed since 1.0.2
+
+- **Linux archives now run on RHEL 8 era systems, including HPC clusters.**
+  Earlier releases were built on Ubuntu 22.04 (glibc 2.35) and failed to start
+  on anything older with `version 'GLIBC_2.xx' not found`. Linux archives are
+  now built in AlmaLinux 8 (glibc 2.28), so they require glibc 2.28 or newer.
+- **Restored `-ldl` and `-lpthread` at link time.** A missing automake
+  substitution meant `host_runtime_libs` expanded to nothing, so these were
+  silently dropped. It went unnoticed because glibc 2.34 merged both into
+  libc; on older systems the link fails outright.
+- **`sdfopen` on RHEL-family builds.** UDUNITS headers live in
+  `/usr/include/udunits2/` there rather than `/usr/include`, so the probe
+  missed them.
+
+### Fixed in 1.0.2
 
 - **Prompt colour and Tab completion.** 1.0.0 and 1.0.1 linked BSD libedit,
   which mangles the ANSI escape sequences in the coloured prompt (printing
@@ -63,9 +77,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.2-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.2-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.2-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.3-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.3-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.3-linux-x86_64
 ./opengrads
 ```
 

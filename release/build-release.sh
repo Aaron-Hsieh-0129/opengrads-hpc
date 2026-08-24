@@ -35,6 +35,11 @@ unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH SUPPLIBS \
   CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH
 export PATH="$deps_root/bin:$PATH"
 export CPPFLAGS="-I$deps_root/include"
+# RHEL-family packages put the UDUNITS headers in a subdirectory, unlike
+# Debian which installs them straight into /usr/include.
+if [[ -r /usr/include/udunits2/udunits.h ]]; then
+  export CPPFLAGS="$CPPFLAGS -I/usr/include/udunits2"
+fi
 export LDFLAGS="-L$deps_root/lib -Wl,-rpath,$deps_root/lib"
 export PKG_CONFIG_PATH="$deps_root/lib/pkgconfig:$deps_root/share/pkgconfig"
 export LD_LIBRARY_PATH="$adios2_root/lib:$adios2_root/lib64:$deps_root/lib:$deps_root/lib64"

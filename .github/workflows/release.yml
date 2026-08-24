@@ -18,21 +18,28 @@ jobs:
         include:
           - runner: ubuntu-22.04
             artifact: linux-x86_64
+            image: quay.io/pypa/manylinux_2_28_x86_64
           - runner: ubuntu-22.04-arm
             artifact: linux-aarch64
+            image: quay.io/pypa/manylinux_2_28_aarch64
     runs-on: ${{ matrix.runner }}
+    # Built inside AlmaLinux 8 (glibc 2.28) rather than on the Ubuntu 22.04
+    # runner (glibc 2.35). glibc is forward-compatible only, so a 2.35 build
+    # cannot run on the RHEL 8 family that HPC clusters are still on.
+    container: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v7
 
       - name: Install build prerequisites
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            autoconf automake build-essential ca-certificates cmake curl gawk \
-            libtool pkg-config libice-dev libsm-dev libx11-dev libxext-dev libxmu-dev \
-            libcairo2-dev \
-            libgeotiff-dev libtiff-dev libhdf5-dev libjpeg-dev libnetcdf-dev \
-            libudunits2-dev zlib1g-dev
+          dnf -y install epel-release
+          dnf config-manager --set-enabled powertools || \
+            dnf config-manager --set-enabled crb || true
+          dnf -y install \
+            autoconf automake libtool make gawk pkgconf-pkg-config cmake curl tar \
+            cairo-devel libX11-devel libXext-devel libXmu-devel libICE-devel \
+            libSM-devel libgeotiff-devel libtiff-devel hdf5-devel \
+            libjpeg-turbo-devel netcdf-devel udunits2-devel zlib-devel
 
       - name: Build, test, and package
         env:

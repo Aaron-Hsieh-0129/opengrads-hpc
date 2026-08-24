@@ -30,11 +30,22 @@ The release matrix is:
 - macOS x86_64, built natively on macOS 15 Intel;
 
 
-Using Ubuntu 22.04 establishes an older glibc baseline than newer runner
-images. glibc itself and the dynamic loader are deliberately not bundled;
-release archives therefore require a glibc-based Linux system at least as new
-as the build baseline. macOS archives are native builds, not cross-compiled
-Linux archives, and start with `./opengrads`.
+### glibc baseline
+
+Linux archives are built inside `manylinux_2_28` (AlmaLinux 8, **glibc 2.28**)
+rather than on the Ubuntu 22.04 runner (glibc 2.35). glibc is forward
+compatible only: a binary built against 2.35 will not start on anything older,
+and the RHEL 8 family that HPC clusters still run is on 2.28. Building on the
+runner produced archives that failed on exactly the machines this project
+targets.
+
+glibc itself and the dynamic loader are deliberately not bundled, so archives
+require glibc 2.28 or newer — RHEL/Rocky/AlmaLinux 8+, Debian 10+,
+Ubuntu 18.10+. Verify with `objdump -T` that no bundled object requires a
+symbol version above `GLIBC_2.28`.
+
+macOS archives are native builds, not cross-compiled Linux archives, and
+start with `./opengrads`.
 
 ### Graphics drivers per platform
 
