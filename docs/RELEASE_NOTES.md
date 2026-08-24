@@ -1,9 +1,17 @@
-## opengrads-hpc 1.0.3
+## opengrads-hpc 1.0.4
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.2
+### Fixed since 1.0.3
+
+- **`dtype hdf5_grid` now reads data.** 1.0.3 could open an HDF5 file but
+  failed on every variable with `invalid object ID` and `H5Dopen2 failed`.
+  GrADS stored HDF5 object ids in a 32-bit `gaint`, but HDF5 widened `hid_t`
+  to 64 bits in version 1.10, so every id was truncated. The ids are now held
+  in a 64-bit type. Verified against hdf5-1.10.5.
+
+### Fixed in 1.0.3
 
 - **Linux archives now run on RHEL 8 era systems, including HPC clusters.**
   Earlier releases were built on Ubuntu 22.04 (glibc 2.35) and failed to start
@@ -16,12 +24,9 @@ calculations, and native archives for Linux and macOS.
 - **`sdfopen` on RHEL-family builds.** UDUNITS headers live in
   `/usr/include/udunits2/` there rather than `/usr/include`, so the probe
   missed them.
-- **`dtype hdf5_grid` now reads data.** GrADS stored HDF5 object ids in a
-  32-bit `gaint`, but HDF5 widened `hid_t` to 64 bits in version 1.10. Every
-  id was truncated, so opening a variable failed with `invalid object ID` and
-  `H5Dopen2 failed`. The ids are now held in a 64-bit type.
-- **HDF5 was disabled in every previous Linux archive.** Debian hides its headers under `/usr/include/hdf5/serial/`, which
-  the configure probe does not search, so `USEHDF5` was 0 and the descriptor
+- **HDF5 was disabled in every earlier Linux archive.** Debian hides its
+  headers under `/usr/include/hdf5/serial/`, which the configure probe does
+  not search, so `USEHDF5` was 0 and the descriptor
   keyword was rejected with `Data file type invalid`. The AlmaLinux build
   finds HDF5 in the standard location, and source builds on Debian now add
   the multiarch path explicitly.
@@ -86,9 +91,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.3-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.3-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.3-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.4-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.4-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.4-linux-x86_64
 ./opengrads
 ```
 
