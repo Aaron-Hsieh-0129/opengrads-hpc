@@ -40,6 +40,23 @@ install -m 0644 "$repo_root/etc/udpt-local" "$bundle_root/etc/udpt-local"
 cp -a "$repo_root/cola/data/." "$bundle_root/cola/data/"
 cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
 cp -a "$repo_root/docs/." "$bundle_root/docs/"
+
+# UDUNITS-2 reads its unit database from a compiled-in path at runtime, so a
+# machine without udunits2 installed fails sdfopen with "UDUNITS package
+# initialization failure". Bundle the database and point the launcher at it.
+udunits_xml=""
+for candidate in /usr/share/udunits /usr/local/share/udunits; do
+  if [[ -r "$candidate/udunits2.xml" ]]; then
+    udunits_xml="$candidate"
+    break
+  fi
+done
+if [[ -n "$udunits_xml" ]]; then
+  mkdir -p "$bundle_root/share/udunits"
+  cp -a "$udunits_xml/." "$bundle_root/share/udunits/"
+else
+  printf 'UDUNITS-2 database not found; sdfopen will need it on the host.\n' >&2
+fi
 install -m 0644 "$repo_root/README.md" "$repo_root/COPYING" \
   "$repo_root/COPYRIGHT" "$repo_root/THIRD_PARTY_NOTICES.md" "$bundle_root/"
 
@@ -85,11 +102,14 @@ queue=("$bundle_root/build/src/grads" "$plugin_root/libgxdummy.so" \
 declare -A seen=()
 : > "$bundle_root/runtime-libraries.txt"
 
+# Only the kernel-provided vDSO and the dynamic loader are left out of the
+# bundle. The loader is copied separately because the archive is launched
+# through it; everything else, glibc included, is bundled so the archive does
+# not depend on the host's C library version.
 is_system_abi()
 {
   case "$1" in
-    linux-vdso.so.*|ld-linux*.so.*|libc.so.*|libm.so.*|libdl.so.*|\
-    libpthread.so.*|librt.so.*|libutil.so.*|libresolv.so.*)
+    linux-vdso.so.*|ld-linux*.so.*|ld64.so.*)
       return 0 ;;
     *) return 1 ;;
   esac
@@ -132,6 +152,33 @@ while (( ${#queue[@]} )); do
 done
 
 sort -o "$bundle_root/runtime-libraries.txt" "$bundle_root/runtime-libraries.txt"
+
+# The archive is started through its own loader so the bundled glibc is used
+# instead of the host's. Take the interpreter path from the executable itself
+# rather than guessing per-architecture names.
+loader_path="$(readelf -l "$bundle_root/build/src/grads" \
+  | sed -n 's/.*interpreter: \(.*\)]/\1/p' | head -n 1)"
+if [[ -z "$loader_path" || ! -r "$loader_path" ]]; then
+  printf 'Unable to determine the dynamic loader for the bundle.\n' >&2
+  exit 1
+fi
+install -m 0755 "$loader_path" "$runtime_lib_root/$(basename -- "$loader_path")"
+printf '%s\n' "$(basename -- "$loader_path")" > "$bundle_root/loader-name.txt"
+
+# Record the highest glibc symbol version anything in the bundle needs. The
+# launcher uses the host's glibc when it is at least this new, and falls back
+# to the bundled one only when it is not. That matters because glibc's NSS
+# dlopens the host's libnss_* modules, which a newer bundled glibc cannot
+# load -- breaking network name resolution, and with it OPeNDAP.
+required_glibc="$(
+  find "$bundle_root" -type f \( -name '*.so*' -o -name grads \) -print0 \
+    | xargs -0 -r objdump -T 2>/dev/null \
+    | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -uV | tail -n 1
+)"
+required_glibc="${required_glibc#GLIBC_}"
+if [[ -z "$required_glibc" ]]; then required_glibc="0"; fi
+printf '%s\n' "$required_glibc" > "$bundle_root/glibc-required.txt"
+record_system_notice "$loader_path"
 
 smoke_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
   OPENGRADS_COLOR=0 "$bundle_root/opengrads" \

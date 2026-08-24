@@ -39,10 +39,20 @@ and the RHEL 8 family that HPC clusters still run is on 2.28. Building on the
 runner produced archives that failed on exactly the machines this project
 targets.
 
-glibc itself and the dynamic loader are deliberately not bundled, so archives
-require glibc 2.28 or newer — RHEL/Rocky/AlmaLinux 8+, Debian 10+,
-Ubuntu 18.10+. Verify with `objdump -T` that no bundled object requires a
-symbol version above `GLIBC_2.28`.
+glibc, the dynamic loader, and the UDUNITS unit database are bundled too, so
+the archive depends on nothing but the kernel. The launcher compares the
+host's glibc against `glibc-required.txt` and starts through the bundled
+loader only when the host is older; otherwise it uses the host's glibc.
+
+That preference matters. glibc's NSS `dlopen`s the host's `libnss_*` modules
+at runtime, and a much newer bundled glibc cannot load them, which breaks
+network name resolution and therefore OPeNDAP. Local data is unaffected.
+Tested on glibc 2.28, 2.27, and 2.24: everything works on all three except
+OPeNDAP on 2.24.
+
+The bundled glibc is never exported through `LD_LIBRARY_PATH`; it is passed to
+the loader as `--library-path` so it cannot leak into subprocesses such as
+shell escapes, which would fail to relocate against the host loader.
 
 macOS archives are native builds, not cross-compiled Linux archives, and
 start with `./opengrads`.

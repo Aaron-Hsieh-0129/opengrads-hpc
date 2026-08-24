@@ -5,6 +5,18 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed since 1.0.4
 
+- **The Linux archive now carries everything but the kernel.** glibc, the
+  dynamic loader, and the UDUNITS unit database are bundled alongside the 65
+  libraries already included. The launcher uses the host's glibc when it is
+  new enough and the bundled one only when it is not, so archives now start on
+  systems older than the build machine. Verified on glibc 2.28, 2.27, and
+  2.24; the previous archive failed to start on the latter two.
+- **`sdfopen` no longer needs udunits2 installed on the host.** The archive
+  shipped `libudunits2.so` without its unit database, which UDUNITS-2 reads
+  from a path compiled into the library. On a machine without udunits2 that
+  path does not exist and `sdfopen` failed with `UDUNITS package
+  initialization failure`. This affected 1.0.4 and earlier.
+
 - **Line editing no longer corrupts the display.** The coloured prompt handed
   readline 15 bytes for something 5 columns wide, so it counted the ANSI
   escapes as visible width and every cursor calculation on a wrapped line was
