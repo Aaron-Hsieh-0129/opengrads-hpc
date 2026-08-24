@@ -1,9 +1,18 @@
-## opengrads-hpc 1.0.6
+## opengrads-hpc 1.0.7
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.5
+### Fixed since 1.0.6
+
+- **1.0.6 did not start on modern Linux.** It bundled glibc alongside the
+  other libraries, so any host with a glibc newer than 2.28 loaded the bundled
+  2.28 `libc.so.6` with its own loader and died with SIGILL before printing
+  anything. The bundled glibc now lives in its own directory that is never
+  placed on `LD_LIBRARY_PATH`; it is reached only through the bundled loader,
+  where loader and libc match. Verified on glibc 2.39, 2.28, 2.27, and 2.24.
+
+### Fixed in 1.0.6
 
 - **The Linux archive now carries everything but the kernel.** glibc, the
   dynamic loader, and the UDUNITS unit database are bundled alongside the 65
@@ -114,9 +123,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.6-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.6-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.6-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.7-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.7-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.7-linux-x86_64
 ./opengrads
 ```
 

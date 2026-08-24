@@ -22,6 +22,7 @@ machine="$(uname -m)"
 archive_base="opengrads-hpc-$dist_version-linux-$machine"
 bundle_root="$output_root/$archive_base"
 runtime_lib_root="$bundle_root/adios2/lib"
+glibc_root="$bundle_root/glibc"
 plugin_root="$bundle_root/build/src/.libs"
 
 case "$(uname -s)" in
@@ -32,7 +33,8 @@ esac
 rm -rf -- "$bundle_root"
 mkdir -p "$bundle_root/build/src" "$plugin_root" "$runtime_lib_root" \
   "$bundle_root/deps/lib" "$bundle_root/cola/data" "$bundle_root/lib/scripts" \
-  "$bundle_root/etc" "$bundle_root/docs" "$bundle_root/licenses/system"
+  "$bundle_root/etc" "$bundle_root/docs" "$bundle_root/licenses/system" \
+  "$bundle_root/glibc"
 
 install -m 0755 "$build_root/src/grads" "$bundle_root/build/src/grads"
 install -m 0755 "$repo_root/opengrads" "$bundle_root/opengrads"
@@ -115,6 +117,20 @@ is_system_abi()
   esac
 }
 
+# The glibc family goes into its own directory rather than alongside the other
+# bundled libraries. It must never appear on LD_LIBRARY_PATH: a host loader
+# newer than the bundled libc will load it and die with SIGILL. It is used
+# only via the bundled loader's --library-path, where loader and libc match.
+is_glibc_lib()
+{
+  case "$1" in
+    libc.so.*|libm.so.*|libdl.so.*|libpthread.so.*|librt.so.*|\
+    libresolv.so.*|libutil.so.*|libnsl.so.*|libanl.so.*|libcrypt.so.*)
+      return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 record_system_notice()
 {
   local library="$1"
@@ -144,7 +160,11 @@ while (( ${#queue[@]} )); do
     [[ -z "${seen[$soname]:-}" ]] || continue
     seen[$soname]=1
     resolved="$(readlink -f "$resolved")"
-    install -m 0755 "$resolved" "$runtime_lib_root/$soname"
+    if is_glibc_lib "$soname"; then
+      install -m 0755 "$resolved" "$glibc_root/$soname"
+    else
+      install -m 0755 "$resolved" "$runtime_lib_root/$soname"
+    fi
     printf '%s\t%s\n' "$soname" "$resolved" >> "$bundle_root/runtime-libraries.txt"
     record_system_notice "$resolved"
     queue+=("$resolved")
@@ -152,6 +172,18 @@ while (( ${#queue[@]} )); do
 done
 
 sort -o "$bundle_root/runtime-libraries.txt" "$bundle_root/runtime-libraries.txt"
+
+# Invariant: no part of glibc may sit in a directory that reaches
+# LD_LIBRARY_PATH. If it does, a host loader newer than the bundled libc loads
+# the bundled one and the program dies with SIGILL before printing anything.
+# The packager's own smoke test cannot catch this, because the build machine's
+# glibc matches the bundled copy exactly.
+if compgen -G "$runtime_lib_root/libc.so.*" > /dev/null || \
+   compgen -G "$runtime_lib_root/ld-linux*" > /dev/null; then
+  printf 'glibc leaked into %s; it must live only in glibc/.\n' \
+    "$runtime_lib_root" >&2
+  exit 1
+fi
 
 # The archive is started through its own loader so the bundled glibc is used
 # instead of the host's. Take the interpreter path from the executable itself
@@ -162,7 +194,7 @@ if [[ -z "$loader_path" || ! -r "$loader_path" ]]; then
   printf 'Unable to determine the dynamic loader for the bundle.\n' >&2
   exit 1
 fi
-install -m 0755 "$loader_path" "$runtime_lib_root/$(basename -- "$loader_path")"
+install -m 0755 "$loader_path" "$glibc_root/$(basename -- "$loader_path")"
 printf '%s\n' "$(basename -- "$loader_path")" > "$bundle_root/loader-name.txt"
 
 # Record the highest glibc symbol version anything in the bundle needs. The

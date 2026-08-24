@@ -158,7 +158,7 @@ else
   if [[ -r "$repo_root/loader-name.txt" && -r "$repo_root/glibc-required.txt" ]]; then
     loader_name="$(<"$repo_root/loader-name.txt")"
     required_glibc="$(<"$repo_root/glibc-required.txt")"
-    if [[ -x "$repo_root/adios2/lib/$loader_name" ]]; then
+    if [[ -x "$repo_root/glibc/$loader_name" ]]; then
       if [[ -z "$host_glibc" ]]; then
         need_bundled_glibc=1
       elif [[ "$(printf '%s\n%s\n' "$required_glibc" "$host_glibc" \
@@ -171,8 +171,12 @@ else
   # Only export the search path when the host loader will be used. With the
   # bundled loader it is passed as --library-path instead, so the bundled
   # glibc never reaches subprocesses such as shell escapes.
+  # The bundled glibc lives in its own directory and is never added to
+  # LD_LIBRARY_PATH. A host loader newer than the bundled libc would load it
+  # and die with SIGILL, which is why it is only ever reached through the
+  # bundled loader, where loader and libc are a matched pair.
   if (( need_bundled_glibc )); then
-    bundled_library_path="$library_path"
+    bundled_library_path="$repo_root/glibc:$library_path"
   else
     export LD_LIBRARY_PATH="$library_path"
   fi
@@ -243,7 +247,7 @@ fi
 # run the archive at all. Preferring the host glibc keeps glibc's NSS working,
 # which network name resolution and therefore OPeNDAP depend on.
 if (( ${need_bundled_glibc:-0} )); then
-  exec "$repo_root/adios2/lib/$loader_name" \
+  exec "$repo_root/glibc/$loader_name" \
     --library-path "$bundled_library_path" \
     "$grads_binary" "${color_args[@]}" "$@"
 fi
