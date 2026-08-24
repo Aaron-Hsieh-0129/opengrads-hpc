@@ -1,9 +1,9 @@
-## opengrads-hpc 1.0.5
+## opengrads-hpc 1.0.6
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.4
+### Fixed since 1.0.5
 
 - **The Linux archive now carries everything but the kernel.** glibc, the
   dynamic loader, and the UDUNITS unit database are bundled alongside the 65
@@ -15,7 +15,9 @@ calculations, and native archives for Linux and macOS.
   shipped `libudunits2.so` without its unit database, which UDUNITS-2 reads
   from a path compiled into the library. On a machine without udunits2 that
   path does not exist and `sdfopen` failed with `UDUNITS package
-  initialization failure`. This affected 1.0.4 and earlier.
+  initialization failure`. This affected 1.0.5 and earlier.
+
+### Fixed in 1.0.5
 
 - **Line editing no longer corrupts the display.** The coloured prompt handed
   readline 15 bytes for something 5 columns wide, so it counted the ANSI
@@ -112,9 +114,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.5-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.5-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.5-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.6-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.6-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.6-linux-x86_64
 ./opengrads
 ```
 
