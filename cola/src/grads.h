@@ -462,7 +462,7 @@ struct gastat {
   gaint ncflg;                 /* 1==netcdf  2==hdfsds */
   gaint ncid;                  /* netcdf file id */
   gaint sdid;                  /* hdf-sds file id */
-  gaint h5id;                  /* hdf5 file id */
+  gah5id h5id;                 /* hdf5 file id (hid_t is 64-bit) */
   gaint packflg;               /* Data are packed with scale and offset values */
   gaint undefattrflg;          /* Undefined values are retrieved individually  */
   char *scattr;                /* scale factor attribute name for unpacking data */
@@ -691,7 +691,7 @@ struct gavar {
                                   of this variable within a time group */
   gaint ncvid;                 /* netcdf vid for this variable         */
   gaint sdvid;                 /* hdf vid for this variable            */
-  gaint h5vid;                 /* hdf5 dataset id for this variable    */
+  gah5id h5vid;                /* hdf5 dataset id for this variable    */
   gaint levels;                /* Number of levels for this variable.
                                   0 is special and indiates one grid is
                                   available for the surface only.      */
@@ -1020,14 +1020,14 @@ gaint gaadios_read_grid (struct gafile *, struct gavar *, struct gagrid *,
                           gadouble *, char *);
 gaint h5setup (void);
 #if USEHDF5==1
-gaint h5openvar (gaint,char*,hid_t*,hid_t*);
+gaint h5openvar (gah5id,char*,hid_t*,hid_t*);
 gaint h5closevar (hid_t, hid_t);
 #endif
-gaint h5attr(gaint, char *, char *, gadouble *);
+gaint h5attr(gah5id, char *, char *, gadouble *);
 gaint hdfattr (gaint, char *, gadouble *);
 gaint ncpattrs(gaint, char *, char *, gaint, gaint, char *);
 gaint hdfpattrs(gaint, char *, char *, gaint, gaint, char *);
-gaint h5pattrs(gaint, char *, char *, gaint, gaint, char *);
+gaint h5pattrs(gah5id, char *, char *, gaint, gaint, char *);
 void prntwrap(char *, char *, char *);
 #if GRIB2
 struct g2buff * g2check (gaint, gaint, gaint);

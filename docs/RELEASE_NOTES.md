@@ -16,8 +16,11 @@ calculations, and native archives for Linux and macOS.
 - **`sdfopen` on RHEL-family builds.** UDUNITS headers live in
   `/usr/include/udunits2/` there rather than `/usr/include`, so the probe
   missed them.
-- **`dtype hdf5_grid` now works.** HDF5 was disabled in every previous Linux
-  archive. Debian hides its headers under `/usr/include/hdf5/serial/`, which
+- **`dtype hdf5_grid` now reads data.** GrADS stored HDF5 object ids in a
+  32-bit `gaint`, but HDF5 widened `hid_t` to 64 bits in version 1.10. Every
+  id was truncated, so opening a variable failed with `invalid object ID` and
+  `H5Dopen2 failed`. The ids are now held in a 64-bit type.
+- **HDF5 was disabled in every previous Linux archive.** Debian hides its headers under `/usr/include/hdf5/serial/`, which
   the configure probe does not search, so `USEHDF5` was 0 and the descriptor
   keyword was rejected with `Data file type invalid`. The AlmaLinux build
   finds HDF5 in the standard location, and source builds on Debian now add

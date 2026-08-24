@@ -284,7 +284,7 @@ gaint gaggrd (struct gagrid *pgrid) {
 	if (rc) return (rc);
       }
       /* set h5-relevant variables in the gavar structure */
-      pvr->h5vid = (gaint)vid; 
+      pvr->h5vid = vid; 
     }
   }
 #endif
@@ -526,7 +526,7 @@ gaint y,z,t,e;
 	  if (rc) return (rc);
 	}
 	/* set h5-relevant variables in the gavar structure */
-	pvr->h5vid = (gaint)vid; 
+	pvr->h5vid = vid; 
       }
     }
 #endif
@@ -3566,7 +3566,7 @@ gaint h5setup(void) {
 */
 
 #if USEHDF5==1
-gaint h5openvar (gaint h5id, char *vname, hid_t *dataspace, hid_t *h5varflg) {
+gaint h5openvar (gah5id h5id, char *vname, hid_t *dataspace, hid_t *h5varflg) {
   hid_t fid,vid,plid,dsid;
   size_t nslots;
   gadouble pp;
@@ -3925,7 +3925,7 @@ return (0);
 
 /* Retrieves a numeric HDF5 Attribute. */
 
-gaint h5attr(gaint varid, char *vname, char *aname, gadouble *value) {
+gaint h5attr(gah5id varid, char *vname, char *aname, gadouble *value) {
 #if USEHDF5 == 1
 hid_t vid,aid,atype,aspace,rc;    
 H5T_class_t aclass;
@@ -4686,7 +4686,7 @@ size_t sz;
 }
 
 /* Subroutine to print out HDF5 (variable) attributes */
-gaint h5pattrs(gaint fid, char *vname, char *abbrv, gaint hdrflg, gaint fnum, char* ftit) {
+gaint h5pattrs(gah5id fid, char *vname, char *abbrv, gaint hdrflg, gaint fnum, char* ftit) {
 #if USEHDF5 == 1
 H5O_info_t oinfo;
 H5T_class_t aclass=-1;
@@ -5176,7 +5176,7 @@ gaint gaoph5 (struct gafile *pfil, gaint tflag, gaint eflag) {
   H5Pclose(fapl);
   /* if file opened, set the file id in the gafile structure */
   if (op) {
-    pfil->h5id = (gaint)h5id;     
+    pfil->h5id = h5id;     
     return (0);
   }
   else {
