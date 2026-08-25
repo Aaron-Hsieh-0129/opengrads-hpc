@@ -212,6 +212,40 @@ if [[ -z "$required_glibc" ]]; then required_glibc="0"; fi
 printf '%s\n' "$required_glibc" > "$bundle_root/glibc-required.txt"
 record_system_notice "$loader_path"
 
+# Embed the library search paths in the binaries themselves, relative to
+# $ORIGIN, so the launcher does not have to export LD_LIBRARY_PATH. Exporting
+# it leaked the bundled libraries into every subprocess GrADS spawns -- a
+# shell escape such as "!ls" ran the host's ls against our libselinux and
+# warned about it. RUNPATH is private to each binary and cannot leak.
+if ! command -v patchelf > /dev/null 2>&1; then
+  printf 'patchelf is required to make the archive relocatable.\n' >&2
+  exit 1
+fi
+
+patchelf --set-rpath \
+  '$ORIGIN/.libs:$ORIGIN/../../adios2/lib:$ORIGIN/../../deps/lib' \
+  "$bundle_root/build/src/grads"
+
+for library in "$runtime_lib_root"/*.so*; do
+  [[ -f "$library" ]] || continue
+  patchelf --set-rpath '$ORIGIN' "$library" 2>/dev/null || true
+done
+
+for plugin in "$plugin_root"/*.so; do
+  [[ -f "$plugin" ]] || continue
+  patchelf --set-rpath \
+    '$ORIGIN:$ORIGIN/../../../adios2/lib:$ORIGIN/../../../deps/lib' \
+    "$plugin" 2>/dev/null || true
+done
+
+# The executable must now resolve everything without LD_LIBRARY_PATH set.
+if env -u LD_LIBRARY_PATH ldd "$bundle_root/build/src/grads" 2>&1 \
+     | grep -Fq 'not found'; then
+  printf 'Bundle does not resolve without LD_LIBRARY_PATH:\n' >&2
+  env -u LD_LIBRARY_PATH ldd "$bundle_root/build/src/grads" >&2
+  exit 1
+fi
+
 smoke_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
   OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
   -bl -d gxdummy -h gxdummy <<'GRADS'

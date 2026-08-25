@@ -177,6 +177,12 @@ else
   # bundled loader, where loader and libc are a matched pair.
   if (( need_bundled_glibc )); then
     bundled_library_path="$repo_root/glibc:$library_path"
+  elif [[ -r "$repo_root/glibc-required.txt" ]]; then
+    # A packaged archive carries its search paths as RUNPATH in each binary,
+    # so nothing needs to be exported. Exporting LD_LIBRARY_PATH here would
+    # leak the bundled libraries into every subprocess GrADS spawns, which is
+    # what made shell escapes such as "!ls" load our libselinux and warn.
+    :
   else
     export LD_LIBRARY_PATH="$library_path"
   fi

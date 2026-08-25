@@ -1,9 +1,18 @@
-## opengrads-hpc 1.0.7
+## opengrads-hpc 1.0.8
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.6
+### Fixed since 1.0.7
+
+- **The bundled libraries no longer leak into other programs.** The launcher
+  exported `LD_LIBRARY_PATH`, which every subprocess GrADS spawns inherited,
+  so a shell escape such as `!ls` ran the host's `ls` against the bundled
+  libraries and warned `no version information available`. Each binary now
+  carries its own `$ORIGIN`-relative RUNPATH instead, which cannot be
+  inherited, and the launcher exports nothing.
+
+### Fixed in 1.0.7
 
 - **1.0.6 did not start on modern Linux.** It bundled glibc alongside the
   other libraries, so any host with a glibc newer than 2.28 loaded the bundled
@@ -123,9 +132,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.7-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.7-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.7-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.8-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.8-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.8-linux-x86_64
 ./opengrads
 ```
 
