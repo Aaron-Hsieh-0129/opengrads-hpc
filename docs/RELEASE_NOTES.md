@@ -12,6 +12,16 @@ calculations, and native archives for Linux and macOS.
   `zdef 2 levels 1000 500` became `zdef 2 levels 1 0.5`, and the same scaling
   hit X and Y. Coordinates are now used exactly as the dataset stores them, in
   the dataset's own units, so both paths agree.
+- **`bpopen` no longer leaks the ADIOS2 variable list, hangs on crowded name
+  stems, or writes descriptors GrADS cannot parse.** Three defects found while
+  reviewing the backend: the name array `adios2_available_variables` allocates
+  was never freed, so every `bpopen` leaked it along with one string per
+  variable; the alias de-duplicator trimmed its own numeric suffix once it
+  passed 999, repeating a candidate it had already rejected and looping
+  forever; and a BP variable name holding whitespace, a `~`, an `=>`, or a
+  leading character the descriptor parser reads as a comment produced a
+  descriptor that failed to open, with an error naming a variable nobody
+  wrote. Such fields are now skipped with a warning that names them.
 - **The bundled libraries no longer leak into other programs.** The launcher
   exported `LD_LIBRARY_PATH`, which every subprocess GrADS spawns inherited,
   so a shell escape such as `!ls` ran the host's `ls` against the bundled

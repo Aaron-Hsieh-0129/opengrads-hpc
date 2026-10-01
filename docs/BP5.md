@@ -96,6 +96,8 @@ Recognized coordinate names are:
 
 Coordinate values are taken exactly as the dataset stores them, in the dataset's own units: a Z axis written in meters stays in meters, so `lev` means the same thing as it does under a descriptor written from the same arrays. No unit conversion is applied. Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
 
+A field is skipped, with a warning naming it, when its BP variable name cannot be written into a GrADS descriptor: a name holding whitespace, a `~`, an `=>`, a non-printable byte, more than 256 characters, or starting with anything other than a letter, a digit, or `/`. Such a dataset needs an explicit descriptor, or a writer that names its variables differently.
+
 ## Use an explicit descriptor
 
 Use this path when automatic shape inference is ambiguous, when selecting only some fields, or when aliases, axes, calendar time, or missing-value rules need exact control:

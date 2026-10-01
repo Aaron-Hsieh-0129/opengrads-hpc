@@ -8,6 +8,9 @@
  *
  * Shape order is Z,Y,X for temperature and Y,X for surface_pressure.
  * ADIOS2 steps represent the GrADS T axis.
+ *
+ * _mask has the same shape as surface_pressure but a name no GrADS
+ * descriptor can carry, so a descriptor-free open has to skip it.
  */
 
 #include <stdio.h>
@@ -54,12 +57,14 @@ int main(int argc, char **argv)
   adios2_io *io;
   adios2_variable *temp_var;
   adios2_variable *ps_var;
+  adios2_variable *mask_var;
   adios2_variable *x_var;
   adios2_variable *y_var;
   adios2_variable *z_var;
   adios2_engine *engine;
   float temperature[24];
   double surface_pressure[12];
+  double mask[12];
   size_t step, z, y, x, index;
 
   if (argc != 2) {
@@ -82,6 +87,11 @@ int main(int argc, char **argv)
                              ps_shape, ps_start, ps_count,
                              adios2_constant_dims_true),
       "adios2_define_variable(surface_pressure)");
+  mask_var = require_handle(
+      adios2_define_variable(io, "_mask", adios2_type_double, 2,
+                             ps_shape, ps_start, ps_count,
+                             adios2_constant_dims_true),
+      "adios2_define_variable(_mask)");
   x_var = require_handle(
       adios2_define_variable(io, "coordinates/x", adios2_type_double, 1,
                              x_shape, x_start, x_count, adios2_constant_dims_true),
@@ -157,6 +167,7 @@ int main(int argc, char **argv)
       }
     }
     if (step == 0) surface_pressure[5] = -9999.0;
+    for (index = 0; index < 12; ++index) mask[index] = (double)(index % 2);
 
     fail_error(adios2_begin_step(engine, adios2_step_mode_append, 0.0,
                                  &status),
@@ -170,6 +181,8 @@ int main(int argc, char **argv)
                "adios2_put(temperature)");
     fail_error(adios2_put(engine, ps_var, surface_pressure, adios2_mode_sync),
                "adios2_put(surface_pressure)");
+    fail_error(adios2_put(engine, mask_var, mask, adios2_mode_sync),
+               "adios2_put(_mask)");
     fail_error(adios2_put(engine, x_var, x_values, adios2_mode_sync),
                "adios2_put(coordinates/x)");
     fail_error(adios2_put(engine, y_var, y_values, adios2_mode_sync),

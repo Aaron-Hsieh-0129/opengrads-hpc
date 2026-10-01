@@ -279,8 +279,8 @@ static void gaadios_set_undefined (struct gafile *pfi, size_t count,
 
 static void gaadios_make_alias(struct gaadios_meta_var *vars, size_t current) {
   const char *source, *slash;
-  char base[16], candidate[16];
-  size_t i, j, limit;
+  char base[16], candidate[16], tail[16];
+  size_t i, j, limit, length;
   gaint suffix, collision;
 
   source = vars[current].name;
@@ -306,14 +306,46 @@ static void gaadios_make_alias(struct gaadios_meta_var *vars, size_t current) {
       }
     }
     if (!collision) break;
-    limit = 15;
-    if (suffix<10) limit -= 2;
-    else if (suffix<100) limit -= 3;
-    else limit -= 4;
-    snprintf(candidate,sizeof(candidate),"%.*s_%d",(int)limit,base,suffix++);
+    /*
+     * Cut the stem to whatever the suffix leaves, rather than to a width
+     * guessed from the suffix's size: a guess that is too small gets the
+     * suffix trimmed instead, which repeats an earlier candidate and leaves
+     * this loop with no way to terminate.
+     */
+    snprintf(tail,sizeof(tail),"_%d",suffix++);
+    length = strlen(tail);
+    if (length>sizeof(candidate)-2) length = sizeof(candidate)-2;
+    limit = sizeof(candidate)-1-length;
+    if (limit>strlen(base)) limit = strlen(base);
+    memcpy(candidate,base,limit);
+    memcpy(candidate+limit,tail,length);
+    candidate[limit+length] = '\0';
   }
   snprintf(vars[current].alias,sizeof(vars[current].alias),"%s",candidate);
 }
+
+/*
+ * The synthesized descriptor is parsed by the ordinary GrADS reader, so a BP
+ * variable name is usable only when it can be written as the long name of a
+ * VARS record: it must fit the longnm field, must not start a record that the
+ * parser takes for a comment, and must not contain anything the parser treats
+ * as a separator or rewrites (it turns '~' into a space).
+ */
+static gaint gaadios_usable_name(const char *name) {
+  size_t i;
+
+  if (!name || !name[0]) return 0;
+  if (strlen(name)>256) return 0;
+  if (!isalnum((unsigned char)name[0]) && name[0]!='/') return 0;
+  for (i=0;name[i];i++) {
+    if (isspace((unsigned char)name[i]) ||
+        !isprint((unsigned char)name[i]) ||
+        name[i]=='~') return 0;
+    if (name[i]=='=' && name[i+1]=='>') return 0;
+  }
+  return 1;
+}
+
 static gaint gaadios_has_bp5_metadata(const char *pathname) {
   char marker[4096];
   struct stat status;
@@ -503,6 +535,8 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
   adios = NULL;
   io = NULL;
   engine = NULL;
+  names = NULL;
+  name_count = 0;
   vars = NULL;
   descriptor = NULL;
   xvalues = yvalues = zvalues = NULL;
@@ -595,8 +629,12 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
       vars[i].included = 1;
     }
     if (vars[i].included) {
-      if (strlen(vars[i].name)>256) {
+      if (!gaadios_usable_name(vars[i].name)) {
         vars[i].included = 0;
+        snprintf(pout,1255,
+                 "BPOPEN warning: skipping '%.200s'; its name cannot be written in a descriptor\n",
+                 vars[i].name);
+        gaprnt(1,pout);
         continue;
       }
       gaadios_make_alias(vars,i);
@@ -685,6 +723,17 @@ cleanup:
   if (yvalues) gree(yvalues,"adios2axis");
   if (zvalues) gree(zvalues,"adios2axis");
   if (vars) gree(vars,"adios2metadata");
+  /*
+   * adios2_available_variables hands back malloc'd storage for the array and
+   * for every name in it, and nothing in ADIOS2 frees it later, so release it
+   * here with free rather than gree: it is not GrADS-allocated memory. The
+   * metadata table borrows these names, so this has to come after it is gone.
+   */
+  if (names) {
+    for (i=0;i<name_count;i++)
+      if (names[i]) free(names[i]);
+    free(names);
+  }
   return rc;
 }
 

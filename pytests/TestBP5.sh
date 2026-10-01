@@ -175,6 +175,9 @@ check_text "Descriptor: BP5 metadata: $test_root/bp5_fixture.bp"
 check_text 'File 1 : OpenGrADS BP5 attribute fixture'
 check_text 'Surface pressure [hPa]'
 check_text 'Air temperature [K]'
+# _mask matches the inferred grid but its name cannot be written in a
+# descriptor, so it is skipped with a warning and the field count stays 2.
+check_text "BPOPEN warning: skipping '_mask';"
 check_text 'BP5 dataset opened without a descriptor: 2 fields, 4x3x2, 2 steps'
 check_text 'tdef 4 linear 00Z01JAN2000 60mn'
 check_text 'Undef count = 1  Valid count = 11'
