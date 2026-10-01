@@ -5,6 +5,13 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed since 1.0.7
 
+- **`bpopen` now reports the same levels as a descriptor.** A coordinate array
+  whose `units` attribute said meters was silently divided by 1000, so a
+  descriptor-free open of a dataset with `z_mid` in meters showed `lev` in
+  kilometers while the same dataset opened through a CTL showed it in meters:
+  `zdef 2 levels 1000 500` became `zdef 2 levels 1 0.5`, and the same scaling
+  hit X and Y. Coordinates are now used exactly as the dataset stores them, in
+  the dataset's own units, so both paths agree.
 - **The bundled libraries no longer leak into other programs.** The launcher
   exported `LD_LIBRARY_PATH`, which every subprocess GrADS spawns inherited,
   so a shell escape such as `!ls` ran the host's `ls` against the bundled

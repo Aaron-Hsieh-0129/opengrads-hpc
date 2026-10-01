@@ -156,6 +156,18 @@ check_text()
   fi
 }
 
+check_count()
+{
+  local expected="$1" minimum="$2" found
+  found="$(grep -Fc -- "$expected" <<< "$output" || true)"
+  if (( found < minimum )); then
+    printf 'BP5 regression test expected at least %s occurrences of: %s (found %s)\n' \
+      "$minimum" "$expected" "$found" >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+}
+
 check_text 'adios2-bp5'
 check_text 'dtype bp5'
 check_text "Resolved BP5 dataset: $test_root/bp5_fixture.bp"
@@ -163,7 +175,6 @@ check_text "Descriptor: BP5 metadata: $test_root/bp5_fixture.bp"
 check_text 'File 1 : OpenGrADS BP5 attribute fixture'
 check_text 'Surface pressure [hPa]'
 check_text 'Air temperature [K]'
-check_text 'xdef 4 linear 0 0.001'
 check_text 'BP5 dataset opened without a descriptor: 2 fields, 4x3x2, 2 steps'
 check_text 'tdef 4 linear 00Z01JAN2000 60mn'
 check_text 'Undef count = 1  Valid count = 11'
@@ -181,6 +192,14 @@ check_line '1123'
 check_line '-7777'
 check_line '-9[.]99e[+]08'
 check_line '1011'
+
+# A descriptor-free open must report the dataset's own coordinate values, so
+# the axes BPOPEN infers agree with a descriptor written from the same arrays.
+# Three CTLINFO prints reach the output: two from descriptors and one from
+# BPOPEN, and all three have to show the same axes.
+check_count 'xdef 4 linear 0 1' 3
+check_count 'ydef 3 linear -1 1' 3
+check_count 'zdef 2 levels 1000 500' 3
 
 open_count="$(grep -Fc 'BP5 dataset opened without a descriptor:' <<< "$output")"
 if (( open_count < 3 )); then

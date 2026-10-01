@@ -373,31 +373,6 @@ static gaint gaadios_resolve_path(const char *requested, char *pathname,
   return 0;
 }
 
-static gadouble gaadios_axis_scale(adios2_io *io, const char *variable_name) {
-  adios2_attribute *attribute;
-  adios2_bool is_value;
-  adios2_type type;
-  adios2_error error;
-  char units[4096];
-  size_t i, length;
-
-  attribute = adios2_inquire_variable_attribute(io,"units",variable_name,"/");
-  if (!attribute ||
-      adios2_attribute_type(&type,attribute)!=adios2_error_none ||
-      type!=adios2_type_string ||
-      adios2_attribute_is_value(&is_value,attribute)!=adios2_error_none ||
-      is_value!=adios2_true) return 1.0;
-  memset(units,0,sizeof(units));
-  error = adios2_attribute_data(units,&length,attribute);
-  if (error!=adios2_error_none) return 1.0;
-  for (i=0;units[i];i++) units[i] = (char)tolower((unsigned char)units[i]);
-  if (!strcmp(units,"m") || !strcmp(units,"meter") ||
-      !strcmp(units,"meters") || !strcmp(units,"metre") ||
-      !strcmp(units,"metres")) return 0.001;
-  return 1.0;
-}
-
-
 static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
                                    const char **names, size_t expected) {
   adios2_variable *variable;
@@ -407,7 +382,6 @@ static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
   gadouble *values;
   void *native;
   size_t shape[1], start[1], count[1], bytes, i, ndims;
-  gadouble scale;
 
   while (*names) {
     variable = adios2_inquire_variable(io,*names);
@@ -443,9 +417,14 @@ static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
     gree(values,"adios2axis");
     return NULL;
   }
-  scale = gaadios_axis_scale(io,*names);
+  /*
+   * Coordinate values are reported exactly as the dataset stores them, in
+   * the dataset's own units. A descriptor-free open must agree with an
+   * explicit descriptor written from the same arrays, so no unit conversion
+   * is applied here.
+   */
   bytes = expected;
-  for (i=0;i<bytes;i++) values[i] = gaadios_value(native,type,i)*scale;
+  for (i=0;i<bytes;i++) values[i] = gaadios_value(native,type,i);
   gree(native,"adios2axisnative");
   return values;
 }

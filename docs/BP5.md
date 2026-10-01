@@ -94,7 +94,7 @@ Recognized coordinate names are:
 - Y: `coordinates/y`, `y`, `lat`, `latitude`
 - Z: `coordinates/z_mid`, `coordinates/z`, `z`, `lev`, `level`, `height`
 
-Cartesian coordinates with units `m`, `meter`, `meters`, `metre`, or `metres` are converted to kilometers. Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
+Coordinate values are taken exactly as the dataset stores them, in the dataset's own units: a Z axis written in meters stays in meters, so `lev` means the same thing as it does under a descriptor written from the same arrays. No unit conversion is applied. Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
 
 ## Use an explicit descriptor
 
