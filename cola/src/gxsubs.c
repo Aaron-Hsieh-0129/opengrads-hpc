@@ -450,6 +450,23 @@ void gxfrme (gaint action) {
 }
 
 
+/* Rewind the display one undo step and redraw what is left.  The meta buffer
+   holds every primitive drawn since the last frame action, so this is the
+   same clear-and-replay the backends perform when a window is exposed.
+   Returns 0 when the display was rewound, 1 when there was nothing to undo. */
+
+gaint gxundo (void) {
+
+  if (gxhundo()) return (1);         /* Nothing to undo */
+  if (intflg) {
+    dsubs.gxdfrm (7);                /* Clear graphics, keep the event queue */
+    gxhdrw (0,0);                    /* Replay what is left of the buffer */
+    dsubs.gxdfrm (9);                /* Flush the request buffer */
+  }
+  return (0);
+}
+
+
 /* Set color.  Colors are: 0 - black;    1 - white
                            2 - red;      3 - green     4 - blue
                            5 - cyan;     6 - magenta   7 - yellow

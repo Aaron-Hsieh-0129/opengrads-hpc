@@ -610,21 +610,21 @@ static const char *ga_commands[] = {
   "bpopen", "clear", "close", "collect", "define", "display", "draw",
   "dropmenu", "enable", "exec", "flush", "frame", "history", "modify",
   "open", "print", "printim", "query", "quit", "reinit", "repeat", "run",
-  "sdfopen", "set", "swap", "undefine", "xdfopen", NULL
+  "sdfopen", "set", "swap", "undefine", "undo", "xdfopen", NULL
 };
 
 static const char *ga_set_words[] = {
   "background", "ccolor", "cint", "clevs", "clopts", "color", "csmooth",
   "display", "dfile", "e", "font", "frame", "gxout", "lat", "lev", "lon",
   "mpdraw", "mpdset", "mpvals", "parea", "poli", "rgb", "t", "time",
-  "threads", "undef", "x", "xaxis", "xflip", "xlint", "xsize", "y", "yaxis",
+  "threads", "undef", "undo", "x", "xaxis", "xflip", "xlint", "xsize", "y", "yaxis",
   "yflip", "ylint", "z", NULL
 };
 
 static const char *ga_query_words[] = {
   "attr", "config", "ctlinfo", "define", "dims", "file", "files",
   "font", "gxconfig", "gxout", "pos", "shades", "threads", "time", "udct", "udft",
-  "vars", NULL
+  "undo", "vars", NULL
 };
 
 static const char *ga_draw_words[] = {

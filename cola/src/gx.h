@@ -331,6 +331,7 @@ void gxmaskclear (void);
    gxgnam: Get full path name
    gxptrn: Set fill pattern
    gxqchl: Query the width of a character 
+   gxundo: Rewind the display one undo step and redraw what is left
    gxload: Loads the display/printing graphics routines
    getpsubs: Passes the pointer containing printing function pointers
    getdsubs: Passes the pointer containing printing function pointers
@@ -339,6 +340,7 @@ void gxmaskclear (void);
 gaint gxstrt (gadouble, gadouble, gaint, gaint, char *, char *, char *);
 void gxend (void);
 void gxfrme (gaint);
+gaint gxundo (void);
 void gxcolr (gaint);
 gaint gxacol (gaint, gaint, gaint, gaint, gaint);
 void gxwide (gaint);
@@ -398,6 +400,12 @@ struct gxdsubs *getdsubs(void);
    gxhwri: Write buffer to metafile
    gxhfrm: Handle new frame action
    gxhdrw: Handle redraw operation
+   gxhundoset:  Set how many undo steps to keep; below one turns undo off
+   gxhundoclr:  Forget the saved undo positions
+   gxhundomark: Note where the plot ends before a command runs
+   gxhundokeep: Keep that position if the command added to the plot
+   gxhundo:     Rewind the plot one step
+   gxhundoq:    Report undo settings and meta buffer usage
                                            */
 
 void gxhopt (int);
@@ -413,6 +421,12 @@ void hfull (void);
 gaint gxhwri (void *, int);
 void gxhfrm (int);
 void gxhdrw (gaint,gaint);
+gaint gxhundoset (gaint);
+void gxhundoclr (void);
+void gxhundomark (void);
+void gxhundokeep (void);
+gaint gxhundo (void);
+void gxhundoq (gaint *, gaint *, gaint *);
 void gxddbl (void);
 gaint mbufget (void);
 void mbufrel (gaint);

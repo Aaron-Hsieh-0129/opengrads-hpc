@@ -56,6 +56,11 @@ libraries are available.
   trajectories, and interpolation helpers. Existing OpenGrADS extensions are
   retained under [extensions](extensions).
 
+- **Undo for the plot.** Step the picture back one command at a time, off by
+  default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
+  and a whole script counts as a single step. It rewinds the graphics, not
+  settings or open files. See [undo documentation](docs/UNDO.md).
+
 - **Modern interactive and release experience.** Optional GNU Readline adds
   command history and Tab completion. The release builders produce four
   self-contained archives — Linux x86_64 and aarch64, macOS arm64 and x86_64 —
@@ -87,6 +92,7 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 - [Licensing and usage rules](docs/LICENSING.md)
 - [Release and packaging guide](docs/RELEASES.md)
 - [BP5 reader guide and limitations](docs/BP5.md)
+- [Undo: settings and limits](docs/UNDO.md)
 - [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)
 - [Architecture and development roadmap](docs/ARCHITECTURE.md)
 

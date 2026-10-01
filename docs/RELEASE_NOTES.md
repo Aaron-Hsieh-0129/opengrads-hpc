@@ -3,6 +3,20 @@
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
+### Added since 1.0.7
+
+- **Undo for the plot.** `set undo 10` turns undo on and keeps ten steps,
+  `undo` steps the picture back one command, `undo <n>` steps back several,
+  and `q undo` reports the state. It is off by default, so nothing changes
+  for anyone who does not ask for it. A step is a command that changed the
+  picture — settings and opens cost nothing — and a whole script counts as
+  one step. Undo rewinds GrADS's graphics buffer and replays what is left,
+  so an image exported after an undo is byte-for-byte the image the shorter
+  command sequence exports, and on screen it redraws exactly as GrADS does
+  when a window is exposed. It rewinds graphics only: settings, the dimension environment, open
+  files, and anything written to disk are untouched, and `clear`, `reinit`,
+  and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
+
 ### Fixed since 1.0.7
 
 - **`bpopen` now reports the same levels as a descriptor.** A coordinate array
