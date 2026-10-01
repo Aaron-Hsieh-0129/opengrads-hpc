@@ -26,9 +26,13 @@ The release matrix is:
 
 - Linux x86_64, built natively on Ubuntu 22.04;
 - Linux aarch64, built natively on Ubuntu 22.04 ARM64;
-- macOS arm64, built natively on macOS 15;
-- macOS x86_64, built natively on macOS 15 Intel;
+- macOS arm64, built natively on macOS 15.
 
+macOS x86_64 is not published. The `macos-15-intel` runner has bottles for
+few of the formulas this build needs, so Homebrew falls back to building them
+from source: one observed run spent over ninety minutes installing
+prerequisites without reaching the compile step. An Intel Mac can still build
+from source with [INSTALL.md](INSTALL.md); an arm64 archive will not run on it.
 
 ### glibc baseline
 
@@ -166,7 +170,7 @@ not reach back into the Homebrew prefix it was built from.
 
 ## GitHub Actions and publication gate
 
-`.github/workflows/release.yml` builds and tests all four native archives on
+`.github/workflows/release.yml` builds and tests all three native archives on
 a version tag or manual dispatch. Binary artifact upload and GitHub Release
 creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.

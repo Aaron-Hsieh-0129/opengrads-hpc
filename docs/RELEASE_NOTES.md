@@ -17,6 +17,15 @@ calculations, and native archives for Linux and macOS.
   files, and anything written to disk are untouched, and `clear`, `reinit`,
   and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
 
+### Changed in 1.0.8
+
+- **macOS x86_64 archives are no longer published.** GitHub's `macos-15-intel`
+  runner has bottles for few of the formulas this build needs, so Homebrew
+  builds them from source and the job spent over ninety minutes installing
+  prerequisites without reaching the compile step. Intel Macs can still build
+  from source following [INSTALL.md](INSTALL.md); the arm64 archive will not
+  run on them. Linux x86_64 and aarch64 and macOS arm64 are unaffected.
+
 ### Fixed in 1.0.8
 
 - **`bpopen` now reports the same levels as a descriptor.** A coordinate array
@@ -140,9 +149,8 @@ built with `ADIOS2_USE_MPI=OFF`.
 - **OpenMP-threaded calculations.** Defaults to 4 threads; `-j N` or
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
-- **Four native archives**, each self-contained: Linux x86_64 and aarch64,
-  macOS arm64 and x86_64. No dependency installation and no library paths to
-  set.
+- **Three native archives**, each self-contained: Linux x86_64 and aarch64,
+  and macOS arm64. No dependency installation and no library paths to set.
 
 ### Graphics drivers per platform
 

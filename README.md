@@ -62,8 +62,8 @@ libraries are available.
   settings or open files. See [undo documentation](docs/UNDO.md).
 
 - **Modern interactive and release experience.** Optional GNU Readline adds
-  command history and Tab completion. The release builders produce four
-  self-contained archives — Linux x86_64 and aarch64, macOS arm64 and x86_64 —
+  command history and Tab completion. The release builders produce three
+  self-contained archives — Linux x86_64 and aarch64, and macOS arm64 —
   carrying BP5, OpenMP, the graphics plug-ins available on that platform, and
   every required runtime library.
 
