@@ -68,5 +68,6 @@ export OPENGRADS_RUNTIME_LIBRARY_PATH="$runtime_libraries"
 "$repo_root/pytests/TestBP5.sh"
 "$repo_root/pytests/TestSDFOpen.sh"
 "$repo_root/pytests/TestOpenMP.sh"
+"$repo_root/pytests/TestUndo.sh"
 
 "$repo_root/release/package-macos.sh" "$build_root" "$output_root"

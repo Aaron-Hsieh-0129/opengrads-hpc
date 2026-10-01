@@ -22,10 +22,19 @@ if [[ ! -x "$grads_binary" ]]; then
   exit 1
 fi
 
+# The printing plug-in carries a platform-specific extension, so look for any
+# of them rather than assuming .so.
+have_plugin()
+{
+  find "$build_root/src/.libs" -maxdepth 1 \
+    \( -name "$1.so" -o -name "$1.dylib" -o -name "$1.dll" \) \
+    -print -quit 2>/dev/null | grep -q .
+}
+
 hardcopy=gxdummy
-if [[ -r "$build_root/src/.libs/libgxpCairo.so" ]]; then
+if have_plugin libgxpCairo; then
   hardcopy=Cairo
-elif [[ -r "$build_root/src/.libs/libgxpGD.so" ]]; then
+elif have_plugin libgxpGD; then
   hardcopy=GD
 fi
 

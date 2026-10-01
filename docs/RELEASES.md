@@ -122,8 +122,8 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 
 The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and Readline
 8.2 source archives; builds them into `.release-work`; builds opengrads-hpc with
-ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
-OpenMP regressions; assembles the runtime closure; and writes the archive and
+ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF,
+OpenMP, and undo regressions; assembles the runtime closure; and writes the archive and
 checksum to `release-dist`.
 Nothing is installed system-wide.
 
@@ -155,8 +155,8 @@ UDUNITS-2 ships that API and its `udunits.h` compatibility header, so every
 platform uses UDUNITS-2 — `libudunits2-dev` on Linux, the `udunits` formula on
 macOS. An earlier attempt to build UDUNITS 1.12.11 from source was dropped: it
 fails against modern bison on Linux and on the Fortran probe on macOS, and it
-was never necessary. The builders run the BP5, SDF, and OpenMP regressions
-before packaging their archive.
+was never necessary. The builders run the BP5, SDF, OpenMP, and undo
+regressions before packaging their archive.
 
 The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
 re-signs the result, because editing a Mach-O header invalidates the ad-hoc

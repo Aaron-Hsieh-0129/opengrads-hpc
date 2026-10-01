@@ -34,7 +34,7 @@ these packages.
 ```
 
 This downloads checksum-pinned dependencies into `.release-work`, builds
-everything, runs the BP5, SDF, and OpenMP regression tests, and writes a
+everything, runs the BP5, SDF, OpenMP, and undo regression tests, and writes a
 relocatable archive to `release-dist`. It is the same script CI runs, so it is
 the best-tested path.
 

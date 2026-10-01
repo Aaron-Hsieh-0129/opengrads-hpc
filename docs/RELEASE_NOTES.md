@@ -3,7 +3,7 @@
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Added since 1.0.7
+### Added in 1.0.8
 
 - **Undo for the plot.** `set undo 10` turns undo on and keeps ten steps,
   `undo` steps the picture back one command, `undo <n>` steps back several,
@@ -17,7 +17,7 @@ calculations, and native archives for Linux and macOS.
   files, and anything written to disk are untouched, and `clear`, `reinit`,
   and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
 
-### Fixed since 1.0.7
+### Fixed in 1.0.8
 
 - **`bpopen` now reports the same levels as a descriptor.** A coordinate array
   whose `units` attribute said meters was silently divided by 1000, so a
