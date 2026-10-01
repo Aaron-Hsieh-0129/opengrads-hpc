@@ -16,6 +16,16 @@ calculations, and native archives for Linux and macOS.
   when a window is exposed. It rewinds graphics only: settings, the dimension environment, open
   files, and anything written to disk are untouched, and `clear`, `reinit`,
   and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
+- **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
+  Script Library (BSD 2-Clause) now ship in `lib/scripts`: `plot` for 1-D
+  graphs and profiles, `shadcon` for shading and contours, `vcr` for vertical
+  cross-sections, `vector`, `subplot` for multi-panel figures, `legend`,
+  `drawstr`, `drawline`, `drawbox`, `drawmark`, `ppp` for cropped
+  publication output (needs ghostscript), `save`, and `bhist` (bGASL's
+  histogram calculator, renamed to leave the existing `hist` plotter in
+  place). `subplot` replaces the earlier, much smaller script of that name and
+  takes different arguments: `subplot <panels> <index> [<columns>]` instead of
+  `subplot <rows> <columns> <index>`. See `THIRD_PARTY_NOTICES.md`.
 
 ### Changed in 1.0.8
 

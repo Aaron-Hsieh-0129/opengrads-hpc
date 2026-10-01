@@ -53,7 +53,9 @@ libraries are available.
 - **Advanced scripts and extensions.** The bundled OpenGrADS/Kodama script
   collection in [lib/scripts](lib/scripts) provides reusable plotting and
   analysis tools, including maps, panels, colour bars, meteorograms,
-  trajectories, and interpolation helpers. Existing OpenGrADS extensions are
+  trajectories, and interpolation helpers. Plotting scripts from Bin Guan's
+  bGASL add 1-D graphs, shading with contours, vertical cross-sections,
+  vectors, multi-panel layouts, legends, and publication-ready output. Existing OpenGrADS extensions are
   retained under [extensions](extensions).
 
 - **Undo for the plot.** Step the picture back one command at a time, off by

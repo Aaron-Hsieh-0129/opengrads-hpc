@@ -75,6 +75,61 @@ archives are built.
 Linux archives additionally copy the Debian/Ubuntu `copyright` file for each
 system package they bundle into `licenses/system/`.
 
+## bGASL (Bin Guan's GrADS Script Library)
+
+- Project: bGASL, Bin Guan's GrADS Script Library
+- Upstream: http://bguan.bol.ucla.edu/bGASL.html
+- Version included: v24.03, retrieved 2026-10-01
+- License stated in every file: BSD 2-Clause
+- Copyright: Bin Guan, with years per file (2004 to 2023)
+
+Unlike the libraries above, these scripts are committed to the repository and
+ship in `lib/scripts`:
+
+`drawbox.gs`, `drawline.gs`, `drawmark.gs`, `drawstr.gs`, `legend.gs`,
+`plot.gs`, `ppp.gs`, `save.gs`, `shadcon.gs`, `subplot.gs`, `vcr.gs`,
+`vector.gs`, `bhist.gs`, and the helper functions they need, `parsestr.gsf`
+and `qdims.gsf`.
+
+Each file keeps its original copyright notice, conditions, and disclaimer.
+Two changes were made, both permitted by the license:
+
+- `bhist.gs` is bGASL's `hist.gs`, renamed because the distribution already
+  carries a different `hist.gs` (a histogram plotter by Arlindo da Silva). The
+  command name in its usage and error messages was changed to match, and a
+  comment in its header records the change.
+- `subplot.gs` replaces an earlier, much smaller `subplot.gs` with a different
+  argument order. `extensions/lats/plot_orb.gs`, the one script in the
+  repository that called it, was updated to the new arguments.
+
+The rest of the library (climate time-series tools such as `deseason.gs`,
+`lanczos.gs`, and `taylor.gs`) is not included.
+
+The BSD 2-Clause terms, as they appear in each file:
+
+```text
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list
+   of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this
+   list of conditions and the following disclaimer in the documentation and/or other
+   materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+```
+
 ## License compatibility
 
 This section records the licensing position of the binary archives so that
@@ -82,6 +137,9 @@ recipients can assess it for themselves.
 
 The OpenGrADS notice says "using version 2 of the License," without an "or
 later" option, so this repository treats GrADS as `GPL-2.0-only`.
+
+The bGASL scripts are BSD 2-Clause, which is compatible with GPLv2; including
+them raises no compatibility question.
 
 ADIOS2 is Apache-2.0. The Apache Software Foundation and the Free Software
 Foundation both describe Apache-2.0 as compatible with GPLv3 but **not** with

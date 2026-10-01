@@ -1,0 +1,493 @@
+***************************************************************************************
+* $Id: qdims.gsf,v 1.64 2021/06/09 05:05:50 bguan Exp $
+*
+* Copyright (c) 2012-2015, Bin Guan
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without modification, are
+* permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this list
+*    of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice, this
+*    list of conditions and the following disclaimer in the documentation and/or other
+*    materials provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+* SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+* DAMAGE.
+***************************************************************************************
+function qdims(snap_to_grid,outname)
+*
+* Query and set dimensions.
+*
+* Usage: qdims(<snap_to_grid>,<outname>)
+*   <snap_to_grid>: 0|1. Set to 1 to get correct dimension information for .ctl/.dat output - should reset dimensions later using _.<outname>.reset*. Set to 0 if no file output is involved.
+*   <outname>: name of output global variable will be _.<outname>.*. The total length of _.<outname>.* cannot exceed 16.
+*
+fmt='%.12g'
+
+'query dims'
+lx=sublin(result,2)
+ly=sublin(result,3)
+lz=sublin(result,4)
+lt=sublin(result,5)
+
+*
+* Get dimension information using less accurate method BEFORE snapping to grid, which can be used later to reset dimensions to original, un-snapped status.
+*
+
+*
+* x dimension.
+*
+if(subwrd(lx,7)='to')
+  _.outname.lonsO=subwrd(lx,6)
+  _.outname.loneO=subwrd(lx,8)
+  _.outname.xsO=subwrd(lx,11)
+  _.outname.xeO=subwrd(lx,13)
+else
+  _.outname.lonsO=subwrd(lx,6)
+  _.outname.loneO=subwrd(lx,6)
+  _.outname.xsO=subwrd(lx,9)
+  _.outname.xeO=subwrd(lx,9)
+endif
+_.outname.resetx='set lon '_.outname.lonsO' '_.outname.loneO
+
+*
+* y dimension.
+*
+if(subwrd(ly,7)='to')
+  _.outname.latsO=subwrd(ly,6)
+  _.outname.lateO=subwrd(ly,8)
+  _.outname.ysO=subwrd(ly,11)
+  _.outname.yeO=subwrd(ly,13)
+else
+  _.outname.latsO=subwrd(ly,6)
+  _.outname.lateO=subwrd(ly,6)
+  _.outname.ysO=subwrd(ly,9)
+  _.outname.yeO=subwrd(ly,9)
+endif
+_.outname.resety='set lat '_.outname.latsO' '_.outname.lateO
+
+*
+* z dimension.
+*
+if(subwrd(lz,7)='to')
+  _.outname.levsO=subwrd(lz,6)
+  _.outname.leveO=subwrd(lz,8)
+  _.outname.zsO=subwrd(lz,11)
+  _.outname.zeO=subwrd(lz,13)
+else
+  _.outname.levsO=subwrd(lz,6)
+  _.outname.leveO=subwrd(lz,6)
+  _.outname.zsO=subwrd(lz,9)
+  _.outname.zeO=subwrd(lz,9)
+endif
+_.outname.resetz='set lev '_.outname.levsO' '_.outname.leveO
+
+*
+* t dimension.
+*
+if(subwrd(lt,7)='to')
+  _.outname.timsO=subwrd(lt,6)
+  _.outname.timeO=subwrd(lt,8)
+  _.outname.tsO=subwrd(lt,11)
+  _.outname.teO=subwrd(lt,13)
+else
+  _.outname.timsO=subwrd(lt,6)
+  _.outname.timeO=subwrd(lt,6)
+  _.outname.tsO=subwrd(lt,9)
+  _.outname.teO=subwrd(lt,9)
+endif
+_.outname.resett='set t '_.outname.tsO' '_.outname.teO
+
+*
+* Calendar (_.outname.cal will be either empty or keyword for .ctl).
+*
+'query calendar'
+_.outname.cal=subwrd(result,1)
+if(_.outname.cal='calendar')
+  _.outname.cal=''
+  say '[qdims info] 'sublin(result,1)'; standard calendar is assumed.'
+endif
+if(_.outname.cal='standard')
+  _.outname.cal=''
+endif
+if(_.outname.cal='365-day')
+  _.outname.cal='365_day_calendar'
+endif
+
+*
+* Snap coordinates to grid.
+*
+if(snap_to_grid)
+  'set x 'math_nint(_.outname.xsO)' 'math_nint(_.outname.xeO)
+  'set y 'math_nint(_.outname.ysO)' 'math_nint(_.outname.yeO)
+  'set z 'math_nint(_.outname.zsO)' 'math_nint(_.outname.zeO)
+  'set t 'math_nint(_.outname.tsO)' 'math_nint(_.outname.teO)
+endif
+
+*
+* Ensure x-coordinates have no redundant points.
+*
+if(snap_to_grid)
+  'query dims'
+  lx=sublin(result,2)
+  if(subwrd(lx,7)='to')
+    lonsTMP=subwrd(lx,6)
+    loneTMP=subwrd(lx,8)
+    xsTMP=subwrd(lx,11)
+    xeTMP=subwrd(lx,13)
+  else
+    lonsTMP=subwrd(lx,6)
+    loneTMP=subwrd(lx,6)
+    xsTMP=subwrd(lx,9)
+    xeTMP=subwrd(lx,9)
+  endif
+  if(loneTMP-lonsTMP>=360)
+    rddnt_points=(loneTMP-lonsTMP-360)/((loneTMP-lonsTMP)/(xeTMP-xsTMP))+1
+    'set x 'xsTMP' 'xeTMP-rddnt_points
+  endif
+endif
+
+*
+* Get dimension information using more accurate method for given situation:
+* snap_to_grid=0: lon/lat coordinates are likely plot boundaries and hence likely whole numbers, and both grid and lon/lat coordinates are obtained as-is;
+* snap_to_grid=1: grid coordinates are whole numbers by definition, and lon/lat coordinates are obtained using a trick for more significant digits (this trick gives inaccurate result due to rounding when grid coordinates are not whole numbers).
+*
+
+'query dims'
+lx=sublin(result,2)
+ly=sublin(result,3)
+lz=sublin(result,4)
+lt=sublin(result,5)
+
+*
+* x dimension.
+*
+if(subwrd(lx,7)='to')
+*
+* x is not fixed.
+*
+  _.outname.xs=subwrd(lx,11)
+  _.outname.xe=subwrd(lx,13)
+  if(snap_to_grid)
+    'set x '_.outname.xs
+    'set y 1'
+    'set z 1'
+    'set t 1'
+    _.outname.lons=getval('lon',fmt)
+    'set x '_.outname.xe
+    'set y 1'
+    'set z 1'
+    'set t 1'
+    _.outname.lone=getval('lon',fmt)
+  else
+    _.outname.lons=subwrd(lx,6)
+    _.outname.lone=subwrd(lx,8)
+  endif
+  _.outname.nx=_.outname.xe-_.outname.xs+1
+  _.outname.dlon=(_.outname.lone-_.outname.lons)/(_.outname.xe-_.outname.xs)
+  _.outname.xdef='xdef '_.outname.nx' linear '_.outname.lons' '_.outname.dlon
+else
+*
+* x is fixed.
+*
+  _.outname.xs=subwrd(lx,9)
+  _.outname.xe=subwrd(lx,9)
+  if(snap_to_grid)
+    'set x '_.outname.xs
+    'set y 1'
+    'set z 1'
+    'set t 1'
+    _.outname.lons=getval('lon',fmt)
+    'set x '_.outname.xe
+    'set y 1'
+    'set z 1'
+    'set t 1'
+    _.outname.lone=getval('lon',fmt)
+  else
+    _.outname.lons=subwrd(lx,6)
+    _.outname.lone=subwrd(lx,6)
+  endif
+  _.outname.nx=_.outname.xe-_.outname.xs+1
+  _.outname.dlon=9.87654321
+  _.outname.xdef='xdef '_.outname.nx' levels '_.outname.lons
+endif
+
+*
+* y dimension.
+*
+if (subwrd(ly,7)='to')
+*
+* y is not fixed.
+*
+  _.outname.ys=subwrd(ly,11)
+  _.outname.ye=subwrd(ly,13)
+  if(snap_to_grid)
+    'set x 1'
+    'set y '_.outname.ys
+    'set z 1'
+    'set t 1'
+    _.outname.lats=getval('lat',fmt)
+    'set x 1'
+    'set y '_.outname.ye
+    'set z 1'
+    'set t 1'
+    _.outname.late=getval('lat',fmt)
+  else
+    _.outname.lats=subwrd(ly,6)
+    _.outname.late=subwrd(ly,8)
+  endif
+  _.outname.ny=_.outname.ye-_.outname.ys+1
+  _.outname.dlat=(_.outname.late-_.outname.lats)/(_.outname.ye-_.outname.ys)
+  _.outname.ydef='ydef '_.outname.ny' linear '_.outname.lats' '_.outname.dlat
+else
+*
+* y is fixed.
+*
+  _.outname.ys=subwrd(ly,9)
+  _.outname.ye=subwrd(ly,9)
+  if(snap_to_grid)
+    'set x 1'
+    'set y '_.outname.ys
+    'set z 1'
+    'set t 1'
+    _.outname.lats=getval('lat',fmt)
+    'set x 1'
+    'set y '_.outname.ye
+    'set z 1'
+    'set t 1'
+    _.outname.late=getval('lat',fmt)
+  else
+    _.outname.lats=subwrd(ly,6)
+    _.outname.late=subwrd(ly,6)
+  endif
+  _.outname.ny=_.outname.ye-_.outname.ys+1
+  _.outname.dlat=9.87654321
+  _.outname.ydef='ydef '_.outname.ny' levels '_.outname.lats
+endif
+
+*
+* If y is not linear (e.g., Gaussian).
+*
+if(ylinlev()='levels' | ylinlev()='LEVELS')
+* begin trick to get a new line character
+  'nonexistentvar=1'
+  'query defval nonexistentvar 1 1'
+  newlinechar=substr(result,12,1)
+  'undefine nonexistentvar'
+* end trick
+  _.outname.ydef='ydef '_.outname.ny' levels'
+  cnt=_.outname.ys
+  while(cnt<=_.outname.ye)
+    'set x 1'
+    'set y 'cnt
+    'set z 1'
+    'set t 1'
+    if(math_mod(cnt,10)=1 & cnt>1)
+      _.outname.ydef=_.outname.ydef' 'newlinechar
+    endif
+    _.outname.ydef=_.outname.ydef' 'getval('lat',fmt)
+    cnt=cnt+1
+  endwhile
+endif
+
+*
+* z dimension.
+*
+if (subwrd(lz,7)='to')
+*
+* z is not fixed.
+*
+  _.outname.zs=subwrd(lz,11)
+  _.outname.ze=subwrd(lz,13)
+  'set x 1'
+  'set y 1'
+  'set z '_.outname.zs
+  'set t 1'
+  _.outname.levs=getval('lev',fmt)
+  'set x 1'
+  'set y 1'
+  'set z '_.outname.ze
+  'set t 1'
+  _.outname.leve=getval('lev',fmt)
+  _.outname.nz=_.outname.ze-_.outname.zs+1
+  _.outname.dlev=(_.outname.leve-_.outname.levs)/(_.outname.ze-_.outname.zs)
+  _.outname.zdef='zdef '_.outname.nz' linear '_.outname.levs' '_.outname.dlev
+else
+*
+* z is fixed.
+*
+  _.outname.zs=subwrd(lz,9)
+  _.outname.ze=subwrd(lz,9)
+  'set x 1'
+  'set y 1'
+  'set z '_.outname.zs
+  'set t 1'
+  _.outname.levs=getval('lev',fmt)
+  'set x 1'
+  'set y 1'
+  'set z '_.outname.ze
+  'set t 1'
+  _.outname.leve=getval('lev',fmt)
+  _.outname.nz=_.outname.ze-_.outname.zs+1
+  _.outname.dlev=9.87654321
+  _.outname.zdef='zdef '_.outname.nz' levels '_.outname.levs
+endif
+if(_.outname.nz=1)
+_.outname.nz0=0
+else
+_.outname.nz0=_.outname.nz
+endif
+
+*
+* If z is not linear (usually the case).
+*
+if(zlinlev()='levels' | zlinlev()='LEVELS')
+* my trick to get a new line character
+  'nonexistentvar=1'
+  'query defval nonexistentvar 1 1'
+  newlinechar=substr(result,12,1)
+  'undefine nonexistentvar'
+* end trick
+  _.outname.zdef='zdef '_.outname.nz' levels'
+  cnt=_.outname.zs
+  while(cnt<=_.outname.ze)
+    'set x 1'
+    'set y 1'
+    'set z 'cnt
+    'set t 1'
+    if(math_mod(cnt,10)=1 & cnt>1)
+      _.outname.zdef=_.outname.zdef' 'newlinechar
+    endif
+    _.outname.zdef=_.outname.zdef' 'getval('lev',fmt)
+    cnt=cnt+1
+  endwhile
+endif
+
+*
+* t dimension.
+*
+if (subwrd(lt,7)='to')
+*
+* t is not fixed.
+*
+  _.outname.tims=subwrd(lt,6)
+  _.outname.time=subwrd(lt,8)
+  _.outname.ts=subwrd(lt,11)
+  _.outname.te=subwrd(lt,13)
+else
+*
+* t is fixed.
+*
+  _.outname.tims=subwrd(lt,6)
+  _.outname.time=subwrd(lt,6)
+  _.outname.ts=subwrd(lt,9)
+  _.outname.te=subwrd(lt,9)
+endif
+_.outname.yrs=substr(_.outname.tims,math_strlen(_.outname.tims)-3,math_strlen(_.outname.tims))
+_.outname.yre=substr(_.outname.time,math_strlen(_.outname.time)-3,math_strlen(_.outname.time))
+* In the above two lines, year is obtained as the last four digits of the time expression. This is always correct.
+* If count from the left, the digit location will depend on whether minutes are specified in the time expression (e.g., 00Z01JAN1999 vs. 00:00Z01JAN1999).
+_.outname.nt=_.outname.te-_.outname.ts+1
+_.outname.dtim=time_incr()
+_.outname.tdef='tdef '_.outname.nt' linear '_.outname.tims' '_.outname.dtim
+
+*
+* Set dimensions using more accurate of grid vs. world coordinates for given situation
+*
+if(snap_to_grid)
+  if(_.outname.nx>1);'set x '_.outname.xs' '_.outname.xe;else;'set x '_.outname.xs;endif
+  if(_.outname.ny>1);'set y '_.outname.ys' '_.outname.ye;else;'set y '_.outname.ys;endif
+  if(_.outname.nz>1);'set z '_.outname.zs' '_.outname.ze;else;'set z '_.outname.zs;endif
+  if(_.outname.nt>1);'set t '_.outname.ts' '_.outname.te;else;'set t '_.outname.ts;endif
+else
+  if(_.outname.nx>1);'set lon '_.outname.lons' '_.outname.lone;else;'set lon '_.outname.lons;endif
+  if(_.outname.ny>1);'set lat '_.outname.lats' '_.outname.late;else;'set lat '_.outname.lats;endif
+  if(_.outname.nz>1);'set lev '_.outname.levs' '_.outname.leve;else;'set lev '_.outname.levs;endif
+  if(_.outname.nt>1);'set time '_.outname.tims' '_.outname.time;else;'set time '_.outname.tims;endif
+endif
+
+return
+***************************************************************************************
+function time_incr()
+*
+* Get time increment from the default .ctl file.
+*
+'query ctlinfo'
+if(result='No Files Open')
+  return 'unknown'
+endif
+
+lines=1
+while(1)
+  lin=sublin(result,lines)
+  if(subwrd(lin,1)='tdef' | subwrd(lin,1)='TDEF')
+    return subwrd(lin,5)
+  endif
+  lines=lines+1
+endwhile
+***************************************************************************************
+function ylinlev()
+*
+* Determine if y is linear or levels based on the default .ctl file.
+*
+'query ctlinfo'
+if(result='No Files Open')
+  return 'unknown'
+endif
+
+lines=1
+while(1)
+  lin=sublin(result,lines)
+  if(subwrd(lin,1)='ydef' | subwrd(lin,1)='YDEF')
+    return subwrd(lin,3)
+  endif
+  lines=lines+1
+endwhile
+***************************************************************************************
+function zlinlev()
+*
+* Determine if z is linear or levels based on the default .ctl file.
+*
+'query ctlinfo'
+if(result='No Files Open')
+  return 'unknown'
+endif
+
+lines=1
+while(1)
+  lin=sublin(result,lines)
+  if(subwrd(lin,1)='zdef' | subwrd(lin,1)='ZDEF')
+    return subwrd(lin,3)
+  endif
+  lines=lines+1
+endwhile
+***************************************************************************************
+function getval(expr,fmt)
+*
+* Return value of a GrADS expression in specified format.
+*
+if(fmt='fmt');fmt='%g';endif
+'nonexistentvar='expr
+'query defval nonexistentvar 1 1'
+part1=subwrd(result,3)
+if(part1='missing');return 'NaN';endif
+'nonexistentvar='expr'-'part1
+'query defval nonexistentvar 1 1'
+part2=subwrd(result,3)
+'nonexistentvar='expr'-'part1'-'part2
+'query defval nonexistentvar 1 1'
+part3=subwrd(result,3)
+'undefine nonexistentvar'
+
+return math_format(fmt,part1+part2+part3)

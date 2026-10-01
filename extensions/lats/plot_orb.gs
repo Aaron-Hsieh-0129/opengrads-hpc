@@ -30,7 +30,7 @@ function plot8(sat)
 
   i = 1
   while ( i<9 )
-     'subplot 4 2 ' i
+     'subplot 8 ' i ' 2 -rowmajor 1'
      'set t ' i
      'q time'
       time = subwrd(result,3)
