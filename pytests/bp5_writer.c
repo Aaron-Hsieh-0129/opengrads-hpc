@@ -11,10 +11,14 @@
  *
  * _mask has the same shape as surface_pressure but a name no GrADS
  * descriptor can carry, so a descriptor-free open has to skip it.
+ *
+ * time is a CF time coordinate, one value per step, which a descriptor-free
+ * open turns into the TDEF. --no-time leaves it out, for the fallback.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <adios2_c.h>
 
@@ -61,14 +65,19 @@ int main(int argc, char **argv)
   adios2_variable *x_var;
   adios2_variable *y_var;
   adios2_variable *z_var;
+  adios2_variable *time_var;
+  double time_value;
+  int with_time;
   adios2_engine *engine;
   float temperature[24];
   double surface_pressure[12];
   double mask[12];
   size_t step, z, y, x, index;
 
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s OUTPUT.bp\n", argv[0]);
+  with_time = 1;
+  if (argc == 3 && strcmp(argv[2], "--no-time") == 0) with_time = 0;
+  else if (argc != 2) {
+    fprintf(stderr, "usage: %s OUTPUT.bp [--no-time]\n", argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -104,6 +113,17 @@ int main(int argc, char **argv)
       adios2_define_variable(io, "coordinates/z_mid", adios2_type_double, 1,
                              z_shape, z_start, z_count, adios2_constant_dims_true),
       "adios2_define_variable(coordinates/z_mid)");
+  time_var = NULL;
+  if (with_time) {
+    time_var = require_handle(
+        adios2_define_variable(io, "time", adios2_type_double, 0,
+                               NULL, NULL, NULL, adios2_constant_dims_true),
+        "adios2_define_variable(time)");
+    require_handle(adios2_define_variable_attribute(
+                       io, "units", adios2_type_string,
+                       "seconds since 2001-02-03 04:05:00", "time", "/"),
+                   "adios2_define_variable_attribute(time/units)");
+  }
   require_handle(adios2_define_attribute(
                      io, "title", adios2_type_string,
                      "OpenGrADS BP5 attribute fixture"),
@@ -189,6 +209,11 @@ int main(int argc, char **argv)
                "adios2_put(coordinates/y)");
     fail_error(adios2_put(engine, z_var, z_values, adios2_mode_sync),
                "adios2_put(coordinates/z_mid)");
+    if (time_var) {
+      time_value = 600.0 * (double)step;
+      fail_error(adios2_put(engine, time_var, &time_value, adios2_mode_sync),
+                 "adios2_put(time)");
+    }
     fail_error(adios2_end_step(engine), "adios2_end_step");
   }
 

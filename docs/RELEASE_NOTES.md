@@ -38,13 +38,21 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed in 1.0.8
 
-- **`bpopen` now reports the same levels as a descriptor.** A coordinate array
-  whose `units` attribute said meters was silently divided by 1000, so a
-  descriptor-free open of a dataset with `z_mid` in meters showed `lev` in
-  kilometers while the same dataset opened through a CTL showed it in meters:
-  `zdef 2 levels 1000 500` became `zdef 2 levels 1 0.5`, and the same scaling
-  hit X and Y. Coordinates are now used exactly as the dataset stores them, in
-  the dataset's own units, so both paths agree.
+- **`bpopen` now behaves like opening a descriptor.** It differed in three
+  ways, and on a VVM-shaped dataset the two paths now print the same results
+  for every command checked and draw byte-identical plots:
+  - **Levels.** Coordinates in metres were silently divided by 1000, so `lev`
+    read in kilometres through `bpopen` and in metres through a descriptor.
+    Z is now used as the dataset stores it.
+  - **Cartesian X and Y.** A model on a metre grid needs its X and Y written as
+    degrees, because GrADS has only longitude and latitude; read as degrees,
+    metres wrap the map labels round the globe and throw `aave` off by 70 %.
+    `bpopen` now maps X and Y in a length unit onto GrADS's 6370 km sphere,
+    centred on 0, as descriptors for Cartesian models do. A 35 m grid gives
+    `xdef 96 linear -0.0149536 0.000314812`.
+  - **Time.** T was always labelled from 00Z01JAN2000 in one-minute steps,
+    whatever the data. It now comes from a CF time coordinate (`time`, units
+    `<unit> since <date>`), and the open says when it has to fall back.
 - **`bpopen` no longer leaks the ADIOS2 variable list, hangs on crowded name
   stems, or writes descriptors GrADS cannot parse.** Three defects found while
   reviewing the backend: the name array `adios2_available_variables` allocates

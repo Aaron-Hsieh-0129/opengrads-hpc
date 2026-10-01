@@ -42,9 +42,11 @@ read -r -a adios2_libs <<< "$("$adios2_config" --serial --c-libs)"
 cp "$fixture_ctl" "$test_root/bp5_fixture.ctl"
 sed 's/^xdef 4 /xdef 5 /' "$fixture_ctl" > "$test_root/bp5_invalid_shape.ctl"
 sed 's/^tdef 2 /tdef 4 /' "$fixture_ctl" > "$test_root/bp5_future_times.ctl"
-mkdir -p "$test_root/empty" "$test_root/multiple"
+mkdir -p "$test_root/empty" "$test_root/multiple" "$test_root/notime"
 LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
   "$test_root/bp5_writer" "$test_root/bp5_fixture.bp"
+LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  "$test_root/bp5_writer" "$test_root/notime/bp5_notime.bp" --no-time
 ln -s "$test_root/bp5_fixture.bp" "$test_root/multiple/first.bp"
 ln -s "$test_root/bp5_fixture.bp" "$test_root/multiple/second.bp"
 
@@ -131,6 +133,10 @@ bpopen $test_root/bp5_fixture.bp
 reinit
 bpopen $test_root/empty
 bpopen $test_root/multiple
+reinit
+bpopen $test_root/notime/bp5_notime.bp
+q ctlinfo
+reinit
 open $test_root/bp5_invalid_shape.ctl
 quit
 GRADS_COMMANDS
@@ -179,7 +185,7 @@ check_text 'Air temperature [K]'
 # descriptor, so it is skipped with a warning and the field count stays 2.
 check_text "BPOPEN warning: skipping '_mask';"
 check_text 'BP5 dataset opened without a descriptor: 2 fields, 4x3x2, 2 steps'
-check_text 'tdef 4 linear 00Z01JAN2000 60mn'
+check_text 'tdef 4 linear 04:05Z03FEB2001 10mn'
 check_text 'Undef count = 1  Valid count = 11'
 check_text 'Min, Max = 0 23'
 check_text 'Stats[sum,sumsqr,root(sumsqr),n]:     126 2258'
@@ -196,13 +202,21 @@ check_line '-7777'
 check_line '-9[.]99e[+]08'
 check_line '1011'
 
-# A descriptor-free open must report the dataset's own coordinate values, so
-# the axes BPOPEN infers agree with a descriptor written from the same arrays.
-# Three CTLINFO prints reach the output: two from descriptors and one from
-# BPOPEN, and all three have to show the same axes.
-check_count 'xdef 4 linear 0 1' 3
-check_count 'ydef 3 linear -1 1' 3
+# A descriptor-free open must behave like the descriptor a person would write
+# for the same file. The fixture's X and Y are in metres, so both map them to
+# degrees on GrADS's sphere, centred on 0; Z stays in metres; T comes from the
+# CF time coordinate. Three CTLINFO prints reach the output from the fixture:
+# two from descriptors and one from BPOPEN, and all three show the same axes.
+check_count 'xdef 4 linear -1.34919e-05 8.99463e-06' 3
+check_count 'ydef 3 linear -8.99463e-06 8.99463e-06' 3
 check_count 'zdef 2 levels 1000 500' 3
+check_count 'tdef 2 linear 04:05Z03FEB2001 10mn' 2
+check_text 'X and Y are Cartesian; mapped to degrees on GrADS'"'"'s 6370 km sphere, centred on 0'
+check_text "T from 'time': 2 steps from 04:05Z03FEB2001 every 10mn"
+
+# Without a time coordinate, T falls back to counting steps, and says so.
+check_text 'No time coordinate found; T counts steps, labelled in 1-minute intervals from 00Z01JAN2000'
+check_count 'tdef 2 linear 00Z01JAN2000 1mn' 1
 
 open_count="$(grep -Fc 'BP5 dataset opened without a descriptor:' <<< "$output")"
 if (( open_count < 3 )); then

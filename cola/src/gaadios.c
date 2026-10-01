@@ -405,8 +405,11 @@ static gaint gaadios_resolve_path(const char *requested, char *pathname,
   return 0;
 }
 
+/* Read a 1-D coordinate array. On success *found names the variable used,
+   so the caller can look at its attributes. */
 static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
-                                   const char **names, size_t expected) {
+                                   const char **names, size_t expected,
+                                   const char **found) {
   adios2_variable *variable;
   adios2_shapeid shapeid;
   adios2_type type;
@@ -415,6 +418,7 @@ static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
   void *native;
   size_t shape[1], start[1], count[1], bytes, i, ndims;
 
+  *found = NULL;
   while (*names) {
     variable = adios2_inquire_variable(io,*names);
     if (variable) break;
@@ -449,16 +453,285 @@ static gadouble *gaadios_read_axis(adios2_io *io, adios2_engine *engine,
     gree(values,"adios2axis");
     return NULL;
   }
-  /*
-   * Coordinate values are reported exactly as the dataset stores them, in
-   * the dataset's own units. A descriptor-free open must agree with an
-   * explicit descriptor written from the same arrays, so no unit conversion
-   * is applied here.
-   */
   bytes = expected;
   for (i=0;i<bytes;i++) values[i] = gaadios_value(native,type,i);
   gree(native,"adios2axisnative");
+  *found = *names;
   return values;
+}
+
+/*
+ * GrADS has no Cartesian horizontal axes: X and Y are longitude and latitude
+ * in degrees, and area weighting, the spherical derivatives (hdivg, hcurl), and
+ * map drawing all assume it. A descriptor for a Cartesian model therefore
+ * writes X and Y as small degree offsets on GrADS's own sphere, centred on 0
+ * so that cos(latitude) stays 1 across the domain. A descriptor-free open does
+ * the same, so it behaves like that descriptor rather than like metres read as
+ * degrees.
+ *
+ * The radius is the 6.37e6 m GrADS uses internally. With it, the functions
+ * that turn degrees back into distance recover the original grid spacing.
+ */
+#define GA_ADIOS_EARTH_RADIUS 6.37e6
+
+/* Metres per unit when a coordinate's units attribute names a length, or 0. */
+static gadouble gaadios_length_unit(adios2_io *io, const char *name) {
+  char units[4096];
+  size_t i;
+
+  if (!name || !gaadios_string_attribute(io,name,"units",units,sizeof(units)))
+    return 0.0;
+  gaadios_clean_text(units);
+  for (i=0;units[i];i++) units[i] = (char)tolower((unsigned char)units[i]);
+  if (!strcmp(units,"m") || !strcmp(units,"meter") ||
+      !strcmp(units,"meters") || !strcmp(units,"metre") ||
+      !strcmp(units,"metres")) return 1.0;
+  if (!strcmp(units,"km") || !strcmp(units,"kilometer") ||
+      !strcmp(units,"kilometers") || !strcmp(units,"kilometre") ||
+      !strcmp(units,"kilometres")) return 1000.0;
+  return 0.0;
+}
+
+static void gaadios_map_cartesian(gadouble *values, size_t count,
+                                  gadouble metres_per_unit) {
+  gadouble centre, scale;
+  size_t i;
+
+  centre = 0.5*(values[0]+values[count-1]);
+  scale = metres_per_unit /
+          (GA_ADIOS_EARTH_RADIUS*3.14159265358979323846/180.0);
+  for (i=0;i<count;i++) values[i] = (values[i]-centre)*scale;
+}
+
+/* Proleptic Gregorian calendar arithmetic on whole days since 1970-01-01. */
+static long long gaadios_days_from_civil(long long y, unsigned m, unsigned d) {
+  long long era;
+  unsigned yoe, doy, doe;
+
+  y -= m<=2;
+  era = (y>=0 ? y : y-399)/400;
+  yoe = (unsigned)(y-era*400);
+  doy = (153*(m>2 ? m-3 : m+9)+2)/5+d-1;
+  doe = yoe*365+yoe/4-yoe/100+doy;
+  return era*146097+(long long)doe-719468;
+}
+
+static void gaadios_civil_from_days(long long z, long long *y,
+                                    unsigned *m, unsigned *d) {
+  long long era;
+  unsigned doe, yoe, doy, mp;
+
+  z += 719468;
+  era = (z>=0 ? z : z-146096)/146097;
+  doe = (unsigned)(z-era*146097);
+  yoe = (doe-doe/1460+doe/36524-doe/146096)/365;
+  doy = doe-(365*yoe+yoe/4-yoe/100);
+  mp = (5*doy+2)/153;
+  *d = doy-(153*mp+2)/5+1;
+  *m = mp<10 ? mp+3 : mp-9;
+  *y = (long long)yoe+era*400+(*m<=2);
+}
+
+/* Parse CF time units, "<unit> since YYYY-MM-DD[ hh:mm[:ss]]", into the
+   length of one unit in seconds and the epoch in seconds since 1970. */
+static gaint gaadios_parse_time_units(const char *units, gadouble *unit_seconds,
+                                      long long *epoch) {
+  char word[32];
+  const char *s;
+  int y, mo, d, h, mi, n;
+  double sec;
+  size_t i;
+
+  s = units;
+  while (*s && isspace((unsigned char)*s)) s++;
+  for (i=0; *s && !isspace((unsigned char)*s) && i<sizeof(word)-1; i++, s++)
+    word[i] = (char)tolower((unsigned char)*s);
+  word[i] = '\0';
+  if (!strcmp(word,"seconds") || !strcmp(word,"second") ||
+      !strcmp(word,"secs") || !strcmp(word,"sec") || !strcmp(word,"s"))
+    *unit_seconds = 1.0;
+  else if (!strcmp(word,"minutes") || !strcmp(word,"minute") ||
+           !strcmp(word,"mins") || !strcmp(word,"min"))
+    *unit_seconds = 60.0;
+  else if (!strcmp(word,"hours") || !strcmp(word,"hour") ||
+           !strcmp(word,"hrs") || !strcmp(word,"hr") || !strcmp(word,"h"))
+    *unit_seconds = 3600.0;
+  else if (!strcmp(word,"days") || !strcmp(word,"day") || !strcmp(word,"d"))
+    *unit_seconds = 86400.0;
+  else return 0;
+
+  while (*s && isspace((unsigned char)*s)) s++;
+  if (strncmp(s,"since",5) && strncmp(s,"SINCE",5) && strncmp(s,"Since",5))
+    return 0;
+  s += 5;
+  y = mo = d = h = mi = 0;
+  sec = 0.0;
+  n = sscanf(s," %d-%d-%d%*[ T]%d:%d:%lf",&y,&mo,&d,&h,&mi,&sec);
+  if (n<3 || mo<1 || mo>12 || d<1 || d>31 || h<0 || h>23 || mi<0 || mi>59 ||
+      sec<0.0 || sec>=61.0) return 0;
+  *epoch = gaadios_days_from_civil(y,(unsigned)mo,(unsigned)d)*86400LL +
+           h*3600LL + mi*60LL + (long long)floor(sec+0.5);
+  return 1;
+}
+
+/*
+ * Build a TDEF line from a CF time coordinate: a variable named time (or
+ * coordinates/time) holding one value per step, or a 1-D array of them, with
+ * units "<unit> since <date>". Returns 1 with the line in tdef, or 0 when the
+ * dataset has no usable time coordinate; either way note says what happened,
+ * for the message printed after the open.
+ */
+static gaint gaadios_time_axis(adios2_io *io, adios2_engine *engine,
+                               size_t steps, char *tdef, size_t tdef_size,
+                               char *note, size_t note_size) {
+  static const char *names[] = {
+    "time", "coordinates/time", "Time", "TIME", "times", NULL
+  };
+  static const char *months[] = {
+    "JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"
+  };
+  adios2_variable *variable;
+  adios2_shapeid shapeid;
+  adios2_type type;
+  char units[4096], calendar[4096], increment[32];
+  const char *name;
+  void *native;
+  gadouble *values, unit_seconds, interval, minutes, gap;
+  long long epoch, start, days, year, count;
+  unsigned month, day;
+  size_t n, ndims, shape[GA_ADIOS_MAX_DIMS], sel_start[1], sel_count[1], i;
+  gaint uneven, rounded, hour, minute;
+
+  native = NULL;
+  values = NULL;
+  for (i=0; names[i]; i++) {
+    variable = adios2_inquire_variable(io,names[i]);
+    if (variable) break;
+  }
+  if (!names[i]) {
+    snprintf(note,note_size,
+             "No time coordinate found; T counts steps, labelled in 1-minute "
+             "intervals from 00Z01JAN2000\n");
+    return 0;
+  }
+  name = names[i];
+
+  if (!gaadios_string_attribute(io,name,"units",units,sizeof(units)) ||
+      !gaadios_parse_time_units(units,&unit_seconds,&epoch)) {
+    snprintf(note,note_size,
+             "Time variable '%.100s' has no units of the form '<unit> since "
+             "<date>'; T counts steps, labelled in 1-minute intervals from "
+             "00Z01JAN2000\n",name);
+    return 0;
+  }
+  if (gaadios_string_attribute(io,name,"calendar",calendar,sizeof(calendar))) {
+    gaadios_clean_text(calendar);
+    for (i=0;calendar[i];i++)
+      calendar[i] = (char)tolower((unsigned char)calendar[i]);
+    if (strcmp(calendar,"standard") && strcmp(calendar,"gregorian") &&
+        strcmp(calendar,"proleptic_gregorian")) {
+      snprintf(note,note_size,
+               "Time variable '%.100s' uses the '%.40s' calendar, which a "
+               "descriptor-free open does not handle; T counts steps, labelled "
+               "in 1-minute intervals from 00Z01JAN2000\n",name,calendar);
+      return 0;
+    }
+  }
+
+  if (adios2_variable_type(&type,variable)!=adios2_error_none ||
+      !gaadios_numeric_type(type) ||
+      adios2_variable_shapeid(&shapeid,variable)!=adios2_error_none)
+    goto unusable;
+  if (shapeid==adios2_shapeid_global_value) {
+    if (adios2_variable_steps(&n,variable)!=adios2_error_none) goto unusable;
+  }
+  else if (shapeid==adios2_shapeid_global_array) {
+    if (adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
+        ndims!=1 ||
+        adios2_variable_shape(shape,variable)!=adios2_error_none)
+      goto unusable;
+    n = shape[0];
+  }
+  else goto unusable;
+  if (n==0) goto unusable;
+  if (n>steps) n = steps;
+
+  native = galloc(n*gaadios_type_size(type),"adios2timenative");
+  values = (gadouble *)galloc(n*sizeof(gadouble),"adios2time");
+  if (!native || !values) goto unusable;
+  if (shapeid==adios2_shapeid_global_value) {
+    if (adios2_set_step_selection(variable,0,n)!=adios2_error_none)
+      goto unusable;
+  }
+  else {
+    sel_start[0] = 0;
+    sel_count[0] = n;
+    if (adios2_set_selection(variable,1,sel_start,sel_count)!=adios2_error_none ||
+        adios2_set_step_selection(variable,0,1)!=adios2_error_none)
+      goto unusable;
+  }
+  if (adios2_get(engine,variable,native,adios2_mode_sync)!=adios2_error_none)
+    goto unusable;
+  for (i=0;i<n;i++) values[i] = gaadios_value(native,type,i);
+
+  /* A single step has no interval; any increment labels it the same. */
+  interval = n>1 ? (values[1]-values[0])*unit_seconds : 60.0;
+  if (!(interval>0.0)) {
+    snprintf(note,note_size,
+             "Time variable '%.100s' does not increase; T counts steps, "
+             "labelled in 1-minute intervals from 00Z01JAN2000\n",name);
+    goto fallback;
+  }
+  minutes = interval/60.0;
+  if (fabs(minutes-floor(minutes+0.5))>1.0e-6*minutes || minutes<0.5) {
+    snprintf(note,note_size,
+             "Time variable '%.100s' steps by %g s, which is not a whole number "
+             "of minutes and so cannot be a GrADS TDEF increment; T counts "
+             "steps, labelled in 1-minute intervals from 00Z01JAN2000\n",
+             name,interval);
+    goto fallback;
+  }
+  count = (long long)floor(minutes+0.5);
+  uneven = 0;
+  for (i=2;i<n;i++) {
+    gap = (values[i]-values[i-1])*unit_seconds;
+    if (fabs(gap-interval)>1.0e-6*interval) { uneven = 1; break; }
+  }
+
+  start = epoch + (long long)floor(values[0]*unit_seconds+0.5);
+  rounded = (start%60)!=0;
+  start = (long long)floor((double)start/60.0+0.5)*60;
+  days = start>=0 ? start/86400 : -((-start+86399)/86400);
+  gaadios_civil_from_days(days,&year,&month,&day);
+  hour = (gaint)((start-days*86400)/3600);
+  minute = (gaint)(((start-days*86400)%3600)/60);
+
+  if (count%1440==0) snprintf(increment,sizeof(increment),"%llddy",count/1440);
+  else if (count%60==0) snprintf(increment,sizeof(increment),"%lldhr",count/60);
+  else snprintf(increment,sizeof(increment),"%lldmn",count);
+
+  snprintf(tdef,tdef_size,"tdef %lu linear %02d:%02dZ%02u%s%04lld %s",
+           (unsigned long)steps,hour,minute,day,months[month-1],year,increment);
+  snprintf(note,note_size,
+           "T from '%.100s': %lu steps from %02d:%02dZ%02u%s%04lld every %s%s%s\n",
+           name,(unsigned long)steps,hour,minute,day,months[month-1],year,
+           increment,
+           rounded ? "; the first time is rounded to the nearest minute" : "",
+           uneven ? "; the steps are NOT evenly spaced, and T is labelled "
+                    "with the first interval" : "");
+  gree(native,"adios2timenative");
+  gree(values,"adios2time");
+  return 1;
+
+unusable:
+  snprintf(note,note_size,
+           "Time variable '%.100s' could not be read as one value per step; T "
+           "counts steps, labelled in 1-minute intervals from 00Z01JAN2000\n",
+           name);
+fallback:
+  if (native) gree(native,"adios2timenative");
+  if (values) gree(values,"adios2time");
+  return 0;
 }
 
 static gaint gaadios_axis_is_linear(gadouble *values, size_t count,
@@ -524,6 +797,10 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
   struct gaadios_meta_var *vars;
   char **names;
   char requested[4096], pathname[4096], title[4096];
+  char tdefline[256], timenote[512];
+  const char *xname, *yname, *zname;
+  gadouble xmetres, ymetres;
+  gaint havetime;
   char temporary[] = "/tmp/opengrads-bp5-XXXXXX";
   FILE *descriptor;
   gadouble *xvalues, *yvalues, *zvalues;
@@ -648,9 +925,20 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
     goto cleanup;
   }
 
-  xvalues = gaadios_read_axis(io,engine,xnames,xsize);
-  yvalues = gaadios_read_axis(io,engine,ynames,ysize);
-  if (zsize>1) zvalues = gaadios_read_axis(io,engine,znames,zsize);
+  xvalues = gaadios_read_axis(io,engine,xnames,xsize,&xname);
+  yvalues = gaadios_read_axis(io,engine,ynames,ysize,&yname);
+  if (zsize>1) zvalues = gaadios_read_axis(io,engine,znames,zsize,&zname);
+
+  /* Z stays in the dataset's own units, as a descriptor writes it; X and Y
+     in a length unit become degrees, as a descriptor for a Cartesian model
+     writes them. */
+  xmetres = xvalues ? gaadios_length_unit(io,xname) : 0.0;
+  ymetres = yvalues ? gaadios_length_unit(io,yname) : 0.0;
+  if (xmetres>0.0) gaadios_map_cartesian(xvalues,xsize,xmetres);
+  if (ymetres>0.0) gaadios_map_cartesian(yvalues,ysize,ymetres);
+
+  havetime = gaadios_time_axis(io,engine,steps,tdefline,sizeof(tdefline),
+                               timenote,sizeof(timenote));
 
   if (gaadios_string_attribute(io,NULL,"title",title,sizeof(title)))
     gaadios_clean_text(title);
@@ -670,8 +958,9 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
   gaadios_write_axis(descriptor,"x",xsize,xvalues);
   gaadios_write_axis(descriptor,"y",ysize,yvalues);
   gaadios_write_axis(descriptor,"z",zsize,zvalues);
-  fprintf(descriptor,"tdef %lu linear 00z01jan2000 1mn\n",
-          (unsigned long)steps);
+  if (havetime) fprintf(descriptor,"%s\n",tdefline);
+  else fprintf(descriptor,"tdef %lu linear 00z01jan2000 1mn\n",
+               (unsigned long)steps);
   fprintf(descriptor,"vars %lu\n",(unsigned long)included);
   for (i=0;i<name_count;i++) {
     if (!vars[i].included) continue;
@@ -704,6 +993,16 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
              (unsigned long)included,(unsigned long)xsize,(unsigned long)ysize,
              (unsigned long)zsize,(unsigned long)steps);
     gaprnt(2,pout);
+    if (xmetres>0.0 || ymetres>0.0) {
+      snprintf(pout,1255,
+               "%s %s Cartesian; mapped to degrees on GrADS's %.0f km sphere, "
+               "centred on 0, as a descriptor for a Cartesian model writes them\n",
+               xmetres>0.0 && ymetres>0.0 ? "X and Y" : (xmetres>0.0 ? "X" : "Y"),
+               xmetres>0.0 && ymetres>0.0 ? "are" : "is",
+               GA_ADIOS_EARTH_RADIUS/1000.0);
+      gaprnt(2,pout);
+    }
+    gaprnt(havetime ? 2 : 1,timenote);
   }
   goto cleanup;
 

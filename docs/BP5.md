@@ -94,7 +94,26 @@ Recognized coordinate names are:
 - Y: `coordinates/y`, `y`, `lat`, `latitude`
 - Z: `coordinates/z_mid`, `coordinates/z`, `z`, `lev`, `level`, `height`
 
-Coordinate values are taken exactly as the dataset stores them, in the dataset's own units: a Z axis written in meters stays in meters, so `lev` means the same thing as it does under a descriptor written from the same arrays. No unit conversion is applied. Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
+Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
+
+### A descriptor-free open behaves like a descriptor
+
+`bpopen` builds the descriptor a person would write for the dataset, so opening it either way gives the same results. On a VVM-shaped dataset (96 × 96 × 300, coordinates in metres, a CF time coordinate), every command checked, `aave` and level selection included, printed the same through `bpopen` as through a descriptor carrying the same axes, and the plots were byte-identical. `q ctlinfo` after `bpopen` shows that descriptor, ready to copy.
+
+**Z** is used as the dataset stores it. A Z axis in metres stays in metres, so `set lev 700` picks the level nearest 700 m.
+
+**X and Y in a length unit** (`m`, `meter`, `metre`, `km`, and their plurals) become degrees. GrADS has no Cartesian horizontal axes: X and Y are longitude and latitude, and area averages (`aave`), the spherical derivatives (`hdivg`, `hcurl`), and map drawing all assume it. Read as degrees, a domain 3325 m wide spans more than nine trips round the globe; the map labels wrap and `aave` is badly wrong (70 % high on one measured field). So, as a descriptor for a Cartesian model does, each axis is mapped onto GrADS's own 6370 km sphere and centred on 0:
+
+    degrees = (value - midpoint of the axis) / (6.37e6 m × π/180)
+
+Centring keeps cos(latitude) at 1 to within 4 × 10⁻⁸ across a 3.3 km domain, so `aave` matches the arithmetic mean, and using GrADS's own radius means `hdivg` and `hcurl` recover the original grid spacing. A 35 m grid becomes `xdef 96 linear -0.0149536 0.000314812`, the values VVM descriptors carry. X and Y in any other units, or without a units attribute, are used as stored; a Cartesian dataset without units needs an explicit descriptor.
+
+**T** comes from a CF time coordinate: a variable named `time` or `coordinates/time` holding one value per step, or one 1-D array of all steps, with `units` of the form `seconds since 1998-01-01 00:00:00` (also `minutes`, `hours`, `days`; an ISO `T` separator is accepted). The calendar must be standard or Gregorian, and the step must be a whole number of minutes, since that is the finest a GrADS `TDEF` can express. Uneven steps are labelled with the first interval, with a warning. Without a usable time coordinate, T counts steps, labelled from 00Z01JAN2000 at one-minute intervals.
+
+The open reports each of these decisions, for example:
+
+    X and Y are Cartesian; mapped to degrees on GrADS's 6370 km sphere, centred on 0, ...
+    T from 'time': 1441 steps from 00:00Z01JAN1998 every 1mn
 
 A field is skipped, with a warning naming it, when its BP variable name cannot be written into a GrADS descriptor: a name holding whitespace, a `~`, an `=>`, a non-printable byte, more than 256 characters, or starting with anything other than a letter, a digit, or `/`. Such a dataset needs an explicit descriptor, or a writer that names its variables differently.
 
@@ -144,7 +163,7 @@ OPENGRADS_ADIOS2_ROOT=/opt/adios2-cpu \
 ```
 
 The test creates a temporary two-step BP5 fixture. It covers a planned TDEF
-that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup.
+that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup. It also checks that a descriptor-free open and the fixture's descriptor report the same X, Y, Z, and T axes, with metre X and Y mapped to degrees and T taken from the CF time coordinate, and that a dataset without a time coordinate falls back to counted steps and says so.
 
 For sanitizer testing, configure a separate build with:
 
@@ -195,6 +214,7 @@ headlessly with `./opengrads -bl -d gxdummy -h gxdummy`.
 - Serial random access only; no MPI collective reader or streaming engine.
 - Global arrays only; no ADIOS2 local arrays or complex values.
 - Descriptor-free inference is intentionally limited to matching rank-2/rank-3 fields.
+- Descriptor-free time axes need a CF time coordinate with a standard calendar and whole-minute steps; anything else counts steps.
 - No templates or PDEF in the BP5 backend.
 - Bulk reads currently cover in-bounds X/Y requests; other requests fall back to row reads.
 - GrADS retains global request state and is not generally thread-safe.
