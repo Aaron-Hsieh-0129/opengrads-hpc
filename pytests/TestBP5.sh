@@ -138,6 +138,50 @@ bpopen $test_root/notime/bp5_notime.bp
 q ctlinfo
 reinit
 open $test_root/bp5_invalid_shape.ctl
+reinit
+bpopen $test_root/bp5_fixture.bp
+set gxout print
+set prnopts %g 8 1
+set x 1 4
+set y 2
+set z 2
+set t 2
+d theta_ref
+d terrain
+set x 1
+set y 1
+set z 1 2
+d theta_ref
+set z 1
+set t 1 2
+d domain_mean
+set t 2
+set x 1 4
+set y 2
+set z 1 2
+d temperature-theta_ref
+reinit
+open $test_root/bp5_fixture.ctl
+set gxout print
+set prnopts %g 8 1
+set x 1 4
+set y 2
+set z 2
+set t 2
+d thref
+d terrain
+set x 1
+set y 1
+set z 1 2
+d thref
+set z 1
+set t 1 2
+d dmean
+set t 2
+set x 1 4
+set y 2
+set z 1 2
+d temp-thref
 quit
 GRADS_COMMANDS
 )"
@@ -184,7 +228,7 @@ check_text 'Air temperature [K]'
 # _mask matches the inferred grid but its name cannot be written in a
 # descriptor, so it is skipped with a warning and the field count stays 2.
 check_text "BPOPEN warning: skipping '_mask';"
-check_text 'BP5 dataset opened without a descriptor: 2 fields, 4x3x2, 2 steps'
+check_text 'BP5 dataset opened without a descriptor: 5 fields, 4x3x2, 2 steps'
 check_text 'tdef 4 linear 04:05Z03FEB2001 10mn'
 check_text 'Undef count = 1  Valid count = 11'
 check_text 'Min, Max = 0 23'
@@ -218,6 +262,19 @@ check_text "T from 'time': 2 steps from 04:05Z03FEB2001 every 10mn"
 check_text 'No time coordinate found; T counts steps, labelled in 1-minute intervals from 00Z01JAN2000'
 check_count 'tdef 2 linear 00Z01JAN2000 1mn' 1
 
+# Fields that are not full grids, the same through bpopen and the descriptor:
+# a Z profile repeated along X and Y, a field written at the first step only
+# and so the same at every time, and a global value read as a time series.
+# A profile combines with a 3-D field directly, here in an x-z section.
+check_text '1-D fields, the same along the axes they lack: domain_mean(t), theta_ref(z)'
+check_text 'Written once, so the same at every time: terrain, theta_ref'
+check_text 'Written once, so the same at every time: thref, terrain'
+check_count '310 310 310 310' 2
+check_count '4.5 5.5 6.5 7.5' 2
+check_count '300 310' 2
+check_count '50 51' 2
+check_count '710 711 712 713 800 801 802 803' 2
+
 open_count="$(grep -Fc 'BP5 dataset opened without a descriptor:' <<< "$output")"
 if (( open_count < 3 )); then
   printf 'BP5 lifecycle test expected at least 3 successful descriptor-free opens, found %s\n' "$open_count" >&2
@@ -225,4 +282,4 @@ if (( open_count < 3 )); then
   exit 1
 fi
 
-printf 'BP5 regression test passed: partial TDEF, attributes, descriptor precedence, bulk 2-D/shaded reads, errors, and repeated lifecycle.\n'
+printf 'BP5 regression test passed: partial TDEF, attributes, descriptor precedence, bulk 2-D/shaded reads, 1-D and written-once fields, errors, and repeated lifecycle.\n'

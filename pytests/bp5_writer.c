@@ -14,6 +14,10 @@
  *
  * time is a CF time coordinate, one value per step, which a descriptor-free
  * open turns into the TDEF. --no-time leaves it out, for the fallback.
+ *
+ * Three fields are not full grids: theta_ref is a Z profile and terrain a
+ * Y,X field, both written at the first step only, so they hold for every
+ * time; domain_mean is a global value written every step, a time series.
  */
 
 #include <stdio.h>
@@ -54,6 +58,7 @@ int main(int argc, char **argv)
   const double x_values[4] = {0.0, 1.0, 2.0, 3.0};
   const double y_values[3] = {-1.0, 0.0, 1.0};
   const double z_values[2] = {1000.0, 500.0};
+  const double theta_ref[2] = {300.0, 310.0};
   const float temperature_fill = -7777.0f;
   const double pressure_missing = -9999.0;
   adios2_step_status status;
@@ -66,7 +71,11 @@ int main(int argc, char **argv)
   adios2_variable *y_var;
   adios2_variable *z_var;
   adios2_variable *time_var;
-  double time_value;
+  adios2_variable *theta_var;
+  adios2_variable *terrain_var;
+  adios2_variable *mean_var;
+  double time_value, domain_mean;
+  double terrain[12];
   int with_time;
   adios2_engine *engine;
   float temperature[24];
@@ -113,6 +122,19 @@ int main(int argc, char **argv)
       adios2_define_variable(io, "coordinates/z_mid", adios2_type_double, 1,
                              z_shape, z_start, z_count, adios2_constant_dims_true),
       "adios2_define_variable(coordinates/z_mid)");
+  theta_var = require_handle(
+      adios2_define_variable(io, "theta_ref", adios2_type_double, 1,
+                             z_shape, z_start, z_count, adios2_constant_dims_true),
+      "adios2_define_variable(theta_ref)");
+  terrain_var = require_handle(
+      adios2_define_variable(io, "terrain", adios2_type_double, 2,
+                             ps_shape, ps_start, ps_count,
+                             adios2_constant_dims_true),
+      "adios2_define_variable(terrain)");
+  mean_var = require_handle(
+      adios2_define_variable(io, "domain_mean", adios2_type_double, 0,
+                             NULL, NULL, NULL, adios2_constant_dims_true),
+      "adios2_define_variable(domain_mean)");
   time_var = NULL;
   if (with_time) {
     time_var = require_handle(
@@ -188,6 +210,8 @@ int main(int argc, char **argv)
     }
     if (step == 0) surface_pressure[5] = -9999.0;
     for (index = 0; index < 12; ++index) mask[index] = (double)(index % 2);
+    for (index = 0; index < 12; ++index) terrain[index] = 0.5 + (double)index;
+    domain_mean = 50.0 + (double)step;
 
     fail_error(adios2_begin_step(engine, adios2_step_mode_append, 0.0,
                                  &status),
@@ -209,6 +233,14 @@ int main(int argc, char **argv)
                "adios2_put(coordinates/y)");
     fail_error(adios2_put(engine, z_var, z_values, adios2_mode_sync),
                "adios2_put(coordinates/z_mid)");
+    if (step == 0) {
+      fail_error(adios2_put(engine, theta_var, theta_ref, adios2_mode_sync),
+                 "adios2_put(theta_ref)");
+      fail_error(adios2_put(engine, terrain_var, terrain, adios2_mode_sync),
+                 "adios2_put(terrain)");
+    }
+    fail_error(adios2_put(engine, mean_var, &domain_mean, adios2_mode_sync),
+               "adios2_put(domain_mean)");
     if (time_var) {
       time_value = 600.0 * (double)step;
       fail_error(adios2_put(engine, time_var, &time_value, adios2_mode_sync),

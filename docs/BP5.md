@@ -86,7 +86,17 @@ display temperature
 
 If `/path/to/run` contains exactly one BP5 child such as `output.bp`, `bpopen /path/to/run` resolves it. If it contains more than one BP5 child, specify the dataset explicitly.
 
-Discovery selects the largest numeric rank-3 global array as the reference grid, or the largest rank-2 array when no rank-3 field exists. Matching fields are interpreted as `z,y,x` or `y,x`. Only compatible rank-2 and rank-3 global arrays are exposed.
+Discovery selects the largest numeric rank-3 global array as the reference grid, or the largest rank-2 array when no rank-3 field exists. Matching fields are interpreted as `z,y,x` or `y,x`.
+
+1-D data is exposed too:
+
+- **A rank-1 array** whose length matches exactly one axis is a profile along that axis, such as a reference state `thbar(z)`. It holds the same value everywhere along the axes it lacks, so it combines with full fields directly: `d th - thbar` works in an x-y map, an x-z section, or a profile. A length that matches two axes (say 96 levels on a 96 × 96 grid) is skipped with a warning, since the axis cannot be told from the shape; give such a field a descriptor line. Coordinate variables are never fields.
+- **A global value** written at every step, one number per step, is a time series. A descriptor lists it with the dimension list `t`.
+- A dataset with no 2-D or 3-D field at all, a single column, opens on its Z coordinate with X and Y as single points.
+
+The open lists the 1-D fields it found:
+
+    1-D fields, the same along the axes they lack: thbar(z), pibar(z), rhobar(z), rhobar_up(z)
 
 Recognized coordinate names are:
 
@@ -140,6 +150,12 @@ The name before `=>` is the exact, case-sensitive BP variable name. The name aft
 
 When the array omits T, ADIOS2 engine steps map to GrADS T. When it contains an explicit T array dimension, the reader selects ADIOS2 step zero and indexes that dimension.
 
+A dimension list may leave out X or Y: `thbar=>thbar 300 z Reference potential temperature` describes a profile, which is then the same at every X and Y. A global value, one number per step, is listed as `t`: `domain_mean=>dmean 0 t Domain mean`.
+
+A variable written at one step only, in a dataset whose other variables have more, holds for every time: terrain, land use, and reference profiles are typically written once. The open names such variables:
+
+    Written once, so the same at every time: topo, albedo, thbar
+
 `TDEF` may declare the planned length of a running simulation even when fewer
 BP5 steps have been completed. For example, a descriptor with `tdef 144` can
 open when only 100 steps currently exist. Times 1 through 100 are readable;
@@ -163,7 +179,7 @@ OPENGRADS_ADIOS2_ROOT=/opt/adios2-cpu \
 ```
 
 The test creates a temporary two-step BP5 fixture. It covers a planned TDEF
-that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup. It also checks that a descriptor-free open and the fixture's descriptor report the same X, Y, Z, and T axes, with metre X and Y mapped to degrees and T taken from the CF time coordinate, and that a dataset without a time coordinate falls back to counted steps and says so.
+that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup. It also checks that a descriptor-free open and the fixture's descriptor report the same X, Y, Z, and T axes, with metre X and Y mapped to degrees and T taken from the CF time coordinate, that a dataset without a time coordinate falls back to counted steps and says so, and that a Z profile, a field written at the first step only, and a per-step global value read the same through both opens, including a profile subtracted from a 3-D field in an x-z section.
 
 For sanitizer testing, configure a separate build with:
 
@@ -212,8 +228,8 @@ headlessly with `./opengrads -bl -d gxdummy -h gxdummy`.
 ## Current limitations
 
 - Serial random access only; no MPI collective reader or streaming engine.
-- Global arrays only; no ADIOS2 local arrays or complex values.
-- Descriptor-free inference is intentionally limited to matching rank-2/rank-3 fields.
+- Global arrays, and global values read as time series; no ADIOS2 local arrays or complex values.
+- Descriptor-free inference covers matching rank-2/rank-3 fields, rank-1 profiles whose length fits one axis, and per-step global values. Other shapes, such as a 2-D x-z section, need a descriptor.
 - Descriptor-free time axes need a CF time coordinate with a standard calendar and whole-minute steps; anything else counts steps.
 - No templates or PDEF in the BP5 backend.
 - Bulk reads currently cover in-bounds X/Y requests; other requests fall back to row reads.

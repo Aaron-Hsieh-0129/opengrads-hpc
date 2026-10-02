@@ -51,6 +51,7 @@ struct gaadios_state {
   adios2_adios *adios;
   adios2_io *io;
   adios2_engine *engine;
+  size_t maxsteps;   /* most ADIOS2 steps of any variable without a T dimension */
 };
 
 struct gaadios_meta_var {
@@ -62,6 +63,14 @@ struct gaadios_meta_var {
   size_t steps;
   char description[161];
   gaint included;
+  gaint scalar;          /* a global value: one number per step */
+  const char *dims;      /* the descriptor's dimension list */
+  size_t levels;         /* the descriptor's level count */
+};
+
+/* Names a time coordinate goes by; they are axes, never fields */
+static const char *gaadios_time_names[] = {
+  "time", "coordinates/time", "Time", "TIME", "times", NULL
 };
 
 static char pout[1256];
@@ -250,22 +259,32 @@ static gaint gaadios_expected_size (struct gafile *pfi, struct gavar *pvar,
 
 /* Return 1 when the requested T index is currently readable, 0 when the
    descriptor declares a future time that has not been written yet, and -1
-   when ADIOS2 metadata cannot be queried. */
-static gaint gaadios_time_available (struct gavar *pvar,
+   when ADIOS2 metadata cannot be queried. Return 2 for a variable written
+   once in a dataset with more steps, such as terrain or a reference
+   profile: it holds for every time, and its one step is the one to read. */
+static gaint gaadios_time_available (struct gafile *pfi, struct gavar *pvar,
                                      adios2_variable *variable, gaint t) {
+  struct gaadios_state *state;
+  adios2_shapeid shapeid;
   size_t shape[GA_ADIOS_MAX_DIMS], steps;
   gaint i, rank;
 
   if (t<1) return 0;
+  if (adios2_variable_shapeid(&shapeid,variable)!=adios2_error_none) return -1;
   rank = gaadios_rank(pvar);
-  for (i=0;i<rank;i++) {
-    if (pvar->units[i]==-103) {
-      if (adios2_variable_shape(shape,variable)!=adios2_error_none) return -1;
-      return (size_t)t<=shape[i];
+  if (shapeid!=adios2_shapeid_global_value) {
+    for (i=0;i<rank;i++) {
+      if (pvar->units[i]==-103) {
+        if (adios2_variable_shape(shape,variable)!=adios2_error_none) return -1;
+        return (size_t)t<=shape[i];
+      }
     }
   }
   if (adios2_variable_steps(&steps,variable)!=adios2_error_none) return -1;
-  return (size_t)t<=steps;
+  if ((size_t)t<=steps) return 1;
+  state = (struct gaadios_state *)pfi->adios2;
+  if (steps==1 && state && state->maxsteps>1 && t<=pfi->dnum[3]) return 2;
+  return 0;
 }
 
 static void gaadios_set_undefined (struct gafile *pfi, size_t count,
@@ -584,9 +603,7 @@ static gaint gaadios_parse_time_units(const char *units, gadouble *unit_seconds,
 static gaint gaadios_time_axis(adios2_io *io, adios2_engine *engine,
                                size_t steps, char *tdef, size_t tdef_size,
                                char *note, size_t note_size) {
-  static const char *names[] = {
-    "time", "coordinates/time", "Time", "TIME", "times", NULL
-  };
+  const char **names = gaadios_time_names;
   static const char *months[] = {
     "JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"
   };
@@ -774,6 +791,23 @@ static void gaadios_write_axis(FILE *descriptor, const char *dimension,
   }
 }
 
+/* Whether a name is one of the axis coordinates, which are never fields. */
+static gaint gaadios_is_axis_name(const char *name, const char **xnames,
+                                  const char **ynames, const char **znames) {
+  const char **lists[4];
+  gaint i, j;
+
+  if (!strncmp(name,"coordinates/",12)) return 1;
+  lists[0] = xnames;
+  lists[1] = ynames;
+  lists[2] = znames;
+  lists[3] = gaadios_time_names;
+  for (i=0;i<4;i++)
+    for (j=0;lists[i][j];j++)
+      if (!strcmp(name,lists[i][j])) return 1;
+  return 0;
+}
+
 /*
  * Scan a BP5 file and synthesize the descriptor metadata in a temporary file.
  * The temporary descriptor is an implementation detail: it is unlinked as
@@ -805,7 +839,9 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
   FILE *descriptor;
   gadouble *xvalues, *yvalues, *zvalues;
   size_t name_count, i, j, elements, best_elements, reference;
-  size_t xsize, ysize, zsize, steps, included;
+  size_t xsize, ysize, zsize, steps, included, oned, len;
+  char onednames[512];
+  gaint matches;
   int fd;
   gaint rc, have_reference;
 
@@ -867,14 +903,24 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
     variable = adios2_inquire_variable(io,names[i]);
     if (!variable ||
         adios2_variable_shapeid(&shapeid,variable)!=adios2_error_none ||
-        shapeid!=adios2_shapeid_global_array ||
         adios2_variable_type(&vars[i].type,variable)!=adios2_error_none ||
-        !gaadios_numeric_type(vars[i].type) ||
-        adios2_variable_ndims(&vars[i].rank,variable)!=adios2_error_none ||
-        vars[i].rank<2 || vars[i].rank>3 ||
-        adios2_variable_shape(vars[i].shape,variable)!=adios2_error_none)
+        !gaadios_numeric_type(vars[i].type))
       continue;
+    if (shapeid==adios2_shapeid_global_value) {
+      /* one number per step; a time series when there is more than one */
+      adios2_variable_steps(&vars[i].steps,variable);
+      vars[i].scalar = 1;
+      continue;
+    }
+    if (shapeid!=adios2_shapeid_global_array ||
+        adios2_variable_ndims(&vars[i].rank,variable)!=adios2_error_none ||
+        vars[i].rank<1 || vars[i].rank>3 ||
+        adios2_variable_shape(vars[i].shape,variable)!=adios2_error_none) {
+      vars[i].rank = 0;
+      continue;
+    }
     adios2_variable_steps(&vars[i].steps,variable);
+    if (vars[i].rank==1) continue;   /* matched to an axis once the grid is known */
     elements = 1;
     for (j=0;j<vars[i].rank;j++) elements *= vars[i].shape[j];
     if (!have_reference ||
@@ -885,24 +931,78 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
       have_reference = 1;
     }
   }
-  if (!have_reference) {
-    gaprnt(0,"BPOPEN error: no numeric 2-D or 3-D global arrays were found\n");
-    goto cleanup;
+  if (have_reference) {
+    xsize = vars[reference].shape[vars[reference].rank-1];
+    ysize = vars[reference].shape[vars[reference].rank-2];
+    zsize = vars[reference].rank==3 ? vars[reference].shape[0] : 1;
   }
-
-  xsize = vars[reference].shape[vars[reference].rank-1];
-  ysize = vars[reference].shape[vars[reference].rank-2];
-  zsize = vars[reference].rank==3 ? vars[reference].shape[0] : 1;
+  else {
+    /* No 2-D or 3-D field: a column of profiles on a Z coordinate, or time
+       series alone. X and Y are single points. */
+    xsize = ysize = zsize = 1;
+    for (j=0;znames[j];j++) {
+      variable = adios2_inquire_variable(io,znames[j]);
+      if (variable &&
+          adios2_variable_shapeid(&shapeid,variable)==adios2_error_none &&
+          shapeid==adios2_shapeid_global_array &&
+          adios2_variable_ndims(&elements,variable)==adios2_error_none &&
+          elements==1 &&
+          adios2_variable_shape(&elements,variable)==adios2_error_none) {
+        zsize = elements;
+        break;
+      }
+    }
+  }
   steps = 1;
   included = 0;
+  oned = 0;
+  onednames[0] = '\0';
   for (i=0;i<name_count;i++) {
     if (vars[i].rank==2 &&
         vars[i].shape[0]==ysize && vars[i].shape[1]==xsize) {
       vars[i].included = 1;
+      vars[i].dims = "y,x";
+      vars[i].levels = 0;
     }
     else if (vars[i].rank==3 &&
              vars[i].shape[0]==zsize && vars[i].shape[1]==ysize &&
              vars[i].shape[2]==xsize) {
+      vars[i].included = 1;
+      vars[i].dims = "z,y,x";
+      vars[i].levels = zsize;
+    }
+    else if ((vars[i].rank==1 || (vars[i].scalar && vars[i].steps>1)) &&
+             !gaadios_is_axis_name(vars[i].name,xnames,ynames,znames)) {
+      /* A 1-D field is a profile along whichever axis its length matches,
+         and is the same along the others; a global value written every step
+         is a time series. A length that fits two axes is left out rather
+         than guessed. */
+      if (vars[i].scalar) {
+        vars[i].dims = "t";
+        vars[i].levels = 0;
+      }
+      else {
+        matches = (zsize>1 && vars[i].shape[0]==zsize) +
+                  (ysize>1 && vars[i].shape[0]==ysize) +
+                  (xsize>1 && vars[i].shape[0]==xsize);
+        if (matches>1) {
+          snprintf(pout,1255,
+                   "BPOPEN warning: skipping '%.200s'; its length %lu fits more than one "
+                   "axis, so it needs a descriptor\n",
+                   vars[i].name,(unsigned long)vars[i].shape[0]);
+          gaprnt(1,pout);
+          continue;
+        }
+        if (matches==0) continue;
+        if (zsize>1 && vars[i].shape[0]==zsize) {
+          vars[i].dims = "z";
+          vars[i].levels = zsize;
+        }
+        else {
+          vars[i].dims = (ysize>1 && vars[i].shape[0]==ysize) ? "y" : "x";
+          vars[i].levels = 0;
+        }
+      }
       vars[i].included = 1;
     }
     if (vars[i].included) {
@@ -918,10 +1018,21 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
       gaadios_make_description(io,&vars[i]);
       if (vars[i].steps>steps) steps = vars[i].steps;
       included++;
+      if (vars[i].rank<2) {
+        len = strlen(onednames);
+        if (oned<8 && len+strlen(vars[i].alias)+8<sizeof(onednames))
+          snprintf(onednames+len,sizeof(onednames)-len,"%s%s(%s)",
+                   oned ? ", " : "",vars[i].alias,vars[i].dims);
+        oned++;
+      }
     }
   }
   if (!included) {
-    gaprnt(0,"BPOPEN error: no fields match the inferred horizontal grid\n");
+    if (have_reference)
+      gaprnt(0,"BPOPEN error: no fields match the inferred horizontal grid\n");
+    else
+      gaprnt(0,"BPOPEN error: no numeric 2-D or 3-D global arrays, profiles on a Z "
+               "coordinate, or time series were found\n");
     goto cleanup;
   }
 
@@ -965,9 +1076,8 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
   for (i=0;i<name_count;i++) {
     if (!vars[i].included) continue;
     fprintf(descriptor,"%s=>%s %lu %s %s\n",
-            vars[i].name,vars[i].alias,
-            (unsigned long)(vars[i].rank==3 ? zsize : 0),
-            vars[i].rank==3 ? "z,y,x" : "y,x",vars[i].description);
+            vars[i].name,vars[i].alias,(unsigned long)vars[i].levels,
+            vars[i].dims,vars[i].description);
   }
   fprintf(descriptor,"endvars\n");
   if (fclose(descriptor)!=0) {
@@ -1003,6 +1113,11 @@ gaint gaadios_bpopen(char *args, struct gacmn *pcm) {
       gaprnt(2,pout);
     }
     gaprnt(havetime ? 2 : 1,timenote);
+    if (oned) {
+      snprintf(pout,1255,"1-D fields, the same along the axes they lack: %s%s\n",
+               onednames,oned>8 ? ", ..." : "");
+      gaprnt(2,pout);
+    }
   }
   goto cleanup;
 
@@ -1063,11 +1178,33 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
     gaprnt(0,pout);
     return 1;
   }
+  rank = gaadios_rank(pvar);
   if (adios2_variable_shapeid(&shapeid,variable)!=adios2_error_none ||
-      shapeid!=adios2_shapeid_global_array) {
-    snprintf(pout,1255,"BP5 Open Error: Variable '%s' must be a global array\n",name);
+      (shapeid!=adios2_shapeid_global_array &&
+       shapeid!=adios2_shapeid_global_value)) {
+    snprintf(pout,1255,
+             "BP5 Open Error: Variable '%s' must be a global array or global value\n",
+             name);
     gaprnt(0,pout);
     return 1;
+  }
+  if (shapeid==adios2_shapeid_global_value) {
+    /* one number per step: the descriptor describes it as "t" */
+    if (rank!=1 || pvar->units[0]!=-103) {
+      snprintf(pout,1255,
+               "BP5 Open Error: '%s' is a global value, one number per step; "
+               "its dimension list must be t\n",name);
+      gaprnt(0,pout);
+      return 1;
+    }
+    if (pfi->dnum[4]>1) {
+      snprintf(pout,1255,
+               "BP5 Open Error: Variable '%s' must include e when EDEF is greater than one\n",
+               name);
+      gaprnt(0,pout);
+      return 1;
+    }
+    goto attributes;
   }
   if (adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
       ndims>GA_ADIOS_MAX_DIMS) {
@@ -1076,7 +1213,6 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
     return 1;
   }
 
-  rank = gaadios_rank(pvar);
   if (ndims!=(size_t)rank) {
     snprintf(pout,1255,
              "BP5 Open Error: Variable '%s' rank is %lu, descriptor specifies %d dimensions\n",
@@ -1122,16 +1258,12 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
     }
   }
 
-  if (has_x!=1 || has_y!=1) {
+  /* A field may lack x or y, such as a reference profile; it is then the
+     same everywhere along the axis it lacks. */
+  if (has_x>1 || has_y>1 || has_z>1 || has_t>1 || has_e>1) {
     snprintf(pout,1255,
-             "BP5 Open Error: Variable '%s' must map exactly one x and one y dimension\n",
+             "BP5 Open Error: Variable '%s' repeats an x, y, z, t, or e dimension\n",
              name);
-    gaprnt(0,pout);
-    return 1;
-  }
-  if (has_z>1 || has_t>1 || has_e>1) {
-    snprintf(pout,1255,
-             "BP5 Open Error: Variable '%s' repeats a z, t, or e dimension\n",name);
     gaprnt(0,pout);
     return 1;
   }
@@ -1151,6 +1283,7 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
       return 1;
     }
   }
+attributes:
   pvar->undef = pfi->undef;
   pvar->undef2 = pfi->undef;
   if (pfi->undefattrflg>0)
@@ -1158,6 +1291,66 @@ static gaint gaadios_validate_variable (struct gafile *pfi,
   if (pfi->undefattrflg>1)
     gaadios_numeric_attribute(state->io,name,pfi->undefattr2,&pvar->undef2);
   return 0;
+}
+
+/* Whether a variable takes its T from ADIOS2 steps, which is when it has no
+   T array dimension. */
+static gaint gaadios_steps_are_time (struct gavar *pvar, adios2_variable *variable) {
+  adios2_shapeid shapeid;
+  gaint i, rank;
+
+  if (adios2_variable_shapeid(&shapeid,variable)==adios2_error_none &&
+      shapeid==adios2_shapeid_global_value) return 1;
+  rank = gaadios_rank(pvar);
+  for (i=0;i<rank;i++) if (pvar->units[i]==-103) return 0;
+  return 1;
+}
+
+/* A variable written once in a dataset whose other variables have more steps
+   (terrain, a reference profile) holds for every time. Record the most steps
+   any variable has, which is what tells such a variable apart, and name the
+   variables read that way. */
+static void gaadios_note_static (struct gafile *pfi, struct gaadios_state *state) {
+  adios2_variable *variable;
+  struct gavar *pvar;
+  size_t steps, len;
+  gaint i, listed, more;
+  char names[512];
+
+  state->maxsteps = 0;
+  pvar = pfi->pvar1;
+  for (i=0;i<pfi->vnum;i++,pvar++) {
+    variable = adios2_inquire_variable(state->io,gaadios_varname(pvar));
+    if (!variable || !gaadios_steps_are_time(pvar,variable) ||
+        adios2_variable_steps(&steps,variable)!=adios2_error_none) continue;
+    if (steps>state->maxsteps) state->maxsteps = steps;
+  }
+  if (state->maxsteps<2 || pfi->dnum[3]<2) return;
+
+  names[0] = '\0';
+  listed = more = 0;
+  pvar = pfi->pvar1;
+  for (i=0;i<pfi->vnum;i++,pvar++) {
+    variable = adios2_inquire_variable(state->io,gaadios_varname(pvar));
+    if (!variable || !gaadios_steps_are_time(pvar,variable) ||
+        adios2_variable_steps(&steps,variable)!=adios2_error_none || steps!=1)
+      continue;
+    len = strlen(names);
+    if (listed<8 && len+strlen(pvar->abbrv)+3<sizeof(names)) {
+      snprintf(names+len,sizeof(names)-len,"%s%s",listed ? ", " : "",pvar->abbrv);
+      listed++;
+    }
+    else more++;
+  }
+  if (!listed) return;
+  if (more) {
+    snprintf(pout,1255,"Written once, so the same at every time: %s, and %d more\n",
+             names,more);
+  }
+  else {
+    snprintf(pout,1255,"Written once, so the same at every time: %s\n",names);
+  }
+  gaprnt(2,pout);
 }
 
 gaint gaadios_open (struct gafile *pfi) {
@@ -1175,6 +1368,7 @@ gaint gaadios_open (struct gafile *pfi) {
   state->adios = NULL;
   state->io = NULL;
   state->engine = NULL;
+  state->maxsteps = 0;
   pfi->adios2 = state;
 
   state->adios = adios2_init_serial();
@@ -1204,6 +1398,7 @@ gaint gaadios_open (struct gafile *pfi) {
       return 1;
     }
   }
+  gaadios_note_static(pfi,state);
   return 0;
 }
 
@@ -1222,11 +1417,12 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
                         gaint len, gadouble *gr, char *gru) {
   struct gaadios_state *state;
   adios2_variable *variable;
+  adios2_shapeid shapeid;
   adios2_type type;
   adios2_error error;
   size_t ndims, start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
-  size_t bytes, i;
-  gaint rank, has_t, time_status, yy, zz;
+  size_t bytes, i, nread;
+  gaint rank, has_t, has_x, scalar, time_status, yy, zz;
   void *native;
   gadouble value;
   const char *name;
@@ -1244,15 +1440,22 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
     return 1;
   }
   rank = gaadios_rank(pvar);
-  if (adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
-      ndims!=(size_t)rank ||
+  if (adios2_variable_shapeid(&shapeid,variable)!=adios2_error_none ||
+      adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
       adios2_variable_type(&type,variable)!=adios2_error_none) {
     snprintf(pout,1255,"BP5 I/O Error: Metadata changed for variable '%s'\n",name);
     gaprnt(0,pout);
     return 1;
   }
+  /* a global value is one number per step, described by the list "t" */
+  scalar = (shapeid==adios2_shapeid_global_value);
+  if (scalar ? ndims!=0 : ndims!=(size_t)rank) {
+    snprintf(pout,1255,"BP5 I/O Error: Metadata changed for variable '%s'\n",name);
+    gaprnt(0,pout);
+    return 1;
+  }
 
-  time_status = gaadios_time_available(pvar,variable,t);
+  time_status = gaadios_time_available(pfi,pvar,variable,t);
   if (time_status<0) {
     snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
     gaprnt(0,pout);
@@ -1266,27 +1469,34 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
   yy = pfi->yrflg ? pfi->dnum[1]-y : y-1;
   if (pfi->zrflg && pvar->levels>0) zz = pvar->levels-z;
   else zz = z-1;
-  has_t = 0;
-  for (i=0;i<ndims;i++) {
-    count[i] = 1;
-    if (pvar->units[i]==-100) {
-      start[i] = x-1;
-      count[i] = len;
+  has_t = has_x = 0;
+  if (!scalar) {
+    for (i=0;i<ndims;i++) {
+      count[i] = 1;
+      if (pvar->units[i]==-100) {
+        start[i] = x-1;
+        count[i] = len;
+        has_x = 1;
+      }
+      else if (pvar->units[i]==-101) start[i] = yy;
+      else if (pvar->units[i]==-102) start[i] = zz;
+      else if (pvar->units[i]==-103) {
+        start[i] = t-1;
+        has_t = 1;
+      }
+      else if (pvar->units[i]==-104) start[i] = e-1;
+      else start[i] = (size_t)pvar->units[i];
     }
-    else if (pvar->units[i]==-101) start[i] = yy;
-    else if (pvar->units[i]==-102) start[i] = zz;
-    else if (pvar->units[i]==-103) {
-      start[i] = t-1;
-      has_t = 1;
-    }
-    else if (pvar->units[i]==-104) start[i] = e-1;
-    else start[i] = (size_t)pvar->units[i];
   }
+  /* without an X dimension one value holds along the whole row */
+  nread = has_x ? (size_t)len : 1;
 
-  error = adios2_set_selection(variable,ndims,start,count);
+  error = scalar ? adios2_error_none :
+          adios2_set_selection(variable,ndims,start,count);
   if (error==adios2_error_none) {
     if (has_t) error = adios2_set_step_selection(variable,0,1);
-    else error = adios2_set_step_selection(variable,t-1,1);
+    else error = adios2_set_step_selection(variable,
+                                           time_status==2 ? 0 : (size_t)(t-1),1);
   }
   if (error!=adios2_error_none) {
     snprintf(pout,1255,"BP5 I/O Error: Invalid selection for variable '%s'\n",name);
@@ -1294,7 +1504,7 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
     return 1;
   }
 
-  bytes = (size_t)len*gaadios_type_size(type);
+  bytes = nread*gaadios_type_size(type);
   native = galloc(bytes,"adios2row");
   if (native==NULL) {
     gaprnt(0,"BP5 I/O Error: Unable to allocate row buffer\n");
@@ -1309,7 +1519,7 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
   }
 
   for (i=0;i<(size_t)len;i++) {
-    value = gaadios_value(native,type,i);
+    value = gaadios_value(native,type,has_x ? i : 0);
     if (gaadios_is_missing(pfi,pvar,value)) {
       gr[i] = pfi->undef;
       gru[i] = 0;
@@ -1327,6 +1537,7 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
                           struct gagrid *pgrid, gadouble *gr, char *gru) {
   struct gaadios_state *state;
   adios2_variable *variable;
+  adios2_shapeid shapeid;
   adios2_type type;
   adios2_error error;
   size_t ndims, start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
@@ -1350,6 +1561,10 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
   name = gaadios_varname(pvar);
   variable = adios2_inquire_variable(state->io,name);
   rank = gaadios_rank(pvar);
+  /* a global value has no plane to select; the row reader repeats it */
+  if (variable &&
+      adios2_variable_shapeid(&shapeid,variable)==adios2_error_none &&
+      shapeid==adios2_shapeid_global_value) return -1;
   if (!variable ||
       adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
       ndims!=(size_t)rank ||
@@ -1378,7 +1593,7 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
   else zz = pgrid->dimmin[2]-1;
   t = pgrid->dimmin[3];
   e = pgrid->dimmin[4];
-  time_status = gaadios_time_available(pvar,variable,t);
+  time_status = gaadios_time_available(pfi,pvar,variable,t);
   if (time_status<0) {
     snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
     gaprnt(0,pout);
@@ -1416,7 +1631,8 @@ gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
   error = adios2_set_selection(variable,ndims,start,count);
   if (error==adios2_error_none) {
     if (has_t) error = adios2_set_step_selection(variable,0,1);
-    else error = adios2_set_step_selection(variable,t-1,1);
+    else error = adios2_set_step_selection(variable,
+                                           time_status==2 ? 0 : (size_t)(t-1),1);
   }
   if (error!=adios2_error_none) {
     snprintf(pout,1255,"BP5 I/O Error: Invalid grid selection for variable '%s'\n",name);

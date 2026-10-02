@@ -35,6 +35,19 @@ calculations, and native archives for Linux and macOS.
   cannot represent, are refused with a message naming the calendar instead of
   being misread as standard.
 
+- **`bpopen` reads 1-D data.** A 1-D array whose length matches one axis is
+  now a field: a reference profile such as `thbar(z)` opens as a Z profile
+  that is the same at every X and Y, so `d th - thbar` works in any section.
+  A global value written every step opens as a time series. A length that
+  fits two axes is skipped with a warning rather than guessed, and a dataset
+  that is a single column opens on its Z coordinate. Descriptors can say the
+  same: a dimension list may leave out X or Y (`thbar=>thbar 300 z`), and
+  `t` describes a per-step global value.
+- **Fields written once hold for every time.** A BP5 variable written at one
+  step, in a dataset whose other variables have more, such as terrain or a
+  reference profile, used to read as undefined after the first time. It is
+  now the same at every time, and the open names such variables.
+
 ### Changed since 1.0.8 (not yet released)
 
 - **`bpopen` now behaves like opening a descriptor.** On a VVM-shaped dataset
