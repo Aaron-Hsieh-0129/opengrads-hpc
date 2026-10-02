@@ -216,24 +216,31 @@ record_system_notice "$loader_path"
 # $ORIGIN, so the launcher does not have to export LD_LIBRARY_PATH. Exporting
 # it leaked the bundled libraries into every subprocess GrADS spawns -- a
 # shell escape such as "!ls" ran the host's ls against our libselinux and
-# warned about it. RUNPATH is private to each binary and cannot leak.
+# warned about it. A path in the binary is private to it and cannot leak.
+#
+# It has to be DT_RPATH, which patchelf writes only when forced. The loader
+# searches DT_RPATH before LD_LIBRARY_PATH but DT_RUNPATH after it, so with
+# RUNPATH (1.0.8) any LD_LIBRARY_PATH the user's shell carries -- set by
+# environment modules or conda on most clusters -- won over the bundle: GrADS
+# loaded that cluster's own cairo, freetype, HDF5 and so on, mixed them with
+# ours, and crashed as the window opened.
 if ! command -v patchelf > /dev/null 2>&1; then
   printf 'patchelf is required to make the archive relocatable.\n' >&2
   exit 1
 fi
 
-patchelf --set-rpath \
+patchelf --force-rpath --set-rpath \
   '$ORIGIN/.libs:$ORIGIN/../../adios2/lib:$ORIGIN/../../deps/lib' \
   "$bundle_root/build/src/grads"
 
 for library in "$runtime_lib_root"/*.so*; do
   [[ -f "$library" ]] || continue
-  patchelf --set-rpath '$ORIGIN' "$library" 2>/dev/null || true
+  patchelf --force-rpath --set-rpath '$ORIGIN' "$library" 2>/dev/null || true
 done
 
 for plugin in "$plugin_root"/*.so; do
   [[ -f "$plugin" ]] || continue
-  patchelf --set-rpath \
+  patchelf --force-rpath --set-rpath \
     '$ORIGIN:$ORIGIN/../../../adios2/lib:$ORIGIN/../../../deps/lib' \
     "$plugin" 2>/dev/null || true
 done
@@ -245,6 +252,39 @@ if env -u LD_LIBRARY_PATH ldd "$bundle_root/build/src/grads" 2>&1 \
   env -u LD_LIBRARY_PATH ldd "$bundle_root/build/src/grads" >&2
   exit 1
 fi
+
+# And it must keep resolving to the bundle when LD_LIBRARY_PATH points
+# somewhere else, as it does on most clusters. A decoy directory holds empty
+# files named like every bundled library: if the loader ever reached for one,
+# loading would fail with "file too short".
+decoy_dir="$(mktemp -d)"
+for library in "$runtime_lib_root"/*.so*; do
+  [[ -f "$library" ]] || continue
+  : > "$decoy_dir/$(basename -- "$library")"
+done
+for binary in "$bundle_root/build/src/grads" "$plugin_root"/*.so; do
+  [[ -f "$binary" ]] || continue
+  if ! readelf -d "$binary" | grep -Fq '(RPATH)'; then
+    printf '%s carries no DT_RPATH; LD_LIBRARY_PATH would override the bundle.\n' \
+      "$binary" >&2
+    exit 1
+  fi
+  if LD_LIBRARY_PATH="$decoy_dir" ldd "$binary" 2>&1 \
+       | grep -Fq -e "$decoy_dir" -e 'not found'; then
+    printf 'LD_LIBRARY_PATH overrides the bundle for %s:\n' "$binary" >&2
+    LD_LIBRARY_PATH="$decoy_dir" ldd "$binary" >&2
+    exit 1
+  fi
+done
+decoy_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
+  LD_LIBRARY_PATH="$decoy_dir" OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
+  -bl -d gxdummy -h gxdummy <<'GRADS'
+q config
+quit
+GRADS
+)"
+rm -rf -- "$decoy_dir"
+grep -Fq 'adios2-bp5' <<< "$decoy_output"
 
 smoke_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
   OPENGRADS_COLOR=0 "$bundle_root/opengrads" \

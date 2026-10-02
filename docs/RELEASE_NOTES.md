@@ -88,6 +88,20 @@ calculations, and native archives for Linux and macOS.
   which is which. Closing every file clears the calendar, so the next file may
   use either; before, only `reinit` did.
 
+### Fixed since 1.0.8 (not yet released)
+
+- **1.0.8 let `LD_LIBRARY_PATH` replace the bundled libraries.** It embedded
+  the bundle's library paths as RUNPATH, which the loader searches *after*
+  `LD_LIBRARY_PATH`, so the libraries an environment module or conda had put
+  there -- their own cairo, freetype, HDF5 and so on -- were loaded in place
+  of the bundled ones and mixed with them. That is the likely cause of a
+  segmentation fault reported on a RHEL 8 cluster right after `GX Package
+  Initialization`. The paths are now embedded as RPATH, which the loader searches first,
+  so the bundle wins whatever the shell carries; like RUNPATH it stays inside
+  the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
+  The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
+  override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
+
 ### Added in 1.0.8
 
 - **Undo for the plot.** `set undo 10` turns undo on and keeps ten steps,
