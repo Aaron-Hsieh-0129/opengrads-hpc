@@ -1,0 +1,22 @@
+// Added in 2026 as a GPLv2 sdfopen regression fixture; see ../../../COPYING.
+// Days 58 to 60 of 2000 in the standard calendar: 28 Feb, 29 Feb, 1 Mar.
+netcdf calendar_standard {
+dimensions:
+  time = UNLIMITED ;
+  lat = 2 ;
+  lon = 3 ;
+variables:
+  double time(time) ;
+    time:units = "days since 2000-01-01" ;
+    time:calendar = "standard" ;
+  double lat(lat) ;
+    lat:units = "degrees_north" ;
+  double lon(lon) ;
+    lon:units = "degrees_east" ;
+  float v(time, lat, lon) ;
+data:
+  time = 58, 59, 60 ;
+  lat = 0, 10 ;
+  lon = 0, 10, 20 ;
+  v = 1, 2, 3, 4, 5, 6,  7, 8, 9, 10, 11, 12,  13, 14, 15, 16, 17, 18 ;
+}

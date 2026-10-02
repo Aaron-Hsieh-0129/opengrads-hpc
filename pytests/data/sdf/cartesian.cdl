@@ -1,0 +1,30 @@
+// Added in 2026 as a GPLv2 sdfopen regression fixture; see ../../../COPYING.
+// A Cartesian model grid, as VVM writes it: xc, yc, zc in metres with no
+// axis or standard_name attributes. sdfopen finds X and Y by name and maps
+// them to degrees on GrADS's 6370 km sphere, centred on 0.
+netcdf cartesian {
+dimensions:
+  time = UNLIMITED ;
+  zc = 2 ;
+  yc = 3 ;
+  xc = 4 ;
+variables:
+  double time(time) ;
+    time:units = "seconds since 1998-01-01 00:00:00" ;
+  double zc(zc) ;
+    zc:units = "m" ;
+  double yc(yc) ;
+    yc:units = "m" ;
+  double xc(xc) ;
+    xc:units = "m" ;
+  float th(time, zc, yc, xc) ;
+data:
+  time = 0, 60 ;
+  zc = 2, 7 ;
+  yc = 0, 200, 400 ;
+  xc = 0, 200, 400, 600 ;
+  th = 1, 2, 3, 4,  5, 6, 7, 8,  9, 10, 11, 12,
+       13, 14, 15, 16,  17, 18, 19, 20,  21, 22, 23, 24,
+       101, 102, 103, 104,  105, 106, 107, 108,  109, 110, 111, 112,
+       113, 114, 115, 116,  117, 118, 119, 120,  121, 122, 123, 124 ;
+}

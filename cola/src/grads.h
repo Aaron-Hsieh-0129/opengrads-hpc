@@ -1289,7 +1289,7 @@ struct gaattr *find_att(char *, struct gaattr *, char *);
 struct gavar *find_var(struct gafile *, char *);
 gaint findX(struct gafile *, struct gavar **);
 gaint findY(struct gafile *, struct gavar **);
-gaint findZ(struct gafile *, struct gavar **, gaint *);
+gaint findZ(struct gafile *, struct gavar **, gaint *, gaint, gaint);
 gaint findT(struct gafile *, struct gavar **);
 gaint findE(struct gafile *, struct gavar **);
 gaint isdvar(struct gafile *, struct gavar *, gaint,  gaint, gaint, gaint, gaint) ;

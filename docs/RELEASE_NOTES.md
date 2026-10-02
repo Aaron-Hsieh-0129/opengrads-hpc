@@ -3,6 +3,65 @@
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
+### Added since 1.0.8 (not yet released)
+
+- **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
+  Script Library (BSD 2-Clause) now ship in `lib/scripts`: `plot` for 1-D
+  graphs and profiles, `shadcon` for shading and contours, `vcr` for vertical
+  cross-sections, `vector`, `subplot` for multi-panel figures, `legend`,
+  `drawstr`, `drawline`, `drawbox`, `drawmark`, `ppp` for cropped
+  publication output (needs ghostscript), `save`, and `bhist` (bGASL's
+  histogram calculator, renamed to leave the existing `hist` plotter in
+  place). `subplot` replaces the earlier, much smaller script of that name and
+  takes different arguments: `subplot <panels> <index> [<columns>]` instead of
+  `subplot <rows> <columns> <index>`. See `THIRD_PARTY_NOTICES.md`.
+- **`sdfopen` opens files without an X or a Y coordinate.** A zonal mean
+  (`time, lev, lat`), a y-z section, or a single column used to fail with
+  `SDF file has no discernable X coordinate` and a pointer to writing a
+  descriptor. The missing axis is now a single point, as `XDEF 1 LINEAR 0 1`
+  would make it, and the open says so. X and Y are also found where the file
+  marks them less formally: by a CF `standard_name` (`longitude`,
+  `projection_x_coordinate`, and the Y equivalents), or by a dimension named
+  `x`, `xc`, `lon`, `longitude`, `west_east` (`y`, `yc`, `lat`, `latitude`,
+  `south_north` for Y). A dimension without a coordinate variable counts grid
+  points, 1 to its size.
+- **`sdfopen` and `xdfopen` read 365-day calendars.** A time coordinate with
+  `calendar = "noleap"` (or `365_day`, `no_leap`) used to be refused. Its dates
+  are now decoded with every year 365 days long and GrADS switches to its
+  365-day calendar, so `days since 2000-01-01` values 58, 59, 60 read as 28 Feb,
+  1 Mar, 2 Mar rather than landing on 29 Feb. Standard and Gregorian files work
+  as before. This also lets `sdfopen` read back what `sdfwrite` writes from a
+  365-day dataset. The 360-day, 366-day, and all-leap calendars, which GrADS
+  cannot represent, are refused with a message naming the calendar instead of
+  being misread as standard.
+
+### Changed since 1.0.8 (not yet released)
+
+- **`bpopen` now behaves like opening a descriptor.** On a VVM-shaped dataset
+  the two paths now print the same results for every command checked and draw
+  byte-identical plots:
+  - **Cartesian X and Y.** A model on a metre grid needs its X and Y written as
+    degrees, because GrADS has only longitude and latitude; read as degrees,
+    metres wrap the map labels round the globe and throw `aave` off by 70 %.
+    `bpopen` now maps X and Y in a length unit onto GrADS's 6370 km sphere,
+    centred on 0, as descriptors for Cartesian models do. A 35 m grid gives
+    `xdef 96 linear -0.0149536 0.000314812`.
+  - **Time.** T was always labelled from 00Z01JAN2000 in one-minute steps,
+    whatever the data. It now comes from a CF time coordinate (`time`, units
+    `<unit> since <date>`), and the open says when it has to fall back.
+- **`sdfopen` maps Cartesian X and Y the same way.** An X or Y coordinate in
+  metres or kilometres becomes degrees on the same sphere, centred on 0, so a
+  VVM NetCDF file, its BP5 output through `bpopen`, and a hand-written
+  descriptor all give the same grid. Before, such a file either failed to open
+  or, when its axis carried `axis = "X"`, used the metres as degrees.
+- **One calendar at a time, enforced for `sdfopen` too.** GrADS keeps a single
+  calendar for all open files. Descriptors already enforced that, but
+  `sdfopen` never set it, so a 365-day descriptor and a standard NetCDF file
+  could be open together with one of them dated wrongly. Opening a file whose
+  calendar differs from the open files' is now refused with a message saying
+  which is which. Closing every file clears the calendar, so the next file may
+  use either; before, only `reinit` did.
+
 ### Added in 1.0.8
 
 - **Undo for the plot.** `set undo 10` turns undo on and keeps ten steps,
@@ -16,16 +75,6 @@ calculations, and native archives for Linux and macOS.
   when a window is exposed. It rewinds graphics only: settings, the dimension environment, open
   files, and anything written to disk are untouched, and `clear`, `reinit`,
   and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
-- **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
-  Script Library (BSD 2-Clause) now ship in `lib/scripts`: `plot` for 1-D
-  graphs and profiles, `shadcon` for shading and contours, `vcr` for vertical
-  cross-sections, `vector`, `subplot` for multi-panel figures, `legend`,
-  `drawstr`, `drawline`, `drawbox`, `drawmark`, `ppp` for cropped
-  publication output (needs ghostscript), `save`, and `bhist` (bGASL's
-  histogram calculator, renamed to leave the existing `hist` plotter in
-  place). `subplot` replaces the earlier, much smaller script of that name and
-  takes different arguments: `subplot <panels> <index> [<columns>]` instead of
-  `subplot <rows> <columns> <index>`. See `THIRD_PARTY_NOTICES.md`.
 
 ### Changed in 1.0.8
 
@@ -38,21 +87,13 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed in 1.0.8
 
-- **`bpopen` now behaves like opening a descriptor.** It differed in three
-  ways, and on a VVM-shaped dataset the two paths now print the same results
-  for every command checked and draw byte-identical plots:
-  - **Levels.** Coordinates in metres were silently divided by 1000, so `lev`
-    read in kilometres through `bpopen` and in metres through a descriptor.
-    Z is now used as the dataset stores it.
-  - **Cartesian X and Y.** A model on a metre grid needs its X and Y written as
-    degrees, because GrADS has only longitude and latitude; read as degrees,
-    metres wrap the map labels round the globe and throw `aave` off by 70 %.
-    `bpopen` now maps X and Y in a length unit onto GrADS's 6370 km sphere,
-    centred on 0, as descriptors for Cartesian models do. A 35 m grid gives
-    `xdef 96 linear -0.0149536 0.000314812`.
-  - **Time.** T was always labelled from 00Z01JAN2000 in one-minute steps,
-    whatever the data. It now comes from a CF time coordinate (`time`, units
-    `<unit> since <date>`), and the open says when it has to fall back.
+- **`bpopen` now reports the same levels as a descriptor.** A coordinate array
+  whose `units` attribute said meters was silently divided by 1000, so a
+  descriptor-free open of a dataset with `z_mid` in meters showed `lev` in
+  kilometers while the same dataset opened through a CTL showed it in meters:
+  `zdef 2 levels 1000 500` became `zdef 2 levels 1 0.5`, and the same scaling
+  hit X and Y. Coordinates are now used exactly as the dataset stores them, in
+  the dataset's own units, so both paths agree.
 - **`bpopen` no longer leaks the ADIOS2 variable list, hangs on crowded name
   stems, or writes descriptors GrADS cannot parse.** Three defects found while
   reviewing the backend: the name array `adios2_available_variables` allocates

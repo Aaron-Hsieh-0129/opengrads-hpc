@@ -73,6 +73,13 @@ static struct msgbuf *msgstk, *msgcurr, *msgnew;
    everything a script draws collapsing into a single step. */
 static gaint gacmdlvl = 0;
 
+/* GrADS has one calendar for all open files. With none open, none is in
+   effect, so the next file sets it whatever an earlier file (or one that
+   failed to open) used. */
+static void gacalfree (struct gacmn *pcm) {
+  if (pcm->fnum == 0) mfcmn.cal365 = -999;
+}
+
 
 /* Handle all user commands */
 gaint gacmd (char *com, struct gacmn *pcm, gaint exflg) {
@@ -417,6 +424,7 @@ FILE *pdefid=NULL;
     }
     if (pcm->fnum==0) {                    /* no files open, so ... */
       pcm->dfnum = 0;                      /*    set default file to zero */
+      mfcmn.cal365 = -999;                 /*    no calendar is in effect */
       pcm->pfi1 = NULL;                    /*    pointer to file chain is null */
       pcm->pfid = NULL;                    /*    pointer to default file is null */
     } else {
@@ -806,6 +814,7 @@ FILE *pdefid=NULL;
       goto retrn;
     }
     getwrd (cc,cmd,256);
+    gacalfree(pcm);
     retcod = gaopen (cc, pcm);
     if (!retcod) mygreta(cc);   /* (for IGES only) keep track of user's opened files */
 
@@ -817,6 +826,7 @@ FILE *pdefid=NULL;
       retcod = 1;
       goto retrn;
     }
+    gacalfree(pcm);
     retcod = gaadios_bpopen(cmd, pcm);
     if (!retcod) mygreta(cmd);
     goto retrn;
@@ -828,6 +838,7 @@ FILE *pdefid=NULL;
       retcod = 1;
       goto retrn;
     }
+    gacalfree(pcm);
     retcod = gasdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
 #else
@@ -844,6 +855,7 @@ FILE *pdefid=NULL;
         retcod = 1 ;
         goto retrn ;
     }
+    gacalfree(pcm);
     retcod = gaxdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
 #else

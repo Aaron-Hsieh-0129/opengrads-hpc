@@ -1,0 +1,19 @@
+// Added in 2026 as a GPLv2 sdfopen regression fixture; see ../../../COPYING.
+// A single column: neither X nor Y. Both become single points.
+netcdf profile {
+dimensions:
+  time = UNLIMITED ;
+  lev = 3 ;
+variables:
+  double time(time) ;
+    time:units = "hours since 2000-01-01 00:00:00" ;
+  double lev(lev) ;
+    lev:units = "hPa" ;
+  float t(time, lev) ;
+  float ps(time) ;
+data:
+  time = 0, 6 ;
+  lev = 1000, 850, 500 ;
+  t = 290, 280, 260,  291, 281, 261 ;
+  ps = 1010, 1011 ;
+}
