@@ -256,7 +256,9 @@ fi
 # And it must keep resolving to the bundle when LD_LIBRARY_PATH points
 # somewhere else, as it does on most clusters. A decoy directory holds empty
 # files named like every bundled library: if the loader ever reached for one,
-# loading would fail with "file too short".
+# loading would fail with "file too short". Only the dynamic loader and grads
+# itself see the decoy -- ldd and the launcher are shell scripts whose own
+# helpers (coreutils) would trip over an empty libselinux first.
 decoy_dir="$(mktemp -d)"
 for library in "$runtime_lib_root"/*.so*; do
   [[ -f "$library" ]] || continue
@@ -269,22 +271,27 @@ for binary in "$bundle_root/build/src/grads" "$plugin_root"/*.so; do
       "$binary" >&2
     exit 1
   fi
-  if LD_LIBRARY_PATH="$decoy_dir" ldd "$binary" 2>&1 \
-       | grep -Fq -e "$decoy_dir" -e 'not found'; then
-    printf 'LD_LIBRARY_PATH overrides the bundle for %s:\n' "$binary" >&2
-    LD_LIBRARY_PATH="$decoy_dir" ldd "$binary" >&2
+  decoy_list="$(LD_LIBRARY_PATH="$decoy_dir" "$loader_path" --list "$binary" 2>&1 || true)"
+  if grep -Fq -e "$decoy_dir" -e 'not found' -e 'error while loading' \
+       <<< "$decoy_list"; then
+    printf 'LD_LIBRARY_PATH overrides the bundle for %s:\n%s\n' \
+      "$binary" "$decoy_list" >&2
     exit 1
   fi
 done
-decoy_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
-  LD_LIBRARY_PATH="$decoy_dir" OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
-  -bl -d gxdummy -h gxdummy <<'GRADS'
+decoy_output="$(GA_ROOT="$plugin_root" GAUDPT="$bundle_root/etc/udpt-local" \
+  GADDIR="$bundle_root/cola/data" LD_LIBRARY_PATH="$decoy_dir" \
+  "$bundle_root/build/src/grads" -bl -d gxdummy -h gxdummy 2>&1 <<'GRADS' || true
 q config
 quit
 GRADS
 )"
 rm -rf -- "$decoy_dir"
-grep -Fq 'adios2-bp5' <<< "$decoy_output"
+if ! grep -Fq 'adios2-bp5' <<< "$decoy_output"; then
+  printf 'grads does not start with a decoy LD_LIBRARY_PATH:\n%s\n' \
+    "$decoy_output" >&2
+  exit 1
+fi
 
 smoke_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
   OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
