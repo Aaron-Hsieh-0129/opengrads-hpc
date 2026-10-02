@@ -2976,6 +2976,21 @@ static inline void ave_accumulate (gaint sel, gaint d, gadouble wt,
   }
 }
 
+/* The weight -b gives time d of an average from gr1 to gr2: how much of its
+   cell, d-0.5 to d+0.5, lies between them. Times inside count fully, the
+   first and last by the part of their cell inside, as the other dimensions
+   are weighted. The first two times, the time-at-a-time loop, and the
+   many-times-at-once loop all take their weights from here. */
+static inline gadouble ave_tbndwt (gadouble gr1, gadouble gr2, gaint d) {
+  gadouble lo, hi;
+  lo = d-0.5;
+  hi = d+0.5;
+  if (gr1 > lo) lo = gr1;
+  if (gr2 < hi) hi = gr2;
+  if (hi < lo) return 0.0;
+  return hi - lo;
+}
+
 /* The file variable an averaging argument names when it is nothing else: a
    bare variable of the default file, not a defined grid, a function, or an
    expression. Only then can many times be read at once rather than through
@@ -3020,7 +3035,7 @@ struct gafile *pfi;
 struct dt tinc;
 gadouble (*conv) (gadouble *, gadouble);
 gadouble gr1, gr2, *sum, *cnt, *val;
-gadouble alo, ahi, alen, wlo=0, whi=0, rd1;
+gadouble alo, ahi, alen, wlo=0, whi=0;
 gadouble d2r, wt, wt1, abs;
 gaint mos, mns, wflag=0;
 gaint i, rc, siz, dim, d, d1, d2, dim2, ilin, incr, bndflg, normerr;
@@ -3158,12 +3173,7 @@ char *stepsu=NULL;
   if (dim==3) {
     gr2t (pfi->grvals[3],d1,&(pst->tmin));
     pst->tmax = pst->tmin;
-    if (bndflg) {
-      rd1 = d1;
-      if (gr1 < rd1+0.5) wt1 = (rd1+0.5)-gr1;
-      if (gr2 > rd1-0.5) wt1 = gr2 + 0.5 - rd1;
-      if (wt1<0.0) wt1=0.0;
-    }
+    if (bndflg) wt1 = ave_tbndwt(gr1,gr2,d1);
   }
   /*-----  lon,lat,lev,ens */
   else {
@@ -3253,12 +3263,7 @@ char *stepsu=NULL;
   if (dim==3) {
     gr2t (pfi->grvals[3],d,&(pst->tmin));
     pst->tmax = pst->tmin;
-    if (bndflg) {
-      rd1 = d;
-      if (gr1 < rd1+0.5) wt = (rd1+0.5)-gr1;
-      if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
-      if (wt<0.0) wt=0.0;
-    }
+    if (bndflg) wt = ave_tbndwt(gr1,gr2,d);
   }
   /*----- lon,lat,lev,ens 22222222222 */
   else {
@@ -3432,13 +3437,7 @@ char *stepsu=NULL;
       rc = gagrdsteps(pgr1, d, nstep, incr, steps, stepsu);
       if (rc==0) {
         for (k=0; k<nstep; k++) {
-          wts[k] = 1.0;
-          if (bndflg) {
-            rd1 = d + k*incr;
-            if (gr1 < rd1+0.5) wts[k] = (rd1+0.5)-gr1;
-            if (gr2 > rd1-0.5) wts[k] = gr2 + 0.5 - rd1;
-            if (wts[k]<0.0) wts[k]=0.0;
-          }
+          wts[k] = bndflg ? ave_tbndwt(gr1,gr2,d+k*incr) : 1.0;
         }
         sum  = pgr1->grid;
         sumu = pgr1->umask;
@@ -3476,12 +3475,7 @@ char *stepsu=NULL;
     if (dim==3) {
       gr2t (pfi->grvals[3],d,&(pst->tmin));
       pst->tmax = pst->tmin;
-      if (bndflg) {
-	rd1 = d;
-	if (gr1 < rd1+0.5) wt = (rd1+0.5)-gr1;
-	if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
-	if (wt<0.0) wt=0.0;
-      }
+      if (bndflg) wt = ave_tbndwt(gr1,gr2,d);
     }
     /*---- lat,lon,lev,ens 3333333*/
     else {

@@ -203,6 +203,8 @@ d ave(terrain,t=2,t=6)
 d ave(terrain+0,t=2,t=6)
 d sum(temperature,t=1.5,t=5.5,-b)
 d sum(temperature+0,t=1.5,t=5.5,-b)
+d sum(temperature,t=1.75,t=5.25,-b)
+d sum(temperature+0,t=1.75,t=5.25,-b)
 set y 2
 set z 1 2
 d ave(temperature,t=1,t=6,2)
@@ -223,6 +225,8 @@ d ave(terrain,t=2,t=6)
 d ave(terrain+0,t=2,t=6)
 d sum(temperature,t=1.5,t=5.5,-b)
 d sum(temperature+0,t=1.5,t=5.5,-b)
+d sum(temperature,t=1.75,t=5.25,-b)
+d sum(temperature+0,t=1.75,t=5.25,-b)
 set y 2
 set z 1 2
 d ave(temperature,t=1,t=6,2)
@@ -323,12 +327,16 @@ check_count '710 711 712 713 800 801 802 803' 2
 # Time averages of a plain variable read many steps at once, and must match
 # the same average taken a step at a time (forced here with "+0"), at one and
 # at four calculation threads: x-y maps, an x-z section with an increment, a
-# per-step global value, a field written once, and boundary weights.
+# per-step global value, a field written once, and boundary weights. With -b
+# each time counts by how much of its cell lies within the bounds: bounds on
+# cell edges (t=1.5 to 5.5) count times 2 to 5 fully, and bounds a quarter
+# into the edge cells (t=1.75 to 5.25) count times 2 and 5 by 0.75.
 check_count '2600 2601 2602 2603 2610 2611 2612 2613 2620 2621 2622 2623' 4
 check_count '1400 1401 1402 1403 1410 1411 1412 1413 1420 1421 1422 1423' 4
 check_count '52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5' 4
 check_count '0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5 9.5 10.5 11.5' 4
-check_count '21000 21010 21020 21030 21100 21110 21120 21130 21200 21210 21220 21230' 4
+check_count '10400 10404 10408 10412 10440 10444 10448 10452 10480 10484 10488 10492' 4
+check_count '9100 9103.5 9107 9110.5 9135 9138.5 9142 9145.5 9170 9173.5 9177 9180.5' 4
 check_count '2010 2011 3012 2013 2110 2111 2112 2113' 4
 
 open_count="$(grep -Fc 'BP5 dataset opened without a descriptor:' <<< "$output")"

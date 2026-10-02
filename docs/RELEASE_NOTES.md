@@ -102,12 +102,26 @@ calculations, and native archives for Linux and macOS.
   the bundle's library paths as RUNPATH, which the loader searches *after*
   `LD_LIBRARY_PATH`, so the libraries an environment module or conda had put
   there -- their own cairo, freetype, HDF5 and so on -- were loaded in place
-  of the bundled ones, which can crash or misbehave when the two differ. The
-  paths are now embedded as RPATH, which the loader searches first, so the
-  bundle wins whatever the shell carries; like RUNPATH it stays inside the
-  binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`. The
-  packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
-  override.
+  of the bundled ones and mixed with them. That is the likely cause of a
+  segmentation fault reported on a RHEL 8 cluster right after `GX Package
+  Initialization`. The paths are now embedded as RPATH, which the loader searches first,
+  so the bundle wins whatever the shell carries; like RUNPATH it stays inside
+  the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
+  The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
+  override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
+- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
+  and `sum` with the boundary flag are meant to count each time by how much
+  of its cell lies between the two bounds: times inside fully, the first and
+  last in part, as they already did over longitude, latitude, and level. Over
+  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
+  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
+  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
+  out two and a half times too large and `ave` leaned toward the early
+  times. Each time now counts by its overlap with the bounds, in the
+  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
+  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
+  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
+  2.2.3, so results from those versions with `-b` over time differ from these.
 
 ### Added in 1.0.8
 
