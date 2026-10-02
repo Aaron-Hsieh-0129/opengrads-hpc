@@ -33,6 +33,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -44,6 +45,7 @@
 #include <adios2_c.h>
 
 #include "grads.h"
+#include "gaomp.h"
 
 #define GA_ADIOS_MAX_DIMS 8
 
@@ -228,23 +230,40 @@ static void gaadios_make_description(adios2_io *io,
              " [%.150s]",units);
 }
 
-static gaint gaadios_is_missing(struct gafile *pfi, struct gavar *pvar,
-                                gadouble value) {
-  gadouble tolerance, low, high;
+/* The values a variable treats as missing: its two undef values, each with
+   GrADS's usual fuzzy tolerance, plus NaN and infinity. */
+struct gaadios_missing {
+  gadouble low, high, low2, high2;
+};
 
-  if (isnan(value) || isinf(value)) return 1;
+static void gaadios_missing_bounds(struct gavar *pvar, struct gaadios_missing *m) {
+  gadouble tolerance;
+
   tolerance = dequal(pvar->undef,0.0,1.0e-8)==0 ?
               1.0e-5 : fabs(pvar->undef/EPSILON);
-  low = pvar->undef-tolerance;
-  high = pvar->undef+tolerance;
-  if (value>=low && value<=high) return 1;
+  m->low = pvar->undef-tolerance;
+  m->high = pvar->undef+tolerance;
   tolerance = dequal(pvar->undef2,0.0,1.0e-8)==0 ?
               1.0e-5 : fabs(pvar->undef2/EPSILON);
-  low = pvar->undef2-tolerance;
-  high = pvar->undef2+tolerance;
-  if (value>=low && value<=high) return 1;
-  (void)pfi;
+  m->low2 = pvar->undef2-tolerance;
+  m->high2 = pvar->undef2+tolerance;
+}
+
+static inline gaint gaadios_missing_test(const struct gaadios_missing *m,
+                                         gadouble value) {
+  if (isnan(value) || isinf(value)) return 1;
+  if (value>=m->low && value<=m->high) return 1;
+  if (value>=m->low2 && value<=m->high2) return 1;
   return 0;
+}
+
+static gaint gaadios_is_missing(struct gafile *pfi, struct gavar *pvar,
+                                gadouble value) {
+  struct gaadios_missing m;
+
+  gaadios_missing_bounds(pvar,&m);
+  (void)pfi;
+  return gaadios_missing_test(&m,value);
 }
 
 static gaint gaadios_expected_size (struct gafile *pfi, struct gavar *pvar,
@@ -1533,144 +1552,350 @@ gaint gaadios_read_row (struct gafile *pfi, struct gavar *pvar,
   return 0;
 }
 
-gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
-                          struct gagrid *pgrid, gadouble *gr, char *gru) {
-  struct gaadios_state *state;
+/*
+ * How one grid request maps onto a variable's native array: the selection to
+ * make, and where each grid point sits in what that selection returns. A
+ * request may vary in any two of X, Y and Z, so a vertical section is one
+ * read rather than one read per level; a variable lacking a varying axis (a
+ * profile on an x-y map) repeats its value along it, through a stride of 0.
+ */
+struct gaadios_plan {
   adios2_variable *variable;
-  adios2_shapeid shapeid;
   adios2_type type;
-  adios2_error error;
-  size_t ndims, start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
-  size_t native_index, output_index, points, type_size;
-  size_t gx, gy, native_y, nx, ny, i;
-  gaint rank, has_t, time_status, xdim, ydim, yy, zz, t, e;
-  void *native;
-  gadouble value;
+  size_t ndims;
+  size_t start[GA_ADIOS_MAX_DIMS], count[GA_ADIOS_MAX_DIMS];
+  size_t nvalues;            /* native values per step */
+  size_t isiz, jsiz;         /* the grid's shape */
+  size_t istride, jstride;   /* native stride along the grid's i and j */
+  gaint irev, jrev;          /* native order runs backwards along i or j */
+  gaint scalar;              /* a global value, one number per step */
+  gaint tdim;                /* native position of an explicit T dimension */
+};
+
+/* Native index of grid index idx (1-based) along dimension dim, and whether
+   native order runs backwards there; -1 when outside the variable. */
+static long gaadios_native_index(struct gafile *pfi, struct gavar *pvar,
+                                 gaint dim, gaint idx, gaint *rev) {
+  *rev = 0;
+  if (dim==0 || dim==4) {
+    if (idx<1 || idx>pfi->dnum[dim]) return -1;
+    return idx-1;
+  }
+  if (dim==1) {
+    if (idx<1 || idx>pfi->dnum[1]) return -1;
+    *rev = pfi->yrflg ? 1 : 0;
+    return pfi->yrflg ? pfi->dnum[1]-idx : idx-1;
+  }
+  if (idx<1 || idx>pvar->levels) return -1;
+  *rev = pfi->zrflg ? 1 : 0;
+  return pfi->zrflg ? pvar->levels-idx : idx-1;
+}
+
+/* Returns 0 with the plan made, -1 when the request is not one the plan
+   covers (the row reader then handles it), or 1 on an error. */
+static gaint gaadios_plan_grid(struct gafile *pfi, struct gavar *pvar,
+                               struct gagrid *pgrid, struct gaadios_plan *plan) {
+  struct gaadios_state *state;
+  adios2_shapeid shapeid;
+  size_t stride[GA_ADIOS_MAX_DIMS];
+  gaint rank, k, g, rev, lo, hi, idim, jdim, irev, jrev;
+  long native;
   const char *name;
 
-  if (pgrid->idim!=0 || pgrid->jdim!=1 || pfi->ppflag || pfi->tmplat ||
-      pgrid->toff || pgrid->dimmin[0]<1 ||
-      pgrid->dimmax[0]>pfi->dnum[0] || pgrid->dimmin[1]<1 ||
-      pgrid->dimmax[1]>pfi->dnum[1]) return -1;
-
+  idim = pgrid->idim;
+  jdim = pgrid->jdim;
+  if (idim>2 || jdim>2 || pfi->ppflag || pfi->tmplat || pgrid->toff) return -1;
   state = (struct gaadios_state *)pfi->adios2;
   if (state==NULL || state->engine==NULL) {
     gaprnt(0,"BP5 I/O Error: Dataset is not open\n");
     return 1;
   }
   name = gaadios_varname(pvar);
-  variable = adios2_inquire_variable(state->io,name);
+  plan->variable = adios2_inquire_variable(state->io,name);
   rank = gaadios_rank(pvar);
-  /* a global value has no plane to select; the row reader repeats it */
-  if (variable &&
-      adios2_variable_shapeid(&shapeid,variable)==adios2_error_none &&
-      shapeid==adios2_shapeid_global_value) return -1;
-  if (!variable ||
-      adios2_variable_ndims(&ndims,variable)!=adios2_error_none ||
-      ndims!=(size_t)rank ||
-      adios2_variable_type(&type,variable)!=adios2_error_none) {
+  if (!plan->variable ||
+      adios2_variable_shapeid(&shapeid,plan->variable)!=adios2_error_none ||
+      adios2_variable_ndims(&plan->ndims,plan->variable)!=adios2_error_none ||
+      adios2_variable_type(&plan->type,plan->variable)!=adios2_error_none ||
+      (shapeid==adios2_shapeid_global_value ? plan->ndims!=0 :
+                                              plan->ndims!=(size_t)rank)) {
     snprintf(pout,1255,"BP5 I/O Error: Metadata changed for variable '%s'\n",name);
     gaprnt(0,pout);
     return 1;
   }
+  plan->scalar = (shapeid==adios2_shapeid_global_value);
+  plan->isiz = idim>=0 ? (size_t)(pgrid->dimmax[idim]-pgrid->dimmin[idim]+1) : 1;
+  plan->jsiz = jdim>=0 ? (size_t)(pgrid->dimmax[jdim]-pgrid->dimmin[jdim]+1) : 1;
+  plan->istride = plan->jstride = 0;
+  plan->irev = plan->jrev = 0;
+  plan->tdim = -1;
+  plan->nvalues = 1;
+  if (plan->scalar) return 0;
 
-  nx = (size_t)pgrid->isiz;
-  ny = (size_t)pgrid->jsiz;
-  if (ny && nx>SIZE_MAX/ny) {
-    gaprnt(0,"BP5 I/O Error: Requested grid is too large\n");
-    return 1;
+  irev = jrev = 0;
+  for (k=0;k<rank;k++) {
+    plan->count[k] = 1;
+    g = -1;
+    if (pvar->units[k]==-100) g = 0;
+    else if (pvar->units[k]==-101) g = 1;
+    else if (pvar->units[k]==-102) g = 2;
+    else if (pvar->units[k]==-104) g = 4;
+    else if (pvar->units[k]==-103) {
+      plan->tdim = k;
+      plan->start[k] = 0;
+      continue;
+    }
+    else {
+      plan->start[k] = (size_t)pvar->units[k];
+      continue;
+    }
+    if (g==idim || g==jdim) {
+      lo = pgrid->dimmin[g];
+      hi = pgrid->dimmax[g];
+      if (gaadios_native_index(pfi,pvar,g,lo,&rev)<0 ||
+          gaadios_native_index(pfi,pvar,g,hi,&rev)<0) return -1;
+      plan->start[k] = (size_t)(rev ? gaadios_native_index(pfi,pvar,g,hi,&rev)
+                                    : lo-1);
+      plan->count[k] = (size_t)(hi-lo+1);
+      if (g==idim) irev = rev;
+      else jrev = rev;
+    }
+    else {
+      native = gaadios_native_index(pfi,pvar,g,pgrid->dimmin[g],&rev);
+      if (native<0) return -1;
+      plan->start[k] = (size_t)native;
+    }
   }
-  points = nx*ny;
-  type_size = gaadios_type_size(type);
-  if (!type_size || points>SIZE_MAX/type_size) {
-    gaprnt(0,"BP5 I/O Error: Requested grid buffer is too large\n");
-    return 1;
+  stride[rank-1] = 1;
+  for (k=rank-2;k>=0;k--) stride[k] = stride[k+1]*plan->count[k+1];
+  for (k=0;k<rank;k++) {
+    plan->nvalues *= plan->count[k];
+    g = pvar->units[k]==-100 ? 0 : pvar->units[k]==-101 ? 1 :
+        pvar->units[k]==-102 ? 2 : -1;
+    if (g>=0 && g==idim) { plan->istride = stride[k]; plan->irev = irev; }
+    if (g>=0 && g==jdim) { plan->jstride = stride[k]; plan->jrev = jrev; }
+  }
+  return 0;
+}
+
+/* Select time t for a planned read; time_status is gaadios_time_available's
+   answer, 2 meaning the variable's single step stands for every time. */
+static adios2_error gaadios_plan_select(struct gaadios_plan *plan, gaint t,
+                                        gaint time_status) {
+  adios2_error error;
+
+  if (plan->scalar)
+    return adios2_set_step_selection(plan->variable,
+                                     time_status==2 ? 0 : (size_t)(t-1),1);
+  if (plan->tdim>=0) plan->start[plan->tdim] = (size_t)(t-1);
+  error = adios2_set_selection(plan->variable,plan->ndims,plan->start,plan->count);
+  if (error!=adios2_error_none) return error;
+  if (plan->tdim>=0) return adios2_set_step_selection(plan->variable,0,1);
+  return adios2_set_step_selection(plan->variable,
+                                   time_status==2 ? 0 : (size_t)(t-1),1);
+}
+
+/* Copy one step's native values into a GrADS grid and its undef mask. The
+   common types get their own loop, so the per-value work is a load and the
+   missing-value test. */
+#define GAADIOS_CONVERT(fetch)                                            \
+  for (j=0;j<plan->jsiz;j++) {                                           \
+    nj = plan->jrev ? plan->jsiz-1-j : j;                                \
+    for (i=0;i<plan->isiz;i++) {                                         \
+      ni = plan->irev ? plan->isiz-1-i : i;                              \
+      index = ni*plan->istride + nj*plan->jstride;                       \
+      value = (fetch);                                                   \
+      out = j*plan->isiz+i;                                              \
+      if (gaadios_missing_test(&missing,value)) {                        \
+        gr[out] = pfi->undef;                                            \
+        gru[out] = 0;                                                    \
+      }                                                                  \
+      else {                                                             \
+        gr[out] = value;                                                 \
+        gru[out] = 1;                                                    \
+      }                                                                  \
+    }                                                                    \
   }
 
-  yy = pfi->yrflg ? pfi->dnum[1]-pgrid->dimmax[1] :
-                     pgrid->dimmin[1]-1;
-  if (pfi->zrflg && pvar->levels>0) zz = pvar->levels-pgrid->dimmin[2];
-  else zz = pgrid->dimmin[2]-1;
+static void gaadios_plan_convert(struct gafile *pfi, struct gavar *pvar,
+                                 struct gaadios_plan *plan, void *native,
+                                 gadouble *gr, char *gru) {
+  struct gaadios_missing missing;
+  size_t i, j, ni, nj, index, out;
+  gadouble value;
+
+  gaadios_missing_bounds(pvar,&missing);
+  if (plan->type==adios2_type_float) {
+    GAADIOS_CONVERT((gadouble)((const float *)native)[index])
+  }
+  else if (plan->type==adios2_type_double) {
+    GAADIOS_CONVERT(((const double *)native)[index])
+  }
+  else {
+    GAADIOS_CONVERT(gaadios_value(native,plan->type,index))
+  }
+}
+
+#undef GAADIOS_CONVERT
+
+gaint gaadios_read_grid (struct gafile *pfi, struct gavar *pvar,
+                          struct gagrid *pgrid, gadouble *gr, char *gru) {
+  struct gaadios_state *state;
+  struct gaadios_plan plan;
+  adios2_error error;
+  size_t type_size;
+  gaint rc, t, time_status;
+  void *native;
+  const char *name;
+
+  rc = gaadios_plan_grid(pfi,pvar,pgrid,&plan);
+  if (rc) return rc;
+  state = (struct gaadios_state *)pfi->adios2;
+  name = gaadios_varname(pvar);
   t = pgrid->dimmin[3];
-  e = pgrid->dimmin[4];
-  time_status = gaadios_time_available(pfi,pvar,variable,t);
+  time_status = gaadios_time_available(pfi,pvar,plan.variable,t);
   if (time_status<0) {
     snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
     gaprnt(0,pout);
     return 1;
   }
   if (time_status==0) {
-    gaadios_set_undefined(pfi,points,gr,gru);
+    gaadios_set_undefined(pfi,plan.isiz*plan.jsiz,gr,gru);
     pgrid->undef = pfi->undef;
     return 0;
   }
-  has_t = 0;
-  xdim = ydim = -1;
-  for (i=0;i<ndims;i++) {
-    count[i] = 1;
-    if (pvar->units[i]==-100) {
-      xdim = (gaint)i;
-      start[i] = pgrid->dimmin[0]-1;
-      count[i] = nx;
-    }
-    else if (pvar->units[i]==-101) {
-      ydim = (gaint)i;
-      start[i] = yy;
-      count[i] = ny;
-    }
-    else if (pvar->units[i]==-102) start[i] = zz;
-    else if (pvar->units[i]==-103) {
-      start[i] = t-1;
-      has_t = 1;
-    }
-    else if (pvar->units[i]==-104) start[i] = e-1;
-    else start[i] = (size_t)pvar->units[i];
+  type_size = gaadios_type_size(plan.type);
+  if (!type_size || plan.nvalues>SIZE_MAX/type_size) {
+    gaprnt(0,"BP5 I/O Error: Requested grid buffer is too large\n");
+    return 1;
   }
-  if (xdim<0 || ydim<0) return -1;
-
-  error = adios2_set_selection(variable,ndims,start,count);
-  if (error==adios2_error_none) {
-    if (has_t) error = adios2_set_step_selection(variable,0,1);
-    else error = adios2_set_step_selection(variable,
-                                           time_status==2 ? 0 : (size_t)(t-1),1);
-  }
-  if (error!=adios2_error_none) {
+  if (gaadios_plan_select(&plan,t,time_status)!=adios2_error_none) {
     snprintf(pout,1255,"BP5 I/O Error: Invalid grid selection for variable '%s'\n",name);
     gaprnt(0,pout);
     return 1;
   }
-
-  native = galloc(points*type_size,"adios2grid");
+  native = galloc(plan.nvalues*type_size,"adios2grid");
   if (!native) {
     gaprnt(0,"BP5 I/O Error: Unable to allocate grid buffer\n");
     return 1;
   }
-  error = adios2_get(state->engine,variable,native,adios2_mode_sync);
+  error = adios2_get(state->engine,plan.variable,native,adios2_mode_sync);
   if (error!=adios2_error_none) {
     snprintf(pout,1255,"BP5 I/O Error: Grid read failed for variable '%s'\n",name);
     gaprnt(0,pout);
     gree(native,"adios2grid");
     return 1;
   }
-
-  for (gy=0;gy<ny;gy++) {
-    native_y = pfi->yrflg ? ny-1-gy : gy;
-    for (gx=0;gx<nx;gx++) {
-      if (xdim>ydim) native_index = native_y*nx+gx;
-      else native_index = gx*ny+native_y;
-      output_index = gy*nx+gx;
-      value = gaadios_value(native,type,native_index);
-      if (gaadios_is_missing(pfi,pvar,value)) {
-        gr[output_index] = pfi->undef;
-        gru[output_index] = 0;
-      }
-      else {
-        gr[output_index] = value;
-        gru[output_index] = 1;
-      }
-    }
-  }
+  gaadios_plan_convert(pfi,pvar,&plan,native,gr,gru);
   pgrid->undef = pfi->undef;
   gree(native,"adios2grid");
   return 0;
+}
+
+/*
+ * Read n grids shaped like pgrid, at times t0, t0+incr, ..., into gr and gru
+ * one after another. The reads are queued as deferred gets and issued
+ * together, so ADIOS2 serves them on its reader threads instead of one
+ * request at a time; the copies into GrADS grids then run on the calculation
+ * threads. Each grid is exactly what gaadios_read_grid returns for that time.
+ * Returns -1 for a request it does not cover, so the caller reads step by step.
+ */
+gaint gaadios_read_steps (struct gafile *pfi, struct gavar *pvar,
+                          struct gagrid *pgrid, gaint t0, gaint n, gaint incr,
+                          gadouble *gr, char *gru) {
+  struct gaadios_state *state;
+  struct gaadios_plan plan;
+  size_t type_size, points;
+  gaint rc, k, t, queued, *status;
+  char *native;
+  const char *name;
+
+  if (n<1 || incr<1) return -1;
+  rc = gaadios_plan_grid(pfi,pvar,pgrid,&plan);
+  if (rc) return rc;
+  state = (struct gaadios_state *)pfi->adios2;
+  name = gaadios_varname(pvar);
+  points = plan.isiz*plan.jsiz;
+  type_size = gaadios_type_size(plan.type);
+  if (!type_size || plan.nvalues>SIZE_MAX/type_size/(size_t)n) return -1;
+  status = (gaint *)galloc(sizeof(gaint)*(size_t)n,"adios2steps");
+  native = (char *)galloc(plan.nvalues*type_size*(size_t)n,"adios2stepdata");
+  if (!status || !native) {
+    if (status) gree(status,"adios2steps");
+    if (native) gree(native,"adios2stepdata");
+    return -1;
+  }
+
+  rc = 0;
+  queued = 0;
+  /* Consecutive steps, all written: one selection spanning them, which
+     ADIOS2 returns step after step in one buffer. */
+  if (incr==1 && plan.tdim<0) {
+    for (k=0;k<n;k++) {
+      t = t0+k;
+      status[k] = (t<1 || t>pfi->dnum[3]) ? 0 :
+                  gaadios_time_available(pfi,pvar,plan.variable,t);
+      if (status[k]!=1) break;
+    }
+    if (k==n) {
+      if (gaadios_plan_select(&plan,t0,1)!=adios2_error_none ||
+          adios2_set_step_selection(plan.variable,(size_t)(t0-1),(size_t)n)
+            !=adios2_error_none ||
+          adios2_get(state->engine,plan.variable,native,adios2_mode_sync)
+            !=adios2_error_none) {
+        snprintf(pout,1255,"BP5 I/O Error: Grid read failed for variable '%s'\n",name);
+        gaprnt(0,pout);
+        rc = 1;
+        goto done;
+      }
+      goto convert;
+    }
+  }
+  for (k=0;k<n && !rc;k++) {
+    t = t0+k*incr;
+    status[k] = (t<1 || t>pfi->dnum[3]) ? 0 :
+                gaadios_time_available(pfi,pvar,plan.variable,t);
+    if (status[k]<0) {
+      snprintf(pout,1255,"BP5 I/O Error: Unable to query time metadata for '%s'\n",name);
+      gaprnt(0,pout);
+      rc = 1;
+    }
+    else if (status[k]>0) {
+      if (gaadios_plan_select(&plan,t,status[k])!=adios2_error_none ||
+          adios2_get(state->engine,plan.variable,
+                     native+(size_t)k*plan.nvalues*type_size,
+                     adios2_mode_deferred)!=adios2_error_none) {
+        snprintf(pout,1255,"BP5 I/O Error: Invalid grid selection for variable '%s'\n",name);
+        gaprnt(0,pout);
+        rc = 1;
+      }
+      else queued++;
+    }
+  }
+  /* Complete whatever was queued even after an error: the engine writes into
+     these buffers when the gets are performed, so they must outlive that. */
+  if (queued && adios2_perform_gets(state->engine)!=adios2_error_none && !rc) {
+    snprintf(pout,1255,"BP5 I/O Error: Grid read failed for variable '%s'\n",name);
+    gaprnt(0,pout);
+    rc = 1;
+  }
+  if (rc) goto done;
+
+convert:
+#if USEOPENMP == 1
+#pragma omp parallel for schedule(static) \
+    if(ga_omp_parallelize(points*(size_t)n>(size_t)INT_MAX ? INT_MAX : (gaint)(points*(size_t)n)))
+#endif
+  for (k=0;k<n;k++) {
+    if (status[k]==0)
+      gaadios_set_undefined(pfi,points,gr+(size_t)k*points,gru+(size_t)k*points);
+    else
+      gaadios_plan_convert(pfi,pvar,&plan,native+(size_t)k*plan.nvalues*type_size,
+                           gr+(size_t)k*points,gru+(size_t)k*points);
+  }
+
+done:
+  gree(status,"adios2steps");
+  gree(native,"adios2stepdata");
+  return rc;
 }

@@ -47,6 +47,9 @@ LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
   "$test_root/bp5_writer" "$test_root/bp5_fixture.bp"
 LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
   "$test_root/bp5_writer" "$test_root/notime/bp5_notime.bp" --no-time
+mkdir -p "$test_root/long"
+LD_LIBRARY_PATH="$adios2_root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  "$test_root/bp5_writer" "$test_root/long/bp5_six.bp" --steps 6
 ln -s "$test_root/bp5_fixture.bp" "$test_root/multiple/first.bp"
 ln -s "$test_root/bp5_fixture.bp" "$test_root/multiple/second.bp"
 
@@ -182,6 +185,48 @@ set x 1 4
 set y 2
 set z 1 2
 d temp-thref
+reinit
+bpopen $test_root/long/bp5_six.bp
+set threads 1
+set gxout print
+set prnopts %.17g 12 1
+set x 1 4
+set y 1 3
+set z 2
+d ave(temperature,t=1,t=6)
+d ave(temperature+0,t=1,t=6)
+d max(surface_pressur,t=1,t=6)
+d max(surface_pressur+0,t=1,t=6)
+d ave(domain_mean,t=1,t=6)
+d ave(domain_mean+0,t=1,t=6)
+d ave(terrain,t=2,t=6)
+d ave(terrain+0,t=2,t=6)
+d sum(temperature,t=1.5,t=5.5,-b)
+d sum(temperature+0,t=1.5,t=5.5,-b)
+set y 2
+set z 1 2
+d ave(temperature,t=1,t=6,2)
+d ave(temperature+0,t=1,t=6,2)
+set threads 4
+set gxout print
+set prnopts %.17g 12 1
+set x 1 4
+set y 1 3
+set z 2
+d ave(temperature,t=1,t=6)
+d ave(temperature+0,t=1,t=6)
+d max(surface_pressur,t=1,t=6)
+d max(surface_pressur+0,t=1,t=6)
+d ave(domain_mean,t=1,t=6)
+d ave(domain_mean+0,t=1,t=6)
+d ave(terrain,t=2,t=6)
+d ave(terrain+0,t=2,t=6)
+d sum(temperature,t=1.5,t=5.5,-b)
+d sum(temperature+0,t=1.5,t=5.5,-b)
+set y 2
+set z 1 2
+d ave(temperature,t=1,t=6,2)
+d ave(temperature+0,t=1,t=6,2)
 quit
 GRADS_COMMANDS
 )"
@@ -275,6 +320,17 @@ check_count '300 310' 2
 check_count '50 51' 2
 check_count '710 711 712 713 800 801 802 803' 2
 
+# Time averages of a plain variable read many steps at once, and must match
+# the same average taken a step at a time (forced here with "+0"), at one and
+# at four calculation threads: x-y maps, an x-z section with an increment, a
+# per-step global value, a field written once, and boundary weights.
+check_count '2600 2601 2602 2603 2610 2611 2612 2613 2620 2621 2622 2623' 4
+check_count '1400 1401 1402 1403 1410 1411 1412 1413 1420 1421 1422 1423' 4
+check_count '52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5 52.5' 4
+check_count '0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5 9.5 10.5 11.5' 4
+check_count '21000 21010 21020 21030 21100 21110 21120 21130 21200 21210 21220 21230' 4
+check_count '2010 2011 3012 2013 2110 2111 2112 2113' 4
+
 open_count="$(grep -Fc 'BP5 dataset opened without a descriptor:' <<< "$output")"
 if (( open_count < 3 )); then
   printf 'BP5 lifecycle test expected at least 3 successful descriptor-free opens, found %s\n' "$open_count" >&2
@@ -282,4 +338,4 @@ if (( open_count < 3 )); then
   exit 1
 fi
 
-printf 'BP5 regression test passed: partial TDEF, attributes, descriptor precedence, bulk 2-D/shaded reads, 1-D and written-once fields, errors, and repeated lifecycle.\n'
+printf 'BP5 regression test passed: partial TDEF, attributes, descriptor precedence, bulk 2-D/shaded reads, 1-D and written-once fields, many-step time averages, errors, and repeated lifecycle.\n'

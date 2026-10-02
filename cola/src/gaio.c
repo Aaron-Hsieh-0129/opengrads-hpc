@@ -452,6 +452,21 @@ gaint y,z,t,e;
 }
 
 
+/* Read n grids shaped like pgr, a grid gaggrd has already filled for one
+   time, at times t0, t0+incr, ... into gr and gru one after another. A
+   format that can fetch many times in one request does so; otherwise this
+   returns -1 and the caller reads the times one at a time. */
+gaint gagrdsteps (struct gagrid *pgr, gaint t0, gaint n, gaint incr,
+                  gadouble *gr, char *gru) {
+#if USEADIOS2==1
+  if (pgr->pfile && pgr->pvar && pgr->pfile->adios2flg && pgr->pvar->levels>-900)
+    return gaadios_read_steps(pgr->pfile, pgr->pvar, pgr, t0, n, incr, gr, gru);
+#endif
+  (void)pgr; (void)t0; (void)n; (void)incr; (void)gr; (void)gru;
+  return -1;
+}
+
+
 /*  Basic read of a row of data elements -- a row is always
     in the X direction, which for grads binary is the fastest
     varying dimension */

@@ -14,6 +14,8 @@
  *
  * time is a CF time coordinate, one value per step, which a descriptor-free
  * open turns into the TDEF. --no-time leaves it out, for the fallback.
+ * --steps N writes N steps instead of two, for averages long enough to read
+ * many steps at once.
  *
  * Three fields are not full grids: theta_ref is a Z profile and terrain a
  * Y,X field, both written at the first step only, so they hold for every
@@ -81,12 +83,19 @@ int main(int argc, char **argv)
   float temperature[24];
   double surface_pressure[12];
   double mask[12];
-  size_t step, z, y, x, index;
+  size_t step, z, y, x, index, nsteps;
+  int arg;
 
   with_time = 1;
-  if (argc == 3 && strcmp(argv[2], "--no-time") == 0) with_time = 0;
-  else if (argc != 2) {
-    fprintf(stderr, "usage: %s OUTPUT.bp [--no-time]\n", argv[0]);
+  nsteps = 2;
+  for (arg = 2; arg < argc; ++arg) {
+    if (strcmp(argv[arg], "--no-time") == 0) with_time = 0;
+    else if (strcmp(argv[arg], "--steps") == 0 && arg + 1 < argc &&
+             atoi(argv[arg + 1]) > 0) nsteps = (size_t)atoi(argv[++arg]);
+    else break;
+  }
+  if (argc < 2 || arg != argc) {
+    fprintf(stderr, "usage: %s OUTPUT.bp [--no-time] [--steps N]\n", argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -190,7 +199,7 @@ int main(int argc, char **argv)
   engine = require_handle(adios2_open(io, argv[1], adios2_mode_write),
                           "adios2_open");
 
-  for (step = 0; step < 2; ++step) {
+  for (step = 0; step < nsteps; ++step) {
     for (z = 0; z < 2; ++z) {
     if (step == 0) temperature[6] = temperature_fill;
       for (y = 0; y < 3; ++y) {

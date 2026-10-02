@@ -1018,6 +1018,9 @@ gaint gaadios_read_row (struct gafile *, struct gavar *, gaint, gaint, gaint,
                         gaint, gaint, gaint, gadouble *, char *);
 gaint gaadios_read_grid (struct gafile *, struct gavar *, struct gagrid *,
                           gadouble *, char *);
+gaint gaadios_read_steps (struct gafile *, struct gavar *, struct gagrid *,
+                          gaint, gaint, gaint, gadouble *, char *);
+gaint gagrdsteps (struct gagrid *, gaint, gaint, gaint, gadouble *, char *);
 gaint h5setup (void);
 #if USEHDF5==1
 gaint h5openvar (gah5id,char*,hid_t*,hid_t*);

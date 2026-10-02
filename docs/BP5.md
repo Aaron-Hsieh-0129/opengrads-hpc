@@ -163,6 +163,8 @@ requests for 101 through 144 return undefined data instead of preventing the
 dataset from opening. Close and reopen the dataset to refresh random-access
 metadata after the writer adds more steps.
 
+Time averages of a plain BP5 variable (`ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc` over T) read many steps per request and accumulate them on the calculation threads; see [PERFORMANCE.md](PERFORMANCE.md#time-averages-of-bp5-data).
+
 To request missing-value attributes explicitly while retaining descriptor control, use:
 
 ```text
@@ -232,7 +234,7 @@ headlessly with `./opengrads -bl -d gxdummy -h gxdummy`.
 - Descriptor-free inference covers matching rank-2/rank-3 fields, rank-1 profiles whose length fits one axis, and per-step global values. Other shapes, such as a 2-D x-z section, need a descriptor.
 - Descriptor-free time axes need a CF time coordinate with a standard calendar and whole-minute steps; anything else counts steps.
 - No templates or PDEF in the BP5 backend.
-- Bulk reads currently cover in-bounds X/Y requests; other requests fall back to row reads.
+- Bulk reads cover in-bounds requests varying in any two of X, Y, and Z; requests varying in T or E, crossing a wrapped longitude, or outside the grid fall back to row reads.
 - GrADS retains global request state and is not generally thread-safe.
 - Native cubed-sphere/curvilinear topology is not implemented.
 

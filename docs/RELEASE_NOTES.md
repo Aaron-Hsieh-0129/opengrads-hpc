@@ -48,6 +48,19 @@ calculations, and native archives for Linux and macOS.
   reference profile, used to read as undefined after the first time. It is
   now the same at every time, and the open names such variables.
 
+- **Time averages of BP5 data run in parallel.** `ave`, `mean`, `sum`,
+  `sumg`, `min`, `max`, `minloc`, and `maxloc` over time used to read a BP5
+  variable one step at a time, and a vertical section one level at a time
+  within each step. When the expression is a plain variable of the default
+  file, the steps now go to ADIOS2 in batches its reader threads serve in
+  parallel, and they are accumulated on the calculation threads in the same
+  order as before; the regression checks the results are exactly those of
+  the step-by-step path. Vertical sections
+  and profiles are one read per step for every BP5 request. On a
+  96 x 96 x 300, 241-step dataset an x-z section average went from 5.5 s to
+  0.06 s and a 3-D `define` of the time mean from 13.6 s to 3.3 s. See
+  [PERFORMANCE.md](PERFORMANCE.md#time-averages-of-bp5-data).
+
 ### Changed since 1.0.8 (not yet released)
 
 - **`bpopen` now behaves like opening a descriptor.** On a VVM-shaped dataset
