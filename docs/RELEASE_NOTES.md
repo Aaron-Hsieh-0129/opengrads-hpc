@@ -90,17 +90,26 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed since 1.0.8 (not yet released)
 
+- **Linux: GrADS crashed on start when the locale was not installed.** With
+  `LC_ALL`, `LC_CTYPE` or `LANG` naming a locale the machine does not have --
+  `LC_CTYPE=UTF-8`, which macOS Terminal sends over ssh, or a language pack
+  that is not installed -- every start, batch or interactive, died with a
+  segmentation fault right after `GX Package Initialization`. The bundled GNU
+  Readline 8.2 did not check that the locale could be set; the upstream fix
+  is its official patch 001. The Linux archive now builds Readline 8.2 with
+  the full official patch series, 001 to 013, and the packager starts it under
+  an uninstalled locale before it ships. With 1.0.8, start GrADS as
+  `LC_ALL=C ./opengrads`, or set `LANG` to a locale `locale -a` lists.
 - **1.0.8 let `LD_LIBRARY_PATH` replace the bundled libraries.** It embedded
   the bundle's library paths as RUNPATH, which the loader searches *after*
   `LD_LIBRARY_PATH`, so the libraries an environment module or conda had put
   there -- their own cairo, freetype, HDF5 and so on -- were loaded in place
-  of the bundled ones and mixed with them. That is the likely cause of a
-  segmentation fault reported on a RHEL 8 cluster right after `GX Package
-  Initialization`. The paths are now embedded as RPATH, which the loader searches first,
-  so the bundle wins whatever the shell carries; like RUNPATH it stays inside
-  the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
-  The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
-  override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
+  of the bundled ones, which can crash or misbehave when the two differ. The
+  paths are now embedded as RPATH, which the loader searches first, so the
+  bundle wins whatever the shell carries; like RUNPATH it stays inside the
+  binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`. The
+  packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
+  override.
 
 ### Added in 1.0.8
 

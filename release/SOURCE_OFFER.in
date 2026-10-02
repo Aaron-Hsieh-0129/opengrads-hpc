@@ -20,10 +20,12 @@ and installation, is the following commit of the public repository:
     Commit:     @COMMIT@
     Built:      @BUILD_ID@
 
-Every third-party dependency bundled here is built from an unmodified,
-checksum-pinned upstream release. The exact version, download URL, and
-SHA-256 of each one is recorded in `release/versions.env` at the commit
-above, and the build that consumes them is `release/build-dependencies.sh`.
+Every third-party dependency bundled here is built from a checksum-pinned
+upstream release, unmodified except for the upstream maintainers' own
+published patches where `release/versions.env` lists them (GNU Readline's
+official patch series). The exact version, download URL, and SHA-256 of each
+release and patch is recorded in `release/versions.env` at the commit above,
+and the build that consumes them is `release/build-dependencies.sh`.
 Platform libraries taken from Homebrew (macOS) or MSYS2 (Windows) are
 unmodified upstream builds; `licenses/` records what this archive carries.
 
