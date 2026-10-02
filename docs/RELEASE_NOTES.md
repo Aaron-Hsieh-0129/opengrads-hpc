@@ -1,9 +1,9 @@
-## opengrads-hpc 1.0.8
+## opengrads-hpc 1.0.9
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Added since 1.0.8 (not yet released)
+### Added in 1.0.9
 
 - **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
   Script Library (BSD 2-Clause) now ship in `lib/scripts`: `plot` for 1-D
@@ -34,7 +34,6 @@ calculations, and native archives for Linux and macOS.
   365-day dataset. The 360-day, 366-day, and all-leap calendars, which GrADS
   cannot represent, are refused with a message naming the calendar instead of
   being misread as standard.
-
 - **`bpopen` reads 1-D data.** A 1-D array whose length matches one axis is
   now a field: a reference profile such as `thbar(z)` opens as a Z profile
   that is the same at every X and Y, so `d th - thbar` works in any section.
@@ -47,7 +46,6 @@ calculations, and native archives for Linux and macOS.
   step, in a dataset whose other variables have more, such as terrain or a
   reference profile, used to read as undefined after the first time. It is
   now the same at every time, and the open names such variables.
-
 - **Time averages of BP5 data run in parallel.** `ave`, `mean`, `sum`,
   `sumg`, `min`, `max`, `minloc`, and `maxloc` over time used to read a BP5
   variable one step at a time, and a vertical section one level at a time
@@ -55,13 +53,13 @@ calculations, and native archives for Linux and macOS.
   file, the steps now go to ADIOS2 in batches its reader threads serve in
   parallel, and they are accumulated on the calculation threads in the same
   order as before; the regression checks the results are exactly those of
-  the step-by-step path. Vertical sections
-  and profiles are one read per step for every BP5 request. On a
+  the step-by-step path. Vertical sections and profiles are one read per step
+  for every BP5 request. On a
   96 x 96 x 300, 241-step dataset an x-z section average went from 5.5 s to
   0.06 s and a 3-D `define` of the time mean from 13.6 s to 3.3 s. See
   [PERFORMANCE.md](PERFORMANCE.md#time-averages-of-bp5-data).
 
-### Changed since 1.0.8 (not yet released)
+### Changed in 1.0.9
 
 - **`bpopen` now behaves like opening a descriptor.** On a VVM-shaped dataset
   the two paths now print the same results for every command checked and draw
@@ -88,7 +86,7 @@ calculations, and native archives for Linux and macOS.
   which is which. Closing every file clears the calendar, so the next file may
   use either; before, only `reinit` did.
 
-### Fixed since 1.0.8 (not yet released)
+### Fixed in 1.0.9
 
 - **Linux: GrADS crashed on start when the locale was not installed.** With
   `LC_ALL`, `LC_CTYPE` or `LANG` naming a locale the machine does not have --
@@ -251,9 +249,11 @@ built with `ADIOS2_USE_MPI=OFF`.
 
 ### What's in it
 
-- **ADIOS2 BP5 input.** Open BP5 datasets through a GrADS descriptor. Handles
-  partial `TDEF` from a run that did not finish, dataset attributes, and
-  descriptor precedence.
+- **ADIOS2 BP5 input.** `bpopen` opens a BP5 dataset without a descriptor and
+  behaves as a descriptor for it would; a descriptor with `dtype bp5` gives
+  exact control. Handles partial `TDEF` from a run that did not finish, 1-D
+  profiles and fields written once, dataset attributes, and descriptor
+  precedence. Time averages read many steps at once, in parallel.
 - **OpenMP-threaded calculations.** Defaults to 4 threads; `-j N` or
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
@@ -279,9 +279,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.8-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.8-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.8-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.9-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.9-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.9-linux-x86_64
 ./opengrads
 ```
 
@@ -291,7 +291,7 @@ actually ships, so no extra flags are needed.
 ### Known limitations
 
 - No Windows build in this release.
-- Linux archives need a glibc at least as new as the Ubuntu 22.04 build
-  baseline; glibc and the dynamic loader are deliberately not bundled.
+- Linux archives are built on AlmaLinux 8 (glibc 2.28). They use the host's
+  glibc when it is 2.28 or newer and their bundled glibc and loader otherwise.
 - Reading BP5 written by a multi-rank MPI job is supported by ADIOS2's format
   but is not yet covered by the regression suite.
