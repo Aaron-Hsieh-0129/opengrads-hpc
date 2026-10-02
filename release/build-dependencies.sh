@@ -44,9 +44,28 @@ adios2_archive="$download_root/adios2-$ADIOS2_VERSION.tar.gz"
 
 fetch "$NCURSES_URL" "$NCURSES_SHA256" "$ncurses_archive"
 fetch "$READLINE_URL" "$READLINE_SHA256" "$readline_archive"
+for readline_patch in $READLINE_PATCHES; do
+  fetch "$READLINE_PATCH_URL/readline${READLINE_VERSION//./}-${readline_patch%%:*}" \
+    "${readline_patch#*:}" \
+    "$download_root/readline${READLINE_VERSION//./}-${readline_patch%%:*}"
+done
 fetch "$ADIOS2_URL" "$ADIOS2_SHA256" "$adios2_archive"
 extract "$ncurses_archive" "$source_root/ncurses-$NCURSES_VERSION"
 extract "$readline_archive" "$source_root/readline-$READLINE_VERSION"
+# Apply the official patches once; the stamp records how far a source tree
+# that survived an earlier run has got.
+readline_source="$source_root/readline-$READLINE_VERSION"
+readline_stamp="$readline_source/.opengrads-patches"
+for readline_patch in $READLINE_PATCHES; do
+  number="${readline_patch%%:*}"
+  if ! grep -qx "$number" "$readline_stamp" 2>/dev/null; then
+    (cd "$readline_source" &&
+       patch -p0 --forward --batch \
+         < "$download_root/readline${READLINE_VERSION//./}-$number")
+    printf '%s\n' "$number" >> "$readline_stamp"
+    rm -f "$deps_root/lib/libreadline.so"   # rebuild with the patch
+  fi
+done
 extract "$adios2_archive" "$source_root/ADIOS2-$ADIOS2_VERSION"
 
 if [[ ! -f "$deps_root/lib/libncurses.so" ]]; then

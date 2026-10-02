@@ -306,6 +306,22 @@ grep -Fq 'openmp' <<< "$smoke_output"
 grep -Fq 'netcdf' <<< "$smoke_output"
 grep -Fq 'Calculation threads = 4' <<< "$smoke_output"
 
+# A locale the machine does not have must not stop GrADS. Readline 8.2 before
+# its official patch 001 crashed on the first prompt when LC_ALL, LC_CTYPE or
+# LANG named one -- LC_CTYPE=UTF-8 from a macOS ssh session, say.
+locale_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
+  LC_ALL=xx_YY.UTF-8 LC_CTYPE=UTF-8 LANG=xx_YY.UTF-8 OPENGRADS_COLOR=0 \
+  "$bundle_root/opengrads" -bl -d gxdummy -h gxdummy 2>&1 <<'GRADS' || true
+q config
+quit
+GRADS
+)"
+if ! grep -Fq 'adios2-bp5' <<< "$locale_output"; then
+  printf 'grads does not start under an uninstalled locale:\n%s\n' \
+    "$locale_output" >&2
+  exit 1
+fi
+
 mkdir -p "$output_root"
 tar -C "$output_root" -czf "$output_root/$archive_base.tar.gz" "$archive_base"
 (
