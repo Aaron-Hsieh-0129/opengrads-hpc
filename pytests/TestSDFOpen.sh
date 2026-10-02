@@ -72,4 +72,96 @@ if grep -Fq 'Unknown command' <<< "$output"; then
   exit 1
 fi
 
-printf 'SDF regression test passed: NetCDF sdfopen, data read, and xdfopen are available.\n'
+# Files sdfopen used to refuse: no X (or no Y) coordinate, Cartesian axes in
+# metres, dimensions without coordinate variables, and 365-day calendars.
+# The fixtures' CDL sources sit next to them in pytests/data/sdf.
+sdf_fixtures="$repo_root/pytests/data/sdf"
+cat > "$test_root/times.gs" <<'GRADS_SCRIPT'
+function main(args)
+'q file'
+size=sublin(result,5)
+nt=subwrd(size,12)
+'q calendar'
+cal=sublin(result,1)
+out=''
+t=1
+while(t<=nt)
+  'set t 't
+  'q time'
+  out=out' 'subwrd(result,3)
+  t=t+1
+endwhile
+say args': 'cal' |'out
+GRADS_SCRIPT
+
+output="$(
+  OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 \
+    "$launcher" -bl -d gxdummy -h gxdummy <<GRADS_COMMANDS
+sdfopen $sdf_fixtures/zonal_mean.nc
+q file
+set gxout print
+set prnopts %g 4 1
+set lev 1000 200
+set t 2
+d u
+close 1
+sdfopen $sdf_fixtures/cartesian.nc
+q dims
+set gxout print
+set prnopts %g 4 1
+set t 2
+set z 2
+d th
+close 1
+sdfopen $sdf_fixtures/no_coords.nc
+q dims
+close 1
+sdfopen $sdf_fixtures/profile.nc
+q file
+set gxout print
+set prnopts %g 3 1
+set z 1 3
+d t
+close 1
+sdfopen $sdf_fixtures/calendar_noleap.nc
+run $test_root/times.gs noleap
+sdfopen $sdf_fixtures/calendar_standard.nc
+close 1
+sdfopen $sdf_fixtures/calendar_standard.nc
+run $test_root/times.gs standard
+quit
+GRADS_COMMANDS
+)"
+
+# No X: a single point, and the data reads along Y and Z.
+check_text 'SDF file has no X coordinate -- X is a single point, as with XDEF 1 LINEAR 0 1.'
+check_text 'Xsize = 1  Ysize = 4  Zsize = 3  Tsize = 2  Esize = 1'
+check_text '101 102 103 104'
+check_text '109 110 111 112'
+
+# Cartesian X and Y in metres become degrees, as bpopen and a descriptor
+# for a Cartesian model give them.
+check_text "X and Y are Cartesian; mapped to degrees on GrADS's 6370 km sphere, centred on 0"
+check_text 'X is varying   Lon = -0.00269839 to 0.00269839   X = 1 to 4'
+check_text 'Y is varying   Lat = -0.00179893 to 0.00179893   Y = 1 to 3'
+check_text '113 114 115 116'
+check_text '121 122 123 124'
+
+# Dimensions without coordinate variables count grid points.
+check_text 'SDF file has no coordinate variable for X dimension x -- X counts grid points, 1 to 4.'
+check_text 'X is varying   Lon = 1 to 4   X = 1 to 4'
+check_text 'Y is varying   Lat = 1 to 3   Y = 1 to 3'
+
+# A single column: neither X nor Y.
+check_text 'SDF file has no Y coordinate -- Y is a single point, as with YDEF 1 LINEAR 0 1.'
+check_text 'Xsize = 1  Ysize = 1  Zsize = 3  Tsize = 2  Esize = 1'
+check_text '290 280 260'
+
+# The same day numbers land on different dates in the two calendars, and a
+# standard file opens once the 365-day one is closed.
+check_text 'noleap: 365-day calendar in effect | 00Z28FEB2000 00Z01MAR2000 00Z02MAR2000'
+check_text 'SDF Error: this file uses the standard calendar, but the open files use the 365-day one.'
+check_text 'standard: standard calendar in effect | 00Z28FEB2000 00Z29FEB2000 00Z01MAR2000'
+
+printf 'SDF regression test passed: NetCDF sdfopen, data read, and xdfopen are available;\n'
+printf '  files without X or Y, Cartesian axes, bare dimensions, and both calendars open.\n'

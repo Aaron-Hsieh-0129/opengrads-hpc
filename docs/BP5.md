@@ -86,7 +86,17 @@ display temperature
 
 If `/path/to/run` contains exactly one BP5 child such as `output.bp`, `bpopen /path/to/run` resolves it. If it contains more than one BP5 child, specify the dataset explicitly.
 
-Discovery selects the largest numeric rank-3 global array as the reference grid, or the largest rank-2 array when no rank-3 field exists. Matching fields are interpreted as `z,y,x` or `y,x`. Only compatible rank-2 and rank-3 global arrays are exposed.
+Discovery selects the largest numeric rank-3 global array as the reference grid, or the largest rank-2 array when no rank-3 field exists. Matching fields are interpreted as `z,y,x` or `y,x`.
+
+1-D data is exposed too:
+
+- **A rank-1 array** whose length matches exactly one axis is a profile along that axis, such as a reference state `thbar(z)`. It holds the same value everywhere along the axes it lacks, so it combines with full fields directly: `d th - thbar` works in an x-y map, an x-z section, or a profile. A length that matches two axes (say 96 levels on a 96 × 96 grid) is skipped with a warning, since the axis cannot be told from the shape; give such a field a descriptor line. Coordinate variables are never fields.
+- **A global value** written at every step, one number per step, is a time series. A descriptor lists it with the dimension list `t`.
+- A dataset with no 2-D or 3-D field at all, a single column, opens on its Z coordinate with X and Y as single points.
+
+The open lists the 1-D fields it found:
+
+    1-D fields, the same along the axes they lack: thbar(z), pibar(z), rhobar(z), rhobar_up(z)
 
 Recognized coordinate names are:
 
@@ -94,7 +104,28 @@ Recognized coordinate names are:
 - Y: `coordinates/y`, `y`, `lat`, `latitude`
 - Z: `coordinates/z_mid`, `coordinates/z`, `z`, `lev`, `level`, `height`
 
-Cartesian coordinates with units `m`, `meter`, `meters`, `metre`, or `metres` are converted to kilometers. Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
+Missing coordinates become one-based index axes. Field aliases are lowercase sanitized basenames, limited to 15 characters, with suffixes for collisions.
+
+### A descriptor-free open behaves like a descriptor
+
+`bpopen` builds the descriptor a person would write for the dataset, so opening it either way gives the same results. On a VVM-shaped dataset (96 × 96 × 300, coordinates in metres, a CF time coordinate), every command checked, `aave` and level selection included, printed the same through `bpopen` as through a descriptor carrying the same axes, and the plots were byte-identical. `q ctlinfo` after `bpopen` shows that descriptor, ready to copy.
+
+**Z** is used as the dataset stores it. A Z axis in metres stays in metres, so `set lev 700` picks the level nearest 700 m.
+
+**X and Y in a length unit** (`m`, `meter`, `metre`, `km`, and their plurals) become degrees. GrADS has no Cartesian horizontal axes: X and Y are longitude and latitude, and area averages (`aave`), the spherical derivatives (`hdivg`, `hcurl`), and map drawing all assume it. Read as degrees, a domain 3325 m wide spans more than nine trips round the globe; the map labels wrap and `aave` is badly wrong (70 % high on one measured field). So, as a descriptor for a Cartesian model does, each axis is mapped onto GrADS's own 6370 km sphere and centred on 0:
+
+    degrees = (value - midpoint of the axis) / (6.37e6 m × π/180)
+
+Centring keeps cos(latitude) at 1 to within 4 × 10⁻⁸ across a 3.3 km domain, so `aave` matches the arithmetic mean, and using GrADS's own radius means `hdivg` and `hcurl` recover the original grid spacing. A 35 m grid becomes `xdef 96 linear -0.0149536 0.000314812`, the values VVM descriptors carry. X and Y in any other units, or without a units attribute, are used as stored; a Cartesian dataset without units needs an explicit descriptor.
+
+**T** comes from a CF time coordinate: a variable named `time` or `coordinates/time` holding one value per step, or one 1-D array of all steps, with `units` of the form `seconds since 1998-01-01 00:00:00` (also `minutes`, `hours`, `days`; an ISO `T` separator is accepted). The calendar must be standard or Gregorian, and the step must be a whole number of minutes, since that is the finest a GrADS `TDEF` can express. Uneven steps are labelled with the first interval, with a warning. Without a usable time coordinate, T counts steps, labelled from 00Z01JAN2000 at one-minute intervals.
+
+The open reports each of these decisions, for example:
+
+    X and Y are Cartesian; mapped to degrees on GrADS's 6370 km sphere, centred on 0, ...
+    T from 'time': 1441 steps from 00:00Z01JAN1998 every 1mn
+
+A field is skipped, with a warning naming it, when its BP variable name cannot be written into a GrADS descriptor: a name holding whitespace, a `~`, an `=>`, a non-printable byte, more than 256 characters, or starting with anything other than a letter, a digit, or `/`. Such a dataset needs an explicit descriptor, or a writer that names its variables differently.
 
 ## Use an explicit descriptor
 
@@ -119,12 +150,20 @@ The name before `=>` is the exact, case-sensitive BP variable name. The name aft
 
 When the array omits T, ADIOS2 engine steps map to GrADS T. When it contains an explicit T array dimension, the reader selects ADIOS2 step zero and indexes that dimension.
 
+A dimension list may leave out X or Y: `thbar=>thbar 300 z Reference potential temperature` describes a profile, which is then the same at every X and Y. A global value, one number per step, is listed as `t`: `domain_mean=>dmean 0 t Domain mean`.
+
+A variable written at one step only, in a dataset whose other variables have more, holds for every time: terrain, land use, and reference profiles are typically written once. The open names such variables:
+
+    Written once, so the same at every time: topo, albedo, thbar
+
 `TDEF` may declare the planned length of a running simulation even when fewer
 BP5 steps have been completed. For example, a descriptor with `tdef 144` can
 open when only 100 steps currently exist. Times 1 through 100 are readable;
 requests for 101 through 144 return undefined data instead of preventing the
 dataset from opening. Close and reopen the dataset to refresh random-access
 metadata after the writer adds more steps.
+
+Time averages of a plain BP5 variable (`ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc` over T) read many steps per request and accumulate them on the calculation threads; see [PERFORMANCE.md](PERFORMANCE.md#time-averages-of-bp5-data).
 
 To request missing-value attributes explicitly while retaining descriptor control, use:
 
@@ -142,7 +181,7 @@ OPENGRADS_ADIOS2_ROOT=/opt/adios2-cpu \
 ```
 
 The test creates a temporary two-step BP5 fixture. It covers a planned TDEF
-that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup.
+that is longer than the currently available BP5 steps, attribute metadata, descriptor precedence, two time steps, float and double conversion, missing masks, full 2-D statistics, shaded contours, invalid paths and shapes, ambiguous parent directories, and repeated open/close/reinit cleanup. It also checks that a descriptor-free open and the fixture's descriptor report the same X, Y, Z, and T axes, with metre X and Y mapped to degrees and T taken from the CF time coordinate, that a dataset without a time coordinate falls back to counted steps and says so, and that a Z profile, a field written at the first step only, and a per-step global value read the same through both opens, including a profile subtracted from a 3-D field in an x-z section.
 
 For sanitizer testing, configure a separate build with:
 
@@ -191,10 +230,11 @@ headlessly with `./opengrads -bl -d gxdummy -h gxdummy`.
 ## Current limitations
 
 - Serial random access only; no MPI collective reader or streaming engine.
-- Global arrays only; no ADIOS2 local arrays or complex values.
-- Descriptor-free inference is intentionally limited to matching rank-2/rank-3 fields.
+- Global arrays, and global values read as time series; no ADIOS2 local arrays or complex values.
+- Descriptor-free inference covers matching rank-2/rank-3 fields, rank-1 profiles whose length fits one axis, and per-step global values. Other shapes, such as a 2-D x-z section, need a descriptor.
+- Descriptor-free time axes need a CF time coordinate with a standard calendar and whole-minute steps; anything else counts steps.
 - No templates or PDEF in the BP5 backend.
-- Bulk reads currently cover in-bounds X/Y requests; other requests fall back to row reads.
+- Bulk reads cover in-bounds requests varying in any two of X, Y, and Z; requests varying in T or E, crossing a wrapped longitude, or outside the grid fall back to row reads.
 - GrADS retains global request state and is not generally thread-safe.
 - Native cubed-sphere/curvilinear topology is not implemented.
 

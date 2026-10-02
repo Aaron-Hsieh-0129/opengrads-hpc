@@ -58,6 +58,28 @@ static struct gxdsubs *dsubs=NULL;     /* function pointers for display */
 
 static gaint mbuferror = 0;    /* Indicate an error state; suspends buffering */
 
+/* Undo support.  The meta buffer is a replayable record of everything drawn
+   since the last frame action, so a position in it is all that is needed to
+   put the picture back: rewind to the position and redraw.  A position is
+   only meaningful within the frame it was taken in, so every reset of the
+   buffer chain drops the saved positions and bumps a generation counter,
+   which also catches a position taken before a reset and offered after one. */
+
+struct gxhmark {
+  struct gxmbuf *buf;          /* Buffer holding the end of the plot */
+  gaint used;                  /* How much of that buffer was in use */
+  gaint gen;                   /* Chain generation the position belongs to */
+};
+
+#define UNDOSTEPMAX 10000      /* Sanity cap on the number of steps kept */
+
+static gaint undolim = 0;            /* Steps to keep; 0 is off, the default */
+static gaint undocnt = 0;            /* Steps currently available */
+static gaint undogen = 0;            /* Bumped whenever the chain is reset */
+static struct gxhmark *undostk=NULL; /* undolim positions, oldest first */
+static struct gxhmark undopend;      /* Position before the running command */
+static gaint undopndflg = 0;         /* 1 when undopend holds a position */
+
 /* Initialize any buffering, etc. when GrADS starts up */
 
 void gxhnew (gadouble xsiz, gadouble ysiz, gaint hbufsz) {
@@ -316,6 +338,131 @@ char *ucc;
   mbuflast->used++;
   *(mbuflast->buff+mbuflast->used) = (float)ang;
   mbuflast->used++;
+}
+
+/* Is a saved position still usable?  It has to belong to the current
+   generation, and it must sit at or before the end of the chain: a position
+   past the end would make a redraw replay buffer contents that have already
+   been handed back. */
+
+static gaint gxhundookay (struct gxhmark *mark) {
+struct gxmbuf *pmbuf;
+
+  if (mark->gen!=undogen) return (0);
+  if (mark->buf==NULL) return (1);         /* Start of the chain */
+  pmbuf = mbufanch;
+  while (pmbuf) {
+    if (pmbuf==mark->buf) return (mark->used<=pmbuf->used);
+    if (pmbuf==mbuflast) return (0);       /* Position is past the end */
+    pmbuf = pmbuf->fpmbuf;
+  }
+  return (0);
+}
+
+/* Forget every saved position.  Called whenever the buffer chain is reset,
+   which is what makes the saved positions meaningless. */
+
+void gxhundoclr (void) {
+  undocnt = 0;
+  undopndflg = 0;
+  undogen++;
+}
+
+/* Set how many undo steps to keep.  A count below one turns undo off.
+   Returns 1 if the stack could not be allocated, otherwise 0. */
+
+gaint gxhundoset (gaint steps) {
+  gxhundoclr();
+  if (undostk) {
+    gree (undostk,"undostk");
+    undostk = NULL;
+  }
+  undolim = 0;
+  if (steps<1) return (0);
+  if (steps>UNDOSTEPMAX) steps = UNDOSTEPMAX;
+  undostk = (struct gxhmark *)galloc(sizeof(struct gxhmark)*steps,"undostk");
+  if (undostk==NULL) return (1);
+  undolim = steps;
+  return (0);
+}
+
+/* Note where the plot ends, before running a command that might add to it. */
+
+void gxhundomark (void) {
+  undopndflg = 0;
+  if (undolim<1 || mbuferror) return;
+  undopend.buf = mbuflast;
+  undopend.used = mbuflast ? mbuflast->used : 0;
+  undopend.gen = undogen;
+  undopndflg = 1;
+}
+
+/* Keep the position noted by gxhundomark, but only if the command that just
+   finished added to the plot and nothing reset the chain while it ran. */
+
+void gxhundokeep (void) {
+struct gxmbuf *end;
+gaint used, i;
+
+  if (!undopndflg) return;
+  undopndflg = 0;
+  if (undolim<1 || mbuferror) return;
+  if (!gxhundookay(&undopend)) return;
+  end = mbuflast;
+  used = end ? end->used : 0;
+  if (end==undopend.buf && used==undopend.used) return;   /* Nothing drawn */
+  if (undocnt==undolim) {                   /* Full, so drop the oldest */
+    for (i=0; i<undolim-1; i++) undostk[i] = undostk[i+1];
+    undocnt--;
+  }
+  undostk[undocnt] = undopend;
+  undocnt++;
+}
+
+/* Rewind the plot one step by handing the buffers filled since the newest
+   saved position back to the pool.  The buffers stay allocated; mbufget
+   resets them when it reuses them.  Returns 0 when the buffer was rewound
+   and 1 when there was nothing to undo. */
+
+gaint gxhundo (void) {
+struct gxhmark mark;
+
+  if (undolim<1 || undocnt<1) return (1);
+  undocnt--;
+  mark = undostk[undocnt];
+  if (!gxhundookay(&mark)) {
+    gxhundoclr();
+    return (1);
+  }
+  if (mark.buf==NULL) {                     /* Back to an empty plot */
+    if (mbufanch) mbufanch->used = 0;
+    mbuflast = mbufanch;
+    return (0);
+  }
+  mark.buf->used = mark.used;
+  mbuflast = mark.buf;
+  return (0);
+}
+
+/* Report the undo settings.  Any pointer may be NULL.  words is how much of
+   the meta buffer the current plot occupies. */
+
+void gxhundoq (gaint *limit, gaint *depth, gaint *words) {
+struct gxmbuf *pmbuf;
+gaint total;
+
+  if (limit) *limit = undolim;
+  if (depth) *depth = undocnt;
+  if (words) {
+    total = 0;
+    pmbuf = mbufanch;
+    while (pmbuf) {
+      total += pmbuf->used;
+      if (pmbuf==mbuflast) break;
+      pmbuf = pmbuf->fpmbuf;
+    }
+    *words = total;
+  }
 }
 
 /* User has issued a clear.  
@@ -717,6 +864,7 @@ void mbufrel (gaint flag) {
 struct gxmbuf *pmbuf,*pmbuf2;
 gaint i;
 
+  gxhundoclr();          /* Saved undo positions do not survive a reset */
   i = flag;
   pmbuf = mbufanch;                /* point at the anchor */
   while (pmbuf) {

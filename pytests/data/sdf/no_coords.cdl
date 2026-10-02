@@ -1,0 +1,16 @@
+// Added in 2026 as a GPLv2 sdfopen regression fixture; see ../../../COPYING.
+// Dimensions x and y with no coordinate variables: sdfopen counts grid points.
+netcdf no_coords {
+dimensions:
+  time = UNLIMITED ;
+  y = 3 ;
+  x = 4 ;
+variables:
+  double time(time) ;
+    time:units = "days since 2000-01-01" ;
+  float v(time, y, x) ;
+data:
+  time = 0, 1 ;
+  v = 1, 2, 3, 4,  5, 6, 7, 8,  9, 10, 11, 12,
+      13, 14, 15, 16,  17, 18, 19, 20,  21, 22, 23, 24 ;
+}

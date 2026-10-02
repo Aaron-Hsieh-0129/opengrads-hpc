@@ -14,6 +14,7 @@
 #include <malloc.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -2935,17 +2936,114 @@ gaint rc;
 }
 
 
+/* Grid points per block when many times are folded in at once */
+#define AVE_TILE 1024
+
+/* Fold one grid point of one time into the running result of ave and its
+   kin: sum and cnt are the two grids they keep, val the time's value. The
+   step-by-step loop and the many-times-at-once loop both use it, so the two
+   accumulate identically. */
+static inline void ave_accumulate (gaint sel, gaint d, gadouble wt,
+                                   gadouble *sum, char *sumu,
+                                   gadouble *cnt, char *cntu,
+                                   gadouble val, char valu) {
+  if (sel>=5 && sel<=8) {
+    if (*sumu==0 || valu==0) {
+      if (valu!=0) {
+        *sum = val;
+        *cnt = d;
+        *sumu = 1;
+        *cntu = 1;
+      }
+    }
+    else {
+      if ((sel==5 || sel==7) && val < *sum) {*sum = val; *cnt = d;}
+      if ((sel==6 || sel==8) && val > *sum) {*sum = val; *cnt = d;}
+    }
+  } else {
+    if (valu!=0) {
+      /* weight for ave,mean,sum  for sumg just accum */
+      if (sel<=3) val = val*wt;
+      if (*sumu==0) {
+        *sum = val;
+        *sumu = 1;
+        *cnt += wt;
+      } else {
+        *sum += val;
+        *cnt += wt;
+      }
+    }
+  }
+}
+
+/* The weight -b gives time d of an average from gr1 to gr2: how much of its
+   cell, d-0.5 to d+0.5, lies between them. Times inside count fully, the
+   first and last by the part of their cell inside, as the other dimensions
+   are weighted. The first two times, the time-at-a-time loop, and the
+   many-times-at-once loop all take their weights from here. */
+static inline gadouble ave_tbndwt (gadouble gr1, gadouble gr2, gaint d) {
+  gadouble lo, hi;
+  lo = d-0.5;
+  hi = d+0.5;
+  if (gr1 > lo) lo = gr1;
+  if (gr2 < hi) hi = gr2;
+  if (hi < lo) return 0.0;
+  return hi - lo;
+}
+
+/* The file variable an averaging argument names when it is nothing else: a
+   bare variable of the default file, not a defined grid, a function, or an
+   expression. Only then can many times be read at once rather than through
+   gaexpr one time at a time; pgr, the grid gaexpr returned for the first
+   time, must have come from that variable. */
+static struct gavar *ave_plain_var (char *expr, struct gastat *pst,
+                                    struct gagrid *pgr) {
+  struct gafile *pfi;
+  struct gavar *pvar;
+  char name[20], *ch;
+  gaint i, fnum;
+
+  ch = expr;
+  while (*ch==' ') ch++;
+  if (*ch<'a' || *ch>'z') return NULL;
+  i = 0;
+  while ((*ch>='a' && *ch<='z') || (*ch>='0' && *ch<='9') || *ch=='_') {
+    if (i>=16) return NULL;
+    name[i++] = *ch++;
+  }
+  name[i] = '\0';
+  pfi = pst->pfid;
+  if (*ch=='.') {
+    ch = intprs(ch+1,&fnum);
+    if (ch==NULL || fnum<1) return NULL;
+    pfi = pst->pfi1;
+    for (i=1; i<fnum && pfi!=NULL; i++) pfi = pfi->pforw;
+  }
+  else if (getdfn(name,pst)!=NULL) return NULL;
+  while (*ch==' ') ch++;
+  if (*ch!='\0' || pfi==NULL || pfi!=pst->pfid || pfi->type!=1) return NULL;
+  pvar = pfi->pvar1;
+  for (i=0; i<pfi->vnum && !cmpwrd(name,pvar->abbrv); i++) pvar++;
+  if (i>=pfi->vnum) return NULL;
+  if (pgr->pvar!=pvar || pgr->pfile!=pfi || pgr->toff) return NULL;
+  return pvar;
+}
+
 gaint ave (struct gafunc *pfc, struct gastat *pst, gaint sel) {
 struct gagrid *pgr1, *pgr2, *pgr;
 struct gafile *pfi;
 struct dt tinc;
 gadouble (*conv) (gadouble *, gadouble);
 gadouble gr1, gr2, *sum, *cnt, *val;
-gadouble alo, ahi, alen, wlo=0, whi=0, rd1;
+gadouble alo, ahi, alen, wlo=0, whi=0;
 gadouble d2r, wt, wt1, abs;
 gaint mos, mns, wflag=0;
 gaint i, rc, siz, dim, d, d1, d2, dim2, ilin, incr, bndflg, normerr;
+gaint k, nstep, chunk, ib, ie;
 char *ch,*fnam,*sumu,*cntu,*valu;
+struct gavar *direct;
+gadouble *steps=NULL, *wts=NULL;
+char *stepsu=NULL;
 
   d2r = M_PI/180;
   fnam=avenam[sel-1];
@@ -3075,12 +3173,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
   if (dim==3) {
     gr2t (pfi->grvals[3],d1,&(pst->tmin));
     pst->tmax = pst->tmin;
-    if (bndflg) {
-      rd1 = d1;
-      if (gr1 < rd1+0.5) wt1 = (rd1+0.5)-gr1;
-      if (gr2 > rd1-0.5) wt1 = gr2 + 0.5 - rd1;
-      if (wt1<0.0) wt1=0.0;
-    }
+    if (bndflg) wt1 = ave_tbndwt(gr1,gr2,d1);
   }
   /*-----  lon,lat,lev,ens */
   else {
@@ -3170,12 +3263,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
   if (dim==3) {
     gr2t (pfi->grvals[3],d,&(pst->tmin));
     pst->tmax = pst->tmin;
-    if (bndflg) {
-      rd1 = d;
-      if (gr1 < rd1+0.5) wt = (rd1+0.5)-gr1;
-      if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
-      if (wt<0.0) wt=0.0;
-    }
+    if (bndflg) wt = ave_tbndwt(gr1,gr2,d);
   }
   /*----- lon,lat,lev,ens 22222222222 */
   else {
@@ -3318,10 +3406,68 @@ char *ch,*fnam,*sumu,*cntu,*valu;
     }
   }
 
-  /* Now sum the rest of the grids */
+  /* Now sum the rest of the grids.
+
+     Averaging a file variable over time reads many times at once where the
+     format supports it (BP5): the reads go out together and are served in
+     parallel, and the times are folded in on the calculation threads, each
+     grid point taking its times in order, as the loop below does. Anything
+     else, or a format without such a reader, goes a time at a time. */
   d+=incr;
   rc = 0;
+  direct = (dim==3) ? ave_plain_var(pfc->argpnt[0],pst,pgr1) : NULL;
+  chunk = 1;
+  if (direct) {
+    chunk = (gaint)((64.0*1024.0*1024.0) / ((gadouble)siz*(sizeof(gadouble)+1)));
+    if (chunk>256) chunk = 256;
+    if (chunk<2) direct = NULL;
+  }
+  if (direct) {
+    steps  = (gadouble *)galloc(sizeof(gadouble)*(size_t)siz*(size_t)chunk,"avesteps");
+    stepsu = (char *)galloc((size_t)siz*(size_t)chunk,"avestepsu");
+    wts    = (gadouble *)galloc(sizeof(gadouble)*(size_t)chunk,"avewts");
+    if (!steps || !stepsu || !wts) direct = NULL;
+  }
   for (d=d; d<=d2 && !rc; d+=incr) {
+    /* times outside the file go the usual way, which warns about them */
+    if (direct && d>=1 && d<=pfi->dnum[3]) {
+      nstep = (d2-d)/incr + 1;
+      if (nstep>(pfi->dnum[3]-d)/incr+1) nstep = (pfi->dnum[3]-d)/incr+1;
+      if (nstep>chunk) nstep = chunk;
+      rc = gagrdsteps(pgr1, d, nstep, incr, steps, stepsu);
+      if (rc==0) {
+        for (k=0; k<nstep; k++) {
+          wts[k] = bndflg ? ave_tbndwt(gr1,gr2,d+k*incr) : 1.0;
+        }
+        sum  = pgr1->grid;
+        sumu = pgr1->umask;
+        cnt  = pgr2->grid;
+        cntu = pgr2->umask;
+        /* Each thread takes a block of grid points through the times in
+           order, so every point sums exactly as the time-at-a-time loop
+           does, while memory is read a row at a time. */
+#if USEOPENMP == 1
+#pragma omp parallel for private(k,i,ie) schedule(static) \
+    if(ga_omp_parallelize((gadouble)siz*nstep>(gadouble)INT_MAX ? INT_MAX : siz*nstep))
+#endif
+        for (ib=0; ib<siz; ib+=AVE_TILE) {
+          ie = ib+AVE_TILE < siz ? ib+AVE_TILE : siz;
+          for (k=0; k<nstep; k++) {
+            for (i=ib; i<ie; i++) {
+              ave_accumulate(sel, d+k*incr, wts[k], &sum[i], &sumu[i], &cnt[i], &cntu[i],
+                             steps[(size_t)k*siz+i], stepsu[(size_t)k*siz+i]);
+            }
+          }
+        }
+        d += (nstep-1)*incr;
+        gr2t (pfi->grvals[3],d,&(pst->tmin));
+        pst->tmax = pst->tmin;
+        continue;
+      }
+      if (rc>0) break;
+      rc = 0;
+      direct = NULL;       /* not a request it reads; go a time at a time */
+    }
     /* Get weight for this grid */
     wt = 1.0;
 
@@ -3329,12 +3475,7 @@ char *ch,*fnam,*sumu,*cntu,*valu;
     if (dim==3) {
       gr2t (pfi->grvals[3],d,&(pst->tmin));
       pst->tmax = pst->tmin;
-      if (bndflg) {
-	rd1 = d;
-	if (gr1 < rd1+0.5) wt = (rd1+0.5)-gr1;
-	if (gr2 > rd1-0.5) wt = gr2 + 0.5 - rd1;
-	if (wt<0.0) wt=0.0;
-      }
+      if (bndflg) wt = ave_tbndwt(gr1,gr2,d);
     }
     /*---- lat,lon,lev,ens 3333333*/
     else {
@@ -3408,40 +3549,15 @@ char *ch,*fnam,*sumu,*cntu,*valu;
 #pragma omp parallel for simd schedule(static) if(ga_omp_parallelize(siz))
 #endif
       for (i=0; i<siz; i++) {
-	if (sel>=5 && sel<=8) {
-	  if (sumu[i]==0 || valu[i]==0) {
-	    if (valu[i]!=0) {
-	      sum[i] = val[i];
-	      cnt[i] = d;
-	      sumu[i] = 1;
-	      cntu[i] = 1;
-	    }
-	  }
-	  else {
-	    if ((sel==5 || sel==7) && val[i] < sum[i]) {sum[i] = val[i]; cnt[i] = d;}
-	    if ((sel==6 || sel==8) && val[i] > sum[i]) {sum[i] = val[i]; cnt[i] = d;}
-	  }
-	} else {
-	  if (valu[i]!=0) {
-	    /* weight for ave,mean,sum  for sumg just accum */
-	    if (sel<=3) {
-	      val[i] = val[i]*wt;
-	    }
-	    if (sumu[i]==0) {
-	      sum[i] = val[i];
-	      sumu[i] = 1;
-	      cnt[i] += wt;
-	    } else {
-	      sum[i] += val[i];
-	      cnt[i] += wt;
-	    }
-	  }
-	}
+        ave_accumulate(sel, d, wt, &sum[i], &sumu[i], &cnt[i], &cntu[i], val[i], valu[i]);
       }
       gagfre(pgr);
     }
   }
 
+  if (steps)  gree(steps,"avesteps");
+  if (stepsu) gree(stepsu,"avestepsu");
+  if (wts)    gree(wts,"avewts");
   if (rc) {
     if (rc==-1) gafree (pst);
     gagfre(pgr1);

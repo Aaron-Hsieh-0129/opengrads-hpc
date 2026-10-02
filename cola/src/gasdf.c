@@ -47,6 +47,211 @@ char *gxgnam(char *) ;     /* This is also in gx.h */
 static char pout[1256];    /* Build error msgs here */
 gaint utISinit = 0 ;
 
+/* Dimension names that identify X and Y when the coordinate variable carries
+   no recognised units, axis, or standard_name, or when there is none */
+static char *sdf_xnames[] = {"x","xc","xt","xh","lon","longitude","west_east",NULL};
+static char *sdf_ynames[] = {"y","yc","yt","yh","lat","latitude","south_north",NULL};
+
+/* GrADS's earth radius in metres. Cartesian X and Y are mapped to degrees on
+   it, centred on 0, the way a descriptor for a Cartesian model writes them and
+   the way bpopen maps them, so the grid and the area weights are the same
+   whichever way the data is opened. */
+#define SDF_EARTH_RADIUS 6.37e6
+
+/* Returns the id of the first dimension named in names (case-insensitive) and
+   sets *coord to its coordinate variable, or NULL when it has none.
+   Returns -1 when none of the names is a dimension. */
+static gaint sdf_named_axis(struct gafile *pfi, char **names, struct gavar **coord) {
+  struct gavar *var;
+  gaint i,j;
+
+  *coord = NULL;
+  for (j=0; names[j]; j++) {
+    for (i=0; i<pfi->nsdfdims; i++) {
+      if (strcasecmp(pfi->sdfdimnam[i], names[j])) continue;
+      var = find_var(pfi, pfi->sdfdimnam[i]);
+      if (var && var->nvardims==1 && var->vardimids[0]==pfi->sdfdimids[i]) *coord = var;
+      return pfi->sdfdimids[i];
+    }
+  }
+  return -1;
+}
+
+/* Sets up an X or Y axis the file gives no values for. With a dimension
+   (dimid >= 0) the axis counts its grid points, 1 to the dimension size;
+   without one it is a single point at 0, the equivalent of "xdef 1 linear 0 1",
+   so data with no X (a zonal mean, a y-z section) or no Y still opens. */
+static gaint sdf_index_axis(struct gafile *pfi, gaint dim, gaint dimid) {
+  gadouble *vals,first;
+  gaint i,size;
+  char *axis,*name=NULL;
+
+  axis = (dim==XINDEX) ? "X" : "Y";
+  size = 1;
+  first = 0.0;
+  if (dimid >= 0) {
+    for (i=0; i<pfi->nsdfdims; i++) {
+      if (pfi->sdfdimids[i] == dimid) {
+	size = pfi->sdfdimsiz[i];
+	name = pfi->sdfdimnam[i];
+	break;
+      }
+    }
+    if (size < 1) size = 1;
+    first = 1.0;
+  }
+  if ((vals = (gadouble *)galloc(sizeof(gadouble)*6,"indexvals")) == NULL) {
+    snprintf(pout,1255,"gadsdf: Unable to allocate memory for %s coordinate axis values\n",axis);
+    gaprnt(0,pout);
+    return Failure;
+  }
+  *(vals)   = 1.0;
+  *(vals+1) = first - 1.0;
+  *(vals+2) = -999.9;
+  *(vals+3) = 1.0;
+  *(vals+4) = 1.0 - first;
+  *(vals+5) = -999.9;
+  pfi->dnum[dim] = size;
+  pfi->grvals[dim] = vals;
+  pfi->abvals[dim] = vals+3;
+  pfi->ab2gr[dim] = liconv;
+  pfi->gr2ab[dim] = liconv;
+  pfi->linear[dim] = 1;
+  if (name) {
+    snprintf(pout,1255,"SDF file has no coordinate variable for %s dimension %s -- %s counts grid points, 1 to %d.\n",
+	     axis,name,axis,size);
+  } else {
+    snprintf(pout,1255,"SDF file has no %s coordinate -- %s is a single point, as with %sDEF 1 LINEAR 0 1.\n",
+	     axis,axis,axis);
+  }
+  gaprnt(2,pout);
+  return Success;
+}
+
+/* The calendar a time coordinate's "calendar" attribute names: 0 for the
+   standard one (or none named), 1 for a 365-day one, -1 for one GrADS cannot
+   represent. A descriptor's OPTIONS 365_day_calendar is honoured by the
+   caller, so a file that names no calendar leaves it alone. */
+static gaint sdf_calendar(struct gafile *pfi, struct gavar *Tcoord) {
+  struct gaattr *attr;
+  char *val;
+
+  attr = find_att(Tcoord->longnm, pfi->attr, "calendar") ;
+  if (attr == NULL || attr->value == NULL) return 0;
+  val = (char *)attr->value;
+  while (*val && isspace((unsigned char)*val)) val++;
+  if ((!strncasecmp(val,"cal365",      6)) ||
+      (!strncasecmp(val,"altcal365",   9)) ||
+      (!strncasecmp(val,"common_year",11)) ||
+      (!strncasecmp(val,"365_day",     7)) ||
+      (!strncasecmp(val,"noleap",      6)) ||
+      (!strncasecmp(val,"no_leap",     7))) return 1;
+  if ((!strncasecmp(val,"360_day",     7)) ||
+      (!strncasecmp(val,"366_day",     7)) ||
+      (!strncasecmp(val,"all_leap",    8))) {
+    snprintf(pout,1255,"SDF Error: the %s calendar is not supported; GrADS has the standard and 365-day calendars.\n",val);
+    gaprnt(0,pout);
+    return -1;
+  }
+  return 0;
+}
+
+/* The date of a time value in a 365-day calendar. UDUNITS knows only the
+   standard calendar, so it supplies the origin and the length of the unit,
+   and the days are counted here with every year 365 days long. "months since"
+   and "years since" count whole months, as they do for the standard calendar. */
+static gaint sdf_noleap_date(gadouble value, utUnit *timeunit, char *time_units,
+			     gaint *yr, gaint *mo, gaint *dy, gaint *hr, gaint *mn) {
+  static const gaint cum[13] = {0,31,59,90,120,151,181,212,243,273,304,334,365};
+  utUnit step, minutes;
+  gadouble slope, intercept;
+  gafloat osec;
+  gaint oyr, omo, ody, ohr, omn, m, rc, ismonth;
+  long long total, days, months, years, doy;
+  char unitname[64];
+  size_t n;
+
+  if (utCalendar(0.0, timeunit, &oyr, &omo, &ody, &ohr, &omn, &osec)) return Failure;
+  if (omo < 1) omo = 1;
+  if (ody < 1) ody = 1;
+  if (omo > 12 || ody > cum[omo]-cum[omo-1]) {
+    gaprnt(0, "gadsdf: The time origin is not a date in the 365-day calendar.\n");
+    return Failure;
+  }
+  for (n=0; n<sizeof(unitname)-1 && time_units[n] && time_units[n]!=' '; n++)
+    unitname[n] = time_units[n];
+  unitname[n] = '\0';
+
+  ismonth = !strncasecmp(unitname, "month", 5) || strstr(unitname, "/12") != NULL;
+  if (ismonth || !strncasecmp(unitname, "year", 4) ||
+      !strncasecmp(unitname, "common_year", 11)) {
+    months = (long long)floor((ismonth ? value : 12.0*value) + 0.5);
+    months += omo - 1;
+    years = months >= 0 ? months/12 : -((11-months)/12);
+    months -= years*12;
+    *yr = oyr + (gaint)years;
+    *mo = (gaint)months + 1;
+    *dy = ody;
+    if (*dy > cum[*mo]-cum[*mo-1]) *dy = cum[*mo]-cum[*mo-1];
+    *hr = ohr;
+    *mn = omn;
+    return Success;
+  }
+
+  utIni(&step);
+  utIni(&minutes);
+  rc = utScan(unitname, &step) || utScan("minutes", &minutes) ||
+       utConvert(&step, &minutes, &slope, &intercept);
+  utFree(&step);
+  utFree(&minutes);
+  if (rc) {
+    gaprnt(0, "gadsdf: Error parsing time units for the 365-day calendar.\n");
+    return Failure;
+  }
+  total = (long long)floor(value*slope + 0.5) + ohr*60 + omn + (long long)floor(osec/60.0 + 0.5);
+  days = total >= 0 ? total/1440 : -((1439-total)/1440);
+  total -= days*1440;
+  doy = cum[omo-1] + ody - 1 + days;
+  years = doy >= 0 ? doy/365 : -((364-doy)/365);
+  doy -= years*365;
+  for (m=0; m<11 && doy >= cum[m+1]; m++);
+  *yr = oyr + (gaint)years;
+  *mo = m + 1;
+  *dy = (gaint)(doy - cum[m]) + 1;
+  *hr = (gaint)(total/60);
+  *mn = (gaint)(total%60);
+  return Success;
+}
+
+/* Metres in one unit of a coordinate whose units are a length, else 0 */
+static gadouble sdf_length_unit(struct gafile *pfi, struct gavar *coord) {
+  struct gaattr *attr;
+  char units[32],*val;
+  gaint i,j,len;
+
+  attr = find_att(coord->longnm, pfi->attr, "units");
+  if (attr == NULL || attr->value == NULL) return 0.0;
+  len = 31;
+#if USENETCDF==1
+  if (pfi->ncflg==1 && attr->nctype!=NC_CHAR && attr->nctype!=NC_STRING) return 0.0;
+#endif
+  if (pfi->ncflg==2) {
+    /* HDF text attributes need not be terminated */
+    if (attr->nctype!=1 && attr->nctype!=2) return 0.0;
+    if (attr->len < len) len = attr->len;
+  }
+  val = (char *)attr->value;
+  for (i=0; i<len && val[i] && isspace((unsigned char)val[i]); i++);
+  for (j=0; i<len && val[i]; i++,j++) units[j] = (char)tolower((unsigned char)val[i]);
+  units[j] = '\0';
+  for (j--; j>=0 && isspace((unsigned char)units[j]); j--) units[j] = '\0';
+  if (!strcmp(units,"m") || !strcmp(units,"meter") || !strcmp(units,"meters") ||
+      !strcmp(units,"metre") || !strcmp(units,"metres")) return 1.0;
+  if (!strcmp(units,"km") || !strcmp(units,"kilometer") || !strcmp(units,"kilometers") ||
+      !strcmp(units,"kilometre") || !strcmp(units,"kilometres")) return 1000.0;
+  return 0.0;
+}
+
 
 /* STNDALN requires gaxdfopen routine and others contained therein, 
    which turns out to be everything except the gasdfopen() routine. 
@@ -271,7 +476,7 @@ gaint len,noname,notinit,nolength;
 gaint i,j,c,rc,flag,fwflg,numdvars,e,t;
 gaint iyr,imo,idy,ihr,imn,isec,ispress,isDatavar ;
 gaint xdimid,ydimid,zdimid,tdimid,edimid ;
-gaint istart,icount,havesf,haveao;
+gaint istart,icount,havesf,haveao,xbare=-1,ybare=-1,xcart,ycart;
 char *ch,*utname,*pos=NULL,*pos1=NULL,*pos2=NULL; 
 char *time_units=NULL,*trunc_units=NULL,*temp_str ;
 utUnit timeunit ;
@@ -416,14 +621,17 @@ utUnit timeunit ;
 
   /* Set up the X Coordinate */
   if (parms.xsetup) {
-    if (parms.xsrch) {   
+    if (parms.xsrch) {
     /* find an X axis */
       rc = findX(pfi, &Xcoord);
       if ((rc==Failure) || (Xcoord == NULL)) {
-	gaprnt(0, "gadsdf: SDF file has no discernable X coordinate.\n") ;
-	gaprnt(0,"  To open this file with GrADS, use a descriptor file with an XDEF entry.\n");
-	gaprnt(0,"  Documentation is at http://cola.gmu.edu/grads/gadoc/SDFdescriptorfile.html\n"); 
-	return Failure ;
+	/* Then by dimension name; failing that, X is a single point, so a
+	   zonal mean or a y-z section opens without a descriptor */
+	Xcoord = NULL;
+	xbare = sdf_named_axis(pfi, sdf_xnames, &Xcoord);
+	if (Xcoord == NULL) {
+	  if (sdf_index_axis(pfi, XINDEX, xbare) == Failure) return Failure;
+	}
       }
     }
     else {    
@@ -435,18 +643,20 @@ utUnit timeunit ;
 	return Failure ;
       }
     } 
-    /* set the dimension size */
-    for (i=0;i<pfi->nsdfdims;i++) {
-      if (pfi->sdfdimids[i] == Xcoord->vardimids[0]) {
-	pfi->dnum[XINDEX] = pfi->sdfdimsiz[i];
-	break;
+    if (Xcoord) {
+      /* set the dimension size */
+      for (i=0;i<pfi->nsdfdims;i++) {
+	if (pfi->sdfdimids[i] == Xcoord->vardimids[0]) {
+	  pfi->dnum[XINDEX] = pfi->sdfdimsiz[i];
+	  break;
+	}
       }
-    }
 
-    /* set the axis values */
-    if ((sdfdeflev(pfi, Xcoord, XINDEX, 0)) == Failure)  {
-      gaprnt(0, "gadsdf: Failed to define X coordinate values.\n") ;
-      return Failure;
+      /* set the axis values */
+      if ((sdfdeflev(pfi, Xcoord, XINDEX, 0)) == Failure)  {
+	gaprnt(0, "gadsdf: Failed to define X coordinate values.\n") ;
+	return Failure;
+      }
     }
 
   }
@@ -462,7 +672,7 @@ utUnit timeunit ;
     if (Xcoord) {
       xdimid = find_dim(pfi, Xcoord->longnm) ;
     } else {
-      xdimid = -1 ;
+      xdimid = xbare ;
     }
   }
 
@@ -473,10 +683,12 @@ utUnit timeunit ;
       rc=0;
       rc = findY(pfi, &Ycoord);
       if ((rc==Failure) || (Ycoord == NULL)) {
-	gaprnt(0, "gadsdf: SDF file has no discernable Y coordinate.\n") ;
-	gaprnt(0,"  To open this file with GrADS, use a descriptor file with a YDEF entry.\n");
-	gaprnt(0,"  Documentation is at http://cola.gmu.edu/grads/gadoc/SDFdescriptorfile.html\n"); 
-	return Failure ;
+	/* as for X: by dimension name, else a single point */
+	Ycoord = NULL;
+	ybare = sdf_named_axis(pfi, sdf_ynames, &Ycoord);
+	if (Ycoord == NULL) {
+	  if (sdf_index_axis(pfi, YINDEX, ybare) == Failure) return Failure;
+	}
       }
     }
     else {
@@ -488,36 +700,38 @@ utUnit timeunit ;
 	return Failure ;
       }
     } 
-    /* set the dimension size */
-    for (i=0;i<pfi->nsdfdims;i++) {
-      if (pfi->sdfdimids[i] == Ycoord->vardimids[0]) {
-	pfi->dnum[YINDEX] = pfi->sdfdimsiz[i];
-	break;
+    if (Ycoord) {
+      /* set the dimension size */
+      for (i=0;i<pfi->nsdfdims;i++) {
+        if (pfi->sdfdimids[i] == Ycoord->vardimids[0]) {
+	  pfi->dnum[YINDEX] = pfi->sdfdimsiz[i];
+	  break;
+        }
       }
-    }
 
-    /* Read first two values to deduce YREV flag */
-    if (pfi->dnum[YINDEX] > 1)  {
-      istart = 0;
-      icount = 1; 
-      if (read_one_dimension(pfi, Ycoord, istart, icount, &lat1) == Failure) {
-	gaprnt(0, "gadsdf: Error reading first latitude value in SDF file.\n") ;
-	return Failure;
+      /* Read first two values to deduce YREV flag */
+      if (pfi->dnum[YINDEX] > 1)  {
+        istart = 0;
+        icount = 1; 
+        if (read_one_dimension(pfi, Ycoord, istart, icount, &lat1) == Failure) {
+	  gaprnt(0, "gadsdf: Error reading first latitude value in SDF file.\n") ;
+	  return Failure;
+        }
+        istart = 1;
+        icount = 1;
+        if (read_one_dimension(pfi, Ycoord, istart, icount, &lat2) == Failure) {
+	  gaprnt(0, "gadsdf: Error reading second latitude value in SDF file.\n") ;
+	  return Failure;
+        }
+        /* Set yrev flag */
+        if (lat2 < lat1) pfi->yrflg = 1 ;
+      } 
+
+      /* Read the axis values */
+      if ((sdfdeflev(pfi, Ycoord, YINDEX, pfi->yrflg)) == Failure)  {
+        gaprnt(0, "gadsdf: Failed to define Y coordinate values.\n") ;
+        return Failure;
       }
-      istart = 1;
-      icount = 1;
-      if (read_one_dimension(pfi, Ycoord, istart, icount, &lat2) == Failure) {
-	gaprnt(0, "gadsdf: Error reading second latitude value in SDF file.\n") ;
-	return Failure;
-      }
-      /* Set yrev flag */
-      if (lat2 < lat1) pfi->yrflg = 1 ;
-    } 
-    
-    /* Read the axis values */
-    if ((sdfdeflev(pfi, Ycoord, YINDEX, pfi->yrflg)) == Failure)  {
-      gaprnt(0, "gadsdf: Failed to define Y coordinate values.\n") ;
-      return Failure;
     }
 
   }
@@ -534,15 +748,22 @@ utUnit timeunit ;
     if (Ycoord) {
       ydimid = find_dim(pfi, Ycoord->longnm) ;
     } else {
-      ydimid = -1 ;
+      ydimid = ybare ;
     }
+  }
+  xcart = Xcoord ? (sdf_length_unit(pfi, Xcoord) > 0.0) : 0;
+  ycart = Ycoord ? (sdf_length_unit(pfi, Ycoord) > 0.0) : 0;
+  if (xcart || ycart) {
+    snprintf(pout,1255,"%s Cartesian; mapped to degrees on GrADS's %g km sphere, centred on 0, as a descriptor for a Cartesian model writes them.\n",
+	     (xcart && ycart) ? "X and Y are" : (xcart ? "X is" : "Y is"), SDF_EARTH_RADIUS/1000.0);
+    gaprnt(2,pout);
   }
 
   /* Set up the Z coordinate */
   if (parms.zsetup) {
     /* find a Z axis */
     if (parms.zsrch) {
-      (void) findZ(pfi, &Zcoord, &ispress);
+      (void) findZ(pfi, &Zcoord, &ispress, xdimid, ydimid);
     }
     else {
       /* find the axis named in the descriptor file */
@@ -672,27 +893,10 @@ utUnit timeunit ;
       gaprnt(2, "SDF file has no discernable time coordinate -- using default values.\n") ;
     }
     else {
-      /* make sure it's not a 360- or 365-day calendar */
-      attr = NULL;
-      attr = find_att(Tcoord->longnm, pfi->attr, "calendar") ;
-      if (attr) {
-        if (!strncasecmp((char *)attr->value,"360_day", 7)) {
-	  gaprnt(0,"SDF Error: 360 day calendars are not supported by sdfopen.\n"); 
-	  return Failure;
-	}
-	if ((!strncasecmp((char *)attr->value,"cal365",      6)) ||
-	    (!strncasecmp((char *)attr->value,"altcal365",   9)) ||
-	    (!strncasecmp((char *)attr->value,"common_year",11)) ||
-	    (!strncasecmp((char *)attr->value,"365_day",     7)) ||
-	    (!strncasecmp((char *)attr->value,"noleap",      6))) {
-	  
-	  gaprnt(0,"SDF Error: 365 day calendars are no longer supported by sdfopen.\n"); 
-	  gaprnt(0,"  To open this file with GrADS, use a descriptor file with \n");
-	  gaprnt(0,"  a complete TDEF entry and OPTIONS 365_day_calendar. \n");
-	  gaprnt(0,"  Documentation is at http://cola.gmu.edu/grads/gadoc/SDFdescriptorfile.html\n"); 
-	  return Failure;
-	}
-      }
+      /* GrADS has the standard calendar and a 365-day one */
+      rc = sdf_calendar(pfi, Tcoord);
+      if (rc < 0) return Failure;
+      if (rc == 1) pfi->calendar = 1;
       /* set dimension size */
       for (i=0;i<pfi->nsdfdims;i++) {
 	if (pfi->sdfdimids[i] == Tcoord->vardimids[0]) {
@@ -843,7 +1047,13 @@ utUnit timeunit ;
 	  goto err2;
 	}
 	/* convert udunits-formatted time to integer values for yr, mo, etc. */
-	if (utCalendar (time1, &timeunit, &iyr, &imo, &idy, &ihr, &imn, &dsec)) {
+	if (pfi->calendar == 1) {
+	  if (sdf_noleap_date(time1, &timeunit, time_units, &iyr, &imo, &idy, &ihr, &imn) == Failure) {
+	    gaprnt(0,"gadsdf: Error decoding initial time value in SDF file.\n") ;
+	    goto err2;
+	  }
+	}
+	else if (utCalendar (time1, &timeunit, &iyr, &imo, &idy, &ihr, &imn, &dsec)) {
 	  gaprnt(0,"gadsdf: Error decoding initial udunits time value in SDF file.\n") ;
 	  goto err2;
 	}
@@ -1033,7 +1243,18 @@ utUnit timeunit ;
       tdimid = -1 ;
     }
   }
-  
+
+  /* GrADS keeps one calendar for every open file */
+  if (mfcmn.cal365 >= 0 && mfcmn.cal365 != pfi->calendar) {
+    snprintf(pout,1255,"SDF Error: this file uses the %s calendar, but the open files use the %s one.\n",
+	     pfi->calendar ? "365-day" : "standard", mfcmn.cal365 ? "365-day" : "standard");
+    gaprnt(0,pout);
+    gaprnt(0,"  GrADS has one calendar at a time; close the open files first.\n");
+    return Failure;
+  }
+  /* set it now: the time arithmetic below (templates, ensembles) needs it */
+  mfcmn.cal365 = pfi->calendar;
+
    /* Set up the E coordinate */
   if (parms.esetup) {
     if (parms.esrch) {   
@@ -1376,6 +1597,8 @@ utUnit timeunit ;
     pfi->cachesize = (long)floor(sf) ;
   }
 
+  if (pfi->calendar == 1) gaprnt(2,"The time axis uses the 365-day calendar.\n");
+
   return Success;
 
 err2:
@@ -1492,7 +1715,7 @@ gaint isdvar(struct gafile *pfi, struct gavar *var,
 /* Adapted from deflev routine */
 gaint sdfdeflev(struct gafile *pfi, struct gavar *coord, gaint dim, gaint revflag) {
 gadouble *axisvals=NULL, *vals=NULL,*aptr=NULL,*vvs=NULL,*ddata=NULL;
-gadouble delta1,delta2,val1,val2,incr,v1,v2;
+gadouble delta1,delta2,val1,val2,incr,v1,v2,metres,centre,scale;
 gafloat  *fdata=0;
 size_t sz,start[16],count[16];
 gaint    rc,i,len,flag=0,status=0;
@@ -1678,6 +1901,16 @@ uint32 *uidata=NULL;
   }
 #endif
   
+  /* Cartesian X and Y in a length unit become degrees on GrADS's sphere */
+  if ((dim==XINDEX || dim==YINDEX) && len > 0) {
+    metres = sdf_length_unit(pfi, coord);
+    if (metres > 0.0) {
+      centre = 0.5*(axisvals[0]+axisvals[len-1]);
+      scale = metres/(SDF_EARTH_RADIUS*3.14159265358979323846/180.0);
+      for (i=0; i<len; i++) axisvals[i] = (axisvals[i]-centre)*scale;
+    }
+  }
+
   /* Check if dimension is linear */
   if (len < 3) {
     pfi->linear[dim] = 1;
@@ -1766,7 +1999,9 @@ err1:
 
 /* check for coordinate variable that 
    1) has units degrees_east, degree_east, degrees_E, or degree_E, or
-   2) has an "axis" attribute with a value of "X"
+   2) has a CF standard_name of longitude, grid_longitude, or
+      projection_x_coordinate, or
+   3) has an "axis" attribute with a value of "X"
 */
 gaint findX (struct gafile *pfi, struct gavar **Xcoordptr) {
   struct gaattr *attr ;
@@ -1801,6 +2036,17 @@ gaint findX (struct gafile *pfi, struct gavar **Xcoordptr) {
 	  return Success ;  /* got a match on one of them */
 	}
       }
+      /* look for a CF "standard_name" attribute */
+      attr = NULL;
+      attr = find_att(lclvar->longnm, pfi->attr, "standard_name");
+      if (attr && attr->value) {
+	if (!strncmp(attr->value, "projection_x_coordinate", 24) ||
+	    !strncmp(attr->value, "grid_longitude", 15) ||
+	    !strncmp(attr->value, "longitude", 10)) {
+	  *Xcoordptr = lclvar ;
+	  return Success ;
+	}
+      }
       /* look for "axis" attribute */
       attr=NULL;
       attr = find_att(lclvar->longnm, pfi->attr, "axis");
@@ -1821,7 +2067,9 @@ gaint findX (struct gafile *pfi, struct gavar **Xcoordptr) {
   
 /* check for coordinate variable that 
    1) has units degrees_north, degree_north, degrees_N, or degree_N, or
-   2) has an "axis" attribute with a value of "Y"
+   2) has a CF standard_name of latitude, grid_latitude, or
+      projection_y_coordinate, or
+   3) has an "axis" attribute with a value of "Y"
 */
 gaint findY(struct gafile *pfi, struct gavar **Ycoordptr) {
   struct gaattr *attr;
@@ -1856,6 +2104,17 @@ gaint findY(struct gafile *pfi, struct gavar **Ycoordptr) {
 	  return Success;  /* got a match on one of them */
 	}
       }
+      /* look for a CF "standard_name" attribute */
+      attr = NULL;
+      attr = find_att(lclvar->longnm, pfi->attr, "standard_name");
+      if (attr && attr->value) {
+	if (!strncmp(attr->value, "projection_y_coordinate", 24) ||
+	    !strncmp(attr->value, "grid_latitude", 14) ||
+	    !strncmp(attr->value, "latitude", 9)) {
+	  *Ycoordptr = lclvar ;
+	  return Success ;
+	}
+      }
       /* look for "axis" attribute */
       attr=NULL;
       attr = find_att(lclvar->longnm, pfi->attr, "axis");
@@ -1880,8 +2139,11 @@ gaint findY(struct gafile *pfi, struct gavar **Ycoordptr) {
    should probably allow for prefixes through udunits package
    Will also allow exact match on "mb" 
    2) has an "axis" attribute with a value of "Z", or 
+   and is not the X or Y coordinate: a Cartesian X or Y in metres would
+   otherwise pass for a height
 */
-gaint findZ(struct gafile *pfi, struct gavar **Zcoordptr, gaint *ispressptr) {
+gaint findZ(struct gafile *pfi, struct gavar **Zcoordptr, gaint *ispressptr,
+	   gaint xdimid, gaint ydimid) {
   struct gaattr *attr;
   struct gavar  *lclvar ;
   gaint iscoordvar, i, j, match;
@@ -1918,6 +2180,9 @@ gaint findZ(struct gafile *pfi, struct gavar **Zcoordptr, gaint *ispressptr) {
 	  }
 	}
       } 
+    }
+    if (iscoordvar && (lclvar->vardimids[0]==xdimid || lclvar->vardimids[0]==ydimid)) {
+      iscoordvar = 0 ;
     }
     if (iscoordvar) {
       /* look for "units" attribute */
@@ -2977,7 +3242,7 @@ nc_type type;
                 sz = 1 + (int)strlen(strval[0]);
 	        cval = (char *)galloc(sz*sizeof(char),"cval");
                 for (j=0; j<sz; j++) cval[j] = strval[0][j];
-		cval[sz]='\0';
+		cval[sz-1]='\0';
                 nc_free_string(attlen, strval);
 		gree(strval);
 	      }
@@ -3346,8 +3611,7 @@ size_t sz;
           else if (cmpwrd("zrev",ch)) pfi->zrflg = 1;
           else if (cmpwrd("template",ch)) pfi->tmplat = 1; 
           else if (cmpwrd("365_day_calendar",ch)) {
-	    pfi->calendar=1;
-	    mfcmn.cal365=pfi->calendar;
+	    pfi->calendar=1;   /* the global calendar is checked and set later */
 	  }
 	  else {
 	    gaprnt (0,"gadxdf error: invalid options keyword\n");
@@ -3916,10 +4180,9 @@ size_t sz;
   /* Done scanning.  Check if scanned stuff makes sense, 
      and then set things up correctly */
 
-  /* set the global calendar and check if we are trying to change with a new file... */
-  if(mfcmn.cal365<0) {
-    mfcmn.cal365=pfi->calendar;
-  } else {
+  /* check that a new file keeps the global calendar; gadsdf sets it once the
+     file's own calendar attribute has been read and the file opens */
+  if(mfcmn.cal365>=0) {
     if (pfi->calendar != mfcmn.cal365) {
       gaprnt(0,"Attempt to change the global calendar...\n");
       if(mfcmn.cal365) {

@@ -1,0 +1,83 @@
+***************************************************************************************
+* $Id: parsestr.gsf,v 1.21 2015/04/29 22:27:42 bguan Exp $
+*
+* Copyright (c) 2005, Bin Guan
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without modification, are
+* permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this list
+*    of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice, this
+*    list of conditions and the following disclaimer in the documentation and/or other
+*    materials provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+* SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+* DAMAGE.
+***************************************************************************************
+function parsestr(instr,start_wrd_idx)
+*
+* Extract first word, or first phrase (indicated by double quotes) in <instr> starting from <start_wrd_idx>'th word.
+* Usage: outstr=parsestr(instr,start_wrd_idx)
+*   instr: input string.
+*   start_wrd_idx: parsing starts at <start_wrd_idx>'th word (NOT phrase) of <instr>.
+*   _end_wrd_idx: output global variable; parsing is stopped at <_end_wrd_idx>'th word (NOT phrase) of input string.
+*   outstr: output word/phrase.
+*
+* Note 1: Word to be extracted may or may not be double quoted. Phrase to be extracted MUST be double quoted.
+* Note 2: Blank spaces are NOT allowed immediately inside double quotes; other redundant blank spaces in double quotes will be truncated.
+* Note 3: Outer pair of double quotes (e.g., "Hello, World!") will NOT be included in output phrase.
+* Note 4: If present, inner double quotes immediately inside outer double quotes (e.g., ""Hello, World!"") WILL be included in output phrase.
+* Note 5: Double quotes shall not appear in places other than indicated in Note 3 and 4.
+* Note 6: Empty string will be returned for "".
+*
+outstr=''
+cnt=start_wrd_idx
+wrd=subwrd(instr,cnt)
+
+if(substr(wrd,1,1)!='"')
+  outstr=wrd
+  _end_wrd_idx=cnt
+  return outstr
+endif
+
+if(wrd='""')
+  outstr=''
+  _end_wrd_idx=cnt
+  return outstr
+endif
+
+wrd=substr(wrd,2,math_strlen(wrd)-1)
+while(substr(wrd,math_strlen(wrd),1)!='"')
+  if(cnt=start_wrd_idx)
+    outstr=wrd
+  else
+    outstr=outstr' 'wrd
+  endif
+  cnt=cnt+1
+  wrd=subwrd(instr,cnt)
+  if(wrd='')
+    errmsg='[parsestr ERROR] Unmatched quote.'
+    say errmsg
+    _end_wrd_idx='NaN'
+    return errmsg
+  endif
+endwhile
+wrd=substr(wrd,1,math_strlen(wrd)-1)
+if(cnt=start_wrd_idx)
+  outstr=wrd
+else
+  outstr=outstr' 'wrd
+endif
+_end_wrd_idx=cnt
+return outstr

@@ -67,6 +67,19 @@ struct msgbuf {
 };
 static struct msgbuf *msgstk, *msgcurr, *msgnew;
 
+/* Nesting level of gacmd.  Scripts, the Python interface, and a few of the
+   open paths run commands through gacmd as well, so undo positions are only
+   noted at level one: one undo step per command the user issues, with
+   everything a script draws collapsing into a single step. */
+static gaint gacmdlvl = 0;
+
+/* GrADS has one calendar for all open files. With none open, none is in
+   effect, so the next file sets it whatever an earlier file (or one that
+   failed to open) used. */
+static void gacalfree (struct gacmn *pcm) {
+  if (pcm->fnum == 0) mfcmn.cal365 = -999;
+}
+
 
 /* Handle all user commands */
 gaint gacmd (char *com, struct gacmn *pcm, gaint exflg) {
@@ -104,6 +117,8 @@ FILE *pdefid=NULL;
   while (*com==' ') com++;
 
   retcod = 0;
+  gacmdlvl++;
+  if (gacmdlvl==1 && !cmpwrd("undo",cmd)) gxhundomark();   /* For undo */
 
   /* Check for implied define */
   flag = 0;
@@ -409,6 +424,7 @@ FILE *pdefid=NULL;
     }
     if (pcm->fnum==0) {                    /* no files open, so ... */
       pcm->dfnum = 0;                      /*    set default file to zero */
+      mfcmn.cal365 = -999;                 /*    no calendar is in effect */
       pcm->pfi1 = NULL;                    /*    pointer to file chain is null */
       pcm->pfid = NULL;                    /*    pointer to default file is null */
     } else {
@@ -476,6 +492,37 @@ FILE *pdefid=NULL;
     gacln(pcm,1);
     goto retrn;
   } 
+
+  else if (cmpwrd("undo",cmd)) {
+    i = 1;                                     /* Steps to undo */
+    if ((cmd=nxtwrd(cmd)) != NULL) {
+      if (intprs(cmd,&i)==NULL || i<1) {
+        gaprnt (0,"UNDO error:  step count must be a positive integer\n");
+        retcod = 1;
+        goto retrn;
+      }
+    }
+    gxhundoq (&fnum,NULL,NULL);
+    if (fnum<1) {
+      gaprnt (0,"UNDO error:  undo is off.  Turn it on with 'set undo <steps>'\n");
+      retcod = 1;
+      goto retrn;
+    }
+    rc = 0;
+    while (i>0) {
+      if (gxundo()) break;                     /* Nothing left to rewind */
+      rc++;
+      i--;
+    }
+    if (rc==0) gaprnt (1,"Nothing to undo\n");
+    else {
+      gxhundoq (&fnum,&j,NULL);
+      snprintf(pout,1255,"Undid %i step%s, %i of %i still available\n",
+               rc,rc==1?"":"s",j,fnum);
+      gaprnt (2,pout);
+    }
+    goto retrn;
+  }
 
   else if (cmpwrd("outxwd", cmd)) { 
     if (pcm->batflg) {
@@ -767,6 +814,7 @@ FILE *pdefid=NULL;
       goto retrn;
     }
     getwrd (cc,cmd,256);
+    gacalfree(pcm);
     retcod = gaopen (cc, pcm);
     if (!retcod) mygreta(cc);   /* (for IGES only) keep track of user's opened files */
 
@@ -778,6 +826,7 @@ FILE *pdefid=NULL;
       retcod = 1;
       goto retrn;
     }
+    gacalfree(pcm);
     retcod = gaadios_bpopen(cmd, pcm);
     if (!retcod) mygreta(cmd);
     goto retrn;
@@ -789,6 +838,7 @@ FILE *pdefid=NULL;
       retcod = 1;
       goto retrn;
     }
+    gacalfree(pcm);
     retcod = gasdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
 #else
@@ -805,6 +855,7 @@ FILE *pdefid=NULL;
         retcod = 1 ;
         goto retrn ;
     }
+    gacalfree(pcm);
     retcod = gaxdfopen(cmd, pcm) ;
     if (!retcod) mygreta(cmd);  /* (for IGES only) keep track of user's opened files */
 #else
@@ -957,6 +1008,8 @@ FILE *pdefid=NULL;
   }
 
 retrn:
+  gacmdlvl--;
+  if (gacmdlvl==0) gxhundokeep();   /* Keep the undo position if we drew */
   if (ccc) {
     gree(ccc,"f196");
   }
@@ -2887,6 +2940,7 @@ gadouble minvals[4], maxvals[4],dval;
     gaprnt (2,"  q time     Returns info about time settings\n");
     gaprnt (2,"  q udpt     Returns list of user defined plug-ins\n");
     gaprnt (2,"  q undef    Returns output undef value \n");
+    gaprnt (2,"  q undo     Returns undo settings and meta buffer usage\n");
     gaprnt (2,"  q xinfo    Returns characteristics of graphics display window\n");
     gaprnt (2,"  q xy2w     Converst XY screen to world coordinates\n");
     gaprnt (2,"  q xy2gr    Converts XY screen to grid coordinates\n");
@@ -2913,6 +2967,17 @@ gadouble minvals[4], maxvals[4],dval;
   }
   else if (cmpwrd(arg,"undef")) {
     snprintf(pout,1255,"Output undef value is set to %12f\n",pcm->undef);
+    gaprnt(2,pout);
+  }
+  else if (cmpwrd(arg,"undo")) {
+    gxhundoq (&i,&j,&cnt);
+    if (i<1)
+      snprintf(pout,1255,
+               "Undo is off, %i meta buffer words used by the current plot\n",cnt);
+    else
+      snprintf(pout,1255,
+               "Undo is on, %i of %i step%s available, %i meta buffer words used by the current plot\n",
+               j,i,i==1?"":"s",cnt);
     gaprnt(2,pout);
   }
   else if (cmpwrd(arg,"threads")) {
@@ -5096,6 +5161,29 @@ static char *kwds[130] = {"X","Y","Z","T","LON","LAT","LEV","TIME",
   else if (cmpwrd("defval",cmd)) {
     i1 = gaqdef (cmd, pcm, 1);
     return (i1);
+  }
+  else if (cmpwrd("undo",cmd)) {
+    if ((cmd = nxtwrd(cmd)) == NULL) {
+      gaprnt(0,"SET UNDO Error: operand must be on, off, or a step count\n");
+      return(1);
+    }
+    if (cmpwrd("off",cmd)) itt = 0;
+    else if (cmpwrd("on",cmd)) itt = 10;        /* Default depth */
+    else if (intprs(cmd,&itt) == NULL || itt<0) {
+      gaprnt(0,"SET UNDO Error: operand must be on, off, or a step count\n");
+      return(1);
+    }
+    if (gxhundoset(itt)) {
+      gaprnt(0,"SET UNDO Error: unable to allocate the undo buffer\n");
+      return(1);
+    }
+    if (itt<1) gaprnt(2,"Undo is off\n");
+    else {
+      gxhundoq(&i1,NULL,NULL);
+      snprintf(pout,1255,"Undo is on, keeping up to %i step%s\n",i1,i1==1?"":"s");
+      gaprnt(2,pout);
+    }
+    return(0);
   }
   else if (cmpwrd("threads",cmd)) {
     if ((cmd = nxtwrd(cmd)) == NULL || intprs(cmd,&itt) == NULL || itt<1) {

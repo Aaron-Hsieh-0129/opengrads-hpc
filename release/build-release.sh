@@ -70,6 +70,7 @@ OPENGRADS_ADIOS2_ROOT="$adios2_root" \
   "$repo_root/pytests/TestBP5.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestSDFOpen.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestOpenMP.sh"
+OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestUndo.sh"
 
 "$repo_root/release/package-linux.sh" \
   "$build_root" "$deps_root" "$adios2_root" "$work_root" "$output_root"

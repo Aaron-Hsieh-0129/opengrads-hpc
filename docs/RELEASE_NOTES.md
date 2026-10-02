@@ -3,8 +3,160 @@
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.7
+### Added since 1.0.8 (not yet released)
 
+- **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
+  Script Library (BSD 2-Clause) now ship in `lib/scripts`: `plot` for 1-D
+  graphs and profiles, `shadcon` for shading and contours, `vcr` for vertical
+  cross-sections, `vector`, `subplot` for multi-panel figures, `legend`,
+  `drawstr`, `drawline`, `drawbox`, `drawmark`, `ppp` for cropped
+  publication output (needs ghostscript), `save`, and `bhist` (bGASL's
+  histogram calculator, renamed to leave the existing `hist` plotter in
+  place). `subplot` replaces the earlier, much smaller script of that name and
+  takes different arguments: `subplot <panels> <index> [<columns>]` instead of
+  `subplot <rows> <columns> <index>`. See `THIRD_PARTY_NOTICES.md`.
+- **`sdfopen` opens files without an X or a Y coordinate.** A zonal mean
+  (`time, lev, lat`), a y-z section, or a single column used to fail with
+  `SDF file has no discernable X coordinate` and a pointer to writing a
+  descriptor. The missing axis is now a single point, as `XDEF 1 LINEAR 0 1`
+  would make it, and the open says so. X and Y are also found where the file
+  marks them less formally: by a CF `standard_name` (`longitude`,
+  `projection_x_coordinate`, and the Y equivalents), or by a dimension named
+  `x`, `xc`, `lon`, `longitude`, `west_east` (`y`, `yc`, `lat`, `latitude`,
+  `south_north` for Y). A dimension without a coordinate variable counts grid
+  points, 1 to its size.
+- **`sdfopen` and `xdfopen` read 365-day calendars.** A time coordinate with
+  `calendar = "noleap"` (or `365_day`, `no_leap`) used to be refused. Its dates
+  are now decoded with every year 365 days long and GrADS switches to its
+  365-day calendar, so `days since 2000-01-01` values 58, 59, 60 read as 28 Feb,
+  1 Mar, 2 Mar rather than landing on 29 Feb. Standard and Gregorian files work
+  as before. This also lets `sdfopen` read back what `sdfwrite` writes from a
+  365-day dataset. The 360-day, 366-day, and all-leap calendars, which GrADS
+  cannot represent, are refused with a message naming the calendar instead of
+  being misread as standard.
+
+- **`bpopen` reads 1-D data.** A 1-D array whose length matches one axis is
+  now a field: a reference profile such as `thbar(z)` opens as a Z profile
+  that is the same at every X and Y, so `d th - thbar` works in any section.
+  A global value written every step opens as a time series. A length that
+  fits two axes is skipped with a warning rather than guessed, and a dataset
+  that is a single column opens on its Z coordinate. Descriptors can say the
+  same: a dimension list may leave out X or Y (`thbar=>thbar 300 z`), and
+  `t` describes a per-step global value.
+- **Fields written once hold for every time.** A BP5 variable written at one
+  step, in a dataset whose other variables have more, such as terrain or a
+  reference profile, used to read as undefined after the first time. It is
+  now the same at every time, and the open names such variables.
+
+- **Time averages of BP5 data run in parallel.** `ave`, `mean`, `sum`,
+  `sumg`, `min`, `max`, `minloc`, and `maxloc` over time used to read a BP5
+  variable one step at a time, and a vertical section one level at a time
+  within each step. When the expression is a plain variable of the default
+  file, the steps now go to ADIOS2 in batches its reader threads serve in
+  parallel, and they are accumulated on the calculation threads in the same
+  order as before; the regression checks the results are exactly those of
+  the step-by-step path. Vertical sections
+  and profiles are one read per step for every BP5 request. On a
+  96 x 96 x 300, 241-step dataset an x-z section average went from 5.5 s to
+  0.06 s and a 3-D `define` of the time mean from 13.6 s to 3.3 s. See
+  [PERFORMANCE.md](PERFORMANCE.md#time-averages-of-bp5-data).
+
+### Changed since 1.0.8 (not yet released)
+
+- **`bpopen` now behaves like opening a descriptor.** On a VVM-shaped dataset
+  the two paths now print the same results for every command checked and draw
+  byte-identical plots:
+  - **Cartesian X and Y.** A model on a metre grid needs its X and Y written as
+    degrees, because GrADS has only longitude and latitude; read as degrees,
+    metres wrap the map labels round the globe and throw `aave` off by 70 %.
+    `bpopen` now maps X and Y in a length unit onto GrADS's 6370 km sphere,
+    centred on 0, as descriptors for Cartesian models do. A 35 m grid gives
+    `xdef 96 linear -0.0149536 0.000314812`.
+  - **Time.** T was always labelled from 00Z01JAN2000 in one-minute steps,
+    whatever the data. It now comes from a CF time coordinate (`time`, units
+    `<unit> since <date>`), and the open says when it has to fall back.
+- **`sdfopen` maps Cartesian X and Y the same way.** An X or Y coordinate in
+  metres or kilometres becomes degrees on the same sphere, centred on 0, so a
+  VVM NetCDF file, its BP5 output through `bpopen`, and a hand-written
+  descriptor all give the same grid. Before, such a file either failed to open
+  or, when its axis carried `axis = "X"`, used the metres as degrees.
+- **One calendar at a time, enforced for `sdfopen` too.** GrADS keeps a single
+  calendar for all open files. Descriptors already enforced that, but
+  `sdfopen` never set it, so a 365-day descriptor and a standard NetCDF file
+  could be open together with one of them dated wrongly. Opening a file whose
+  calendar differs from the open files' is now refused with a message saying
+  which is which. Closing every file clears the calendar, so the next file may
+  use either; before, only `reinit` did.
+
+### Fixed since 1.0.8 (not yet released)
+
+- **1.0.8 let `LD_LIBRARY_PATH` replace the bundled libraries.** It embedded
+  the bundle's library paths as RUNPATH, which the loader searches *after*
+  `LD_LIBRARY_PATH`, so the libraries an environment module or conda had put
+  there -- their own cairo, freetype, HDF5 and so on -- were loaded in place
+  of the bundled ones and mixed with them. That is the likely cause of a
+  segmentation fault reported on a RHEL 8 cluster right after `GX Package
+  Initialization`. The paths are now embedded as RPATH, which the loader searches first,
+  so the bundle wins whatever the shell carries; like RUNPATH it stays inside
+  the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
+  The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
+  override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
+- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
+  and `sum` with the boundary flag are meant to count each time by how much
+  of its cell lies between the two bounds: times inside fully, the first and
+  last in part, as they already did over longitude, latitude, and level. Over
+  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
+  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
+  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
+  out two and a half times too large and `ave` leaned toward the early
+  times. Each time now counts by its overlap with the bounds, in the
+  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
+  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
+  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
+  2.2.3, so results from those versions with `-b` over time differ from these.
+
+### Added in 1.0.8
+
+- **Undo for the plot.** `set undo 10` turns undo on and keeps ten steps,
+  `undo` steps the picture back one command, `undo <n>` steps back several,
+  and `q undo` reports the state. It is off by default, so nothing changes
+  for anyone who does not ask for it. A step is a command that changed the
+  picture — settings and opens cost nothing — and a whole script counts as
+  one step. Undo rewinds GrADS's graphics buffer and replays what is left,
+  so an image exported after an undo is byte-for-byte the image the shorter
+  command sequence exports, and on screen it redraws exactly as GrADS does
+  when a window is exposed. It rewinds graphics only: settings, the dimension environment, open
+  files, and anything written to disk are untouched, and `clear`, `reinit`,
+  and double buffering drop the stored steps. See [docs/UNDO.md](UNDO.md).
+
+### Changed in 1.0.8
+
+- **macOS x86_64 archives are no longer published.** GitHub's `macos-15-intel`
+  runner has bottles for few of the formulas this build needs, so Homebrew
+  builds them from source and the job spent over ninety minutes installing
+  prerequisites without reaching the compile step. Intel Macs can still build
+  from source following [INSTALL.md](INSTALL.md); the arm64 archive will not
+  run on them. Linux x86_64 and aarch64 and macOS arm64 are unaffected.
+
+### Fixed in 1.0.8
+
+- **`bpopen` now reports the same levels as a descriptor.** A coordinate array
+  whose `units` attribute said meters was silently divided by 1000, so a
+  descriptor-free open of a dataset with `z_mid` in meters showed `lev` in
+  kilometers while the same dataset opened through a CTL showed it in meters:
+  `zdef 2 levels 1000 500` became `zdef 2 levels 1 0.5`, and the same scaling
+  hit X and Y. Coordinates are now used exactly as the dataset stores them, in
+  the dataset's own units, so both paths agree.
+- **`bpopen` no longer leaks the ADIOS2 variable list, hangs on crowded name
+  stems, or writes descriptors GrADS cannot parse.** Three defects found while
+  reviewing the backend: the name array `adios2_available_variables` allocates
+  was never freed, so every `bpopen` leaked it along with one string per
+  variable; the alias de-duplicator trimmed its own numeric suffix once it
+  passed 999, repeating a candidate it had already rejected and looping
+  forever; and a BP variable name holding whitespace, a `~`, an `=>`, or a
+  leading character the descriptor parser reads as a comment produced a
+  descriptor that failed to open, with an error naming a variable nobody
+  wrote. Such fields are now skipped with a warning that names them.
 - **The bundled libraries no longer leak into other programs.** The launcher
   exported `LD_LIBRARY_PATH`, which every subprocess GrADS spawns inherited,
   so a shell escape such as `!ls` ran the host's `ls` against the bundled
@@ -109,9 +261,8 @@ built with `ADIOS2_USE_MPI=OFF`.
 - **OpenMP-threaded calculations.** Defaults to 4 threads; `-j N` or
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
-- **Four native archives**, each self-contained: Linux x86_64 and aarch64,
-  macOS arm64 and x86_64. No dependency installation and no library paths to
-  set.
+- **Three native archives**, each self-contained: Linux x86_64 and aarch64,
+  and macOS arm64. No dependency installation and no library paths to set.
 
 ### Graphics drivers per platform
 

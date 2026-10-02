@@ -26,9 +26,13 @@ The release matrix is:
 
 - Linux x86_64, built natively on Ubuntu 22.04;
 - Linux aarch64, built natively on Ubuntu 22.04 ARM64;
-- macOS arm64, built natively on macOS 15;
-- macOS x86_64, built natively on macOS 15 Intel;
+- macOS arm64, built natively on macOS 15.
 
+macOS x86_64 is not published. The `macos-15-intel` runner has bottles for
+few of the formulas this build needs, so Homebrew falls back to building them
+from source: one observed run spent over ninety minutes installing
+prerequisites without reaching the compile step. An Intel Mac can still build
+from source with [INSTALL.md](INSTALL.md); an arm64 archive will not run on it.
 
 ### glibc baseline
 
@@ -122,8 +126,8 @@ X11, GeoTIFF, and optional HDF5 development headers. Then run:
 
 The builder downloads checksum-pinned ADIOS2 2.11.0, ncurses 6.5, and Readline
 8.2 source archives; builds them into `.release-work`; builds opengrads-hpc with
-ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF, and
-OpenMP regressions; assembles the runtime closure; and writes the archive and
+ADIOS2, OpenMP, and NetCDF/UDUNITS support required; runs the BP5, SDF,
+OpenMP, and undo regressions; assembles the runtime closure; and writes the archive and
 checksum to `release-dist`.
 Nothing is installed system-wide.
 
@@ -155,8 +159,8 @@ UDUNITS-2 ships that API and its `udunits.h` compatibility header, so every
 platform uses UDUNITS-2 — `libudunits2-dev` on Linux, the `udunits` formula on
 macOS. An earlier attempt to build UDUNITS 1.12.11 from source was dropped: it
 fails against modern bison on Linux and on the Fortran probe on macOS, and it
-was never necessary. The builders run the BP5, SDF, and OpenMP regressions
-before packaging their archive.
+was never necessary. The builders run the BP5, SDF, OpenMP, and undo
+regressions before packaging their archive.
 
 The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
 re-signs the result, because editing a Mach-O header invalidates the ad-hoc
@@ -166,7 +170,7 @@ not reach back into the Homebrew prefix it was built from.
 
 ## GitHub Actions and publication gate
 
-`.github/workflows/release.yml` builds and tests all four native archives on
+`.github/workflows/release.yml` builds and tests all three native archives on
 a version tag or manual dispatch. Binary artifact upload and GitHub Release
 creation occur only when the repository variable
 `BINARY_REDISTRIBUTION_APPROVED` is exactly `true`.

@@ -1018,6 +1018,9 @@ gaint gaadios_read_row (struct gafile *, struct gavar *, gaint, gaint, gaint,
                         gaint, gaint, gaint, gadouble *, char *);
 gaint gaadios_read_grid (struct gafile *, struct gavar *, struct gagrid *,
                           gadouble *, char *);
+gaint gaadios_read_steps (struct gafile *, struct gavar *, struct gagrid *,
+                          gaint, gaint, gaint, gadouble *, char *);
+gaint gagrdsteps (struct gagrid *, gaint, gaint, gaint, gadouble *, char *);
 gaint h5setup (void);
 #if USEHDF5==1
 gaint h5openvar (gah5id,char*,hid_t*,hid_t*);
@@ -1289,7 +1292,7 @@ struct gaattr *find_att(char *, struct gaattr *, char *);
 struct gavar *find_var(struct gafile *, char *);
 gaint findX(struct gafile *, struct gavar **);
 gaint findY(struct gafile *, struct gavar **);
-gaint findZ(struct gafile *, struct gavar **, gaint *);
+gaint findZ(struct gafile *, struct gavar **, gaint *, gaint, gaint);
 gaint findT(struct gafile *, struct gavar **);
 gaint findE(struct gafile *, struct gavar **);
 gaint isdvar(struct gafile *, struct gavar *, gaint,  gaint, gaint, gaint, gaint) ;

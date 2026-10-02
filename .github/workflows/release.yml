@@ -72,13 +72,18 @@ jobs:
         include:
           - runner: macos-15
             artifact: macos-arm64
-          - runner: macos-15-intel
-            artifact: macos-x86_64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
 
       - name: Install build prerequisites
+        env:
+          # Without this, brew also upgrades the formulas the runner image
+          # already has that happen to depend on something we pull in. On
+          # macos-15 that cascade upgraded openssl@3 and then failed to link
+          # it over the image's openssl@1.1 symlink, failing the whole step
+          # before anything of ours was built.
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
         run: |
           brew update
           brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \

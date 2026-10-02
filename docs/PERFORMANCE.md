@@ -47,6 +47,39 @@ saves. The current crossover is 32,768 cells. File reads, expression parsing,
 coordinate conversion setup, and graphics remain serial because the legacy
 core keeps mutable global state in those paths.
 
+## Time averages of BP5 data
+
+`ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, and `maxloc` over time
+evaluate their expression once per time step, and each step used to be a
+separate read. When the expression is a plain variable of a BP5 dataset that
+is the default file (`ave(th,t=1,t=1441)`, not `ave(th*2,...)` or a defined
+variable), the steps are instead read many at a time: up to 256 steps, or
+64 MB, go to ADIOS2 as one batch, which its reader threads serve in parallel,
+and they are folded into the result on the calculation threads. Each grid
+point still takes its steps in order through the same accumulation code, so
+the result matches the step-by-step path; the BP5 regression compares the two
+for exact equality at one and at four threads. Any other expression, file
+format, or a step outside the file goes step by step as before.
+
+BP5 reads of a vertical section (x-z or y-z) and of a profile are also one
+read per step now, rather than one per level.
+
+On a 96 × 96 × 300 dataset of 241 steps, written as 16 blocks per step the way
+a 16-rank run writes it, with the data in the page cache and 4 threads:
+
+| Request | Before | After |
+| --- | --- | --- |
+| x-z section, `ave(th,t=1,t=241)` | 5.5 s | 0.06 s |
+| profile, `ave(th,t=1,t=241)` | 0.19 s | 0.01 s |
+| x-y map, `ave(th,t=1,t=241)` | 0.04 s | 0.02 s |
+| `define m = ave(th,t=1,t=241)` over all 300 levels | 13.6 s | 3.3 s |
+
+The 3-D `define` evaluates the average one level at a time, so it remains
+bounded by reading 300 separate planes per batch of steps; with one thread it
+takes 4.0 s.
+
+## Reproducibility of parallel reductions
+
 Parallel reductions can differ from a one-thread result in the last few
 floating-point bits because additions may be grouped differently. Missing
 value masks and scientific semantics are unchanged. Use an appropriate
