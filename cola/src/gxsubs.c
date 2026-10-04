@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display; see COPYING. */
 
 /* Authored by B. Doty */
 
@@ -319,6 +320,9 @@ gaint gxload(char *gxdopt, char *gxpopt) {
   if ((err=dlerror())!=NULL) {printf("Error in gxload: %s\n",err); return(2);}
   dsubs.win_data = dlsym(dhandle,"win_data"); 
   if ((err=dlerror())!=NULL) {printf("Error in gxload: %s\n",err); return(2);}
+  /* Optional: told when GrADS is about to wait for the user */
+  dsubs.gxdidle  = dlsym(dhandle,"gxdidle"); 
+  dlerror();
   return(0);
 }
 
@@ -362,6 +366,13 @@ void gxend (void) {
 void gxsignal (gaint sig) {
   if (intflg) dsubs.gxdsignal(sig);  /* tell the rendering layer about the signal */
   hout1c(-22,sig);                   /* put the signal in the metafile buffer */
+}
+
+
+/* GrADS is about to wait for the user. A display that does not draw
+   straight to the screen (the terminal display) shows its picture now. */
+void gxidle (void) {
+  if (intflg && dsubs.gxdidle) dsubs.gxdidle();
 }
 
 
@@ -425,7 +436,10 @@ void gxfrme (gaint action) {
   }
   gxmaskclear();
   if (intflg) {
-    if (action==0) getchar();        /* Wait if requested */
+    if (action==0) {                 /* Wait if requested */
+      gxidle();
+      getchar();
+    }
     if (action!=2 && bufmod) {
       dsubs.gxdsgl ();               /* tell hardware to turn off double buffer mode */
       bufmod=0;

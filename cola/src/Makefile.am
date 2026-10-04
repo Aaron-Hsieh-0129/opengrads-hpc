@@ -1,5 +1,5 @@
 ## Makefile.am for GrADS
-## Modified in 2026 for optional ADIOS2 BP5 support; see COPYING.
+## Modified in 2026 for optional ADIOS2 BP5 support and the terminal display; see COPYING.
 ## Process this file with automake to produce Makefile.in
 
 
@@ -14,7 +14,7 @@ if USEGD
 lt_gd = libgxpGD.la
 endif
 if USECAIRO
-lt_cairo = libgxpCairo.la libgxdCairo.la
+lt_cairo = libgxpCairo.la libgxdCairo.la libgxdTerm.la
 endif
 
 lib_LTLIBRARIES = $(lt_gd) $(lt_cairo) libgxdX11.la libgxdummy.la libgradspy.la
@@ -48,6 +48,7 @@ endif
 if USECAIRO
 libgxpCairo_la_SOURCES = gxprint.c gxC.c
 libgxdCairo_la_SOURCES = gxX.c gxC.c
+libgxdTerm_la_SOURCES  = gxT.c gxC.c
 endif
 
 if USEGD
@@ -67,7 +68,7 @@ grads_SOURCES =	grads.c  gxsubs.c gxmeta.c  gxchpl.c gxcntr.c gxstrm.c gxdb.c \
 ## These may not always be compiled but must be listed in order to go in the distribution 
 EXTRA_grads_SOURCES = gagmap.c gagui.c gsgui.c dodstn.c \
                       gxprintGD.c gxGD.c gxdxwd.c gxX11.c \
-                      gxprint.c gxC.c gxX.c gxdummy.c gaadios.c
+                      gxprint.c gxC.c gxX.c gxT.c gxdummy.c gaadios.c
 
 
 ##---Header files---------------------------------------------------------------------
@@ -141,6 +142,11 @@ libgxdCairo_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
 #-I$(SUPPLIBS)/include -I$(SUPPLIBS)/include/cairo -I$(SUPPLIBS)/include/freetype2
 libgxdCairo_la_LIBADD = $(X11_ldadd) $(LDADD) $(cairo_libs)
 libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
+
+## display in a terminal with Cairo (no X)
+libgxdTerm_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
+libgxdTerm_la_LIBADD = $(LDADD) $(cairo_libs)
+libgxdTerm_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 ## dummy (for display and print)
 libgxdummy_la_CPPFLAGS = -I. $(host_cppflags)  

@@ -58,6 +58,11 @@ libraries are available.
   vectors, multi-panel layouts, legends, and publication-ready output. Existing OpenGrADS extensions are
   retained under [extensions](extensions).
 
+- **Plots in the terminal, no X needed.** Over ssh from iTerm2, the picture
+  appears in a tmux pane beside the `ga->` prompt and updates after each
+  command, with no X server or `ssh -X`. The launcher picks it automatically.
+  See [terminal display](docs/TERMINAL.md).
+
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
   and a whole script counts as a single step. It rewinds the graphics, not
@@ -94,6 +99,7 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 - [Licensing and usage rules](docs/LICENSING.md)
 - [Release and packaging guide](docs/RELEASES.md)
 - [BP5 reader guide and limitations](docs/BP5.md)
+- [Terminal display: plots over ssh without X](docs/TERMINAL.md)
 - [Undo: settings and limits](docs/UNDO.md)
 - [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)
 - [Architecture and development roadmap](docs/ARCHITECTURE.md)

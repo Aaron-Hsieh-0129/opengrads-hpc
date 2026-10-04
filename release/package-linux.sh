@@ -38,6 +38,8 @@ mkdir -p "$bundle_root/build/src" "$plugin_root" "$runtime_lib_root" \
 
 install -m 0755 "$build_root/src/grads" "$bundle_root/build/src/grads"
 install -m 0755 "$repo_root/opengrads" "$bundle_root/opengrads"
+install -D -m 0755 "$repo_root/libexec/grads-termview" \
+  "$bundle_root/libexec/grads-termview"
 install -m 0644 "$repo_root/etc/udpt-local" "$bundle_root/etc/udpt-local"
 cp -a "$repo_root/cola/data/." "$bundle_root/cola/data/"
 cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
@@ -71,7 +73,8 @@ VERSIONFILE
 "$repo_root/release/write-source-offer.sh" "$bundle_root" "$dist_version" \
   "$grads_version"
 
-for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxpCairo.so; do
+for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxdTerm.so \
+              libgxpCairo.so; do
   if [[ ! -r "$build_root/src/.libs/$plugin" ]]; then
     printf 'Required release plug-in is missing: %s\n' "$plugin" >&2
     exit 1
@@ -100,6 +103,7 @@ copy_notice "$work_root/sources/ncurses-$NCURSES_VERSION/COPYING" \
 library_path="$adios2_root/lib:$adios2_root/lib64:$deps_root/lib:$deps_root/lib64"
 queue=("$bundle_root/build/src/grads" "$plugin_root/libgxdummy.so" \
        "$plugin_root/libgxdX11.so" "$plugin_root/libgxdCairo.so" \
+       "$plugin_root/libgxdTerm.so" \
        "$plugin_root/libgxpCairo.so")
 declare -A seen=()
 : > "$bundle_root/runtime-libraries.txt"

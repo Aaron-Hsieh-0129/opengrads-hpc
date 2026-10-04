@@ -115,7 +115,7 @@ grads main loop (grads.c)
 | `cola/src/gxcntr.c` | Contour construction | Contour performance or curvilinear-cell contour behavior. |
 | `cola/src/gxshad.c`, `gxshad2.c` | Shaded polygon construction | Shading performance/topology changes. `gxshad2b` intentionally makes smaller polygons and is slower. |
 | `cola/src/gxsubs.c` | Coordinate pipeline and dynamic graphics devices | Device loading or low-level coordinate transformation. |
-| `cola/src/gxC.c`, `gxX.c`, `gxX11.c`, `gxprint.c`, `gxGD.c` | Cairo/X11/print/GD backends | Output-device changes, not data-format work. |
+| `cola/src/gxC.c`, `gxX.c`, `gxT.c`, `gxX11.c`, `gxprint.c`, `gxGD.c` | Cairo/X11/terminal/print/GD backends | Output-device changes, not data-format work. |
 | `cola/src/galloc.c` | Allocation wrappers | Instrumentation for memory profiling; avoid bypassing without reason. |
 | `cola/configure.ac`, `cola/m4/` | Optional dependency detection and feature macros | Contains optional serial ADIOS2 detection; use it for further dependency behavior changes. |
 | `cola/src/Makefile.am` | Canonical core sources and link flags | Registers `gaadios.c` and ADIOS2 flags conditionally. Regenerate Autotools outputs deliberately. |

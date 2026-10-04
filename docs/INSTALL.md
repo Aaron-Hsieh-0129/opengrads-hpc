@@ -86,7 +86,7 @@ cd "$build_root"
   --with-adios2="$adios2_root"
 
 make -C src --jobs "$jobs" \
-  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxpCairo.la
+  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxdTerm.la libgxpCairo.la
 ```
 
 The `build_root/lib` directory must exist before configuring — libtool fails
@@ -135,7 +135,8 @@ The startup line should contain `readline netcdf adios2-bp5 openmp`.
 ```
 
 With an X display the launcher selects the Cairo plug-ins, falling back to X11
-and then to headless `gxdummy`. Opening BP5 data needs no descriptor file:
+and then to headless `gxdummy`. Without one, in iTerm2 or WezTerm, it selects
+the [terminal display](TERMINAL.md). Opening BP5 data needs no descriptor file:
 
 ```text
 bpopen /path/to/output.bp
@@ -155,7 +156,7 @@ Restore the environment from step 2, then:
 git pull --ff-only origin main
 make -C "$build_root/src" clean
 make -C "$build_root/src" --jobs "$jobs" \
-  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxpCairo.la
+  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxdTerm.la libgxpCairo.la
 ```
 
 Re-run `configure` only if you changed dependency prefixes or configure flags.
@@ -167,7 +168,8 @@ Avoid `make -B`, which can trigger unnecessary Autotools regeneration.
 missing, repeat step 2; if it lives elsewhere, set `OPENGRADS_BUILD_ROOT`.
 
 **No X window.** Check `echo "$DISPLAY"`. Remote sessions need `ssh -X` or
-`-Y`. Headless mode needs no X.
+`-Y`. Headless mode needs no X. From iTerm2 or WezTerm, the terminal display
+shows plots without X; see [TERMINAL.md](TERMINAL.md).
 
 **ADIOS2 not detected.** Confirm `"$adios2_root/bin/adios2-config" --serial
 --c-flags` works, then reconfigure with that exact prefix.

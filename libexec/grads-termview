@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Added in 2026 for terminal graphics display; see COPYING.
+#
+# Shows the picture of a GrADS session that uses the terminal display
+# (grads -d Term). GrADS starts this in a tmux pane beside itself; it can also
+# be run by hand in another pane or window:
+#
+#   grads-termview DIR [GRADS_PID]
+#
+# DIR holds plot.png and seq, written by the terminal display each time the
+# picture changes. The picture is drawn with the iTerm2 inline image protocol,
+# which iTerm2 and WezTerm understand, and fills the pane. Inside tmux the
+# image is passed through to the outer terminal. The viewer exits when
+# GRADS_PID is gone or DIR is removed.
+
+set -u
+
+dir="${1:-}"
+grads_pid="${2:-}"
+if [[ -z "$dir" ]]; then
+  printf 'usage: %s DIR [GRADS_PID]\n' "${0##*/}" >&2
+  exit 2
+fi
+
+png="$dir/plot.png"
+seq_file="$dir/seq"
+shown=""
+redraw=1
+
+b64()
+{
+  # GNU base64 wraps lines unless told not to; BSD and macOS base64 do not.
+  base64 -w 0 "$1" 2>/dev/null || base64 < "$1" | tr -d '\n'
+}
+
+show()
+{
+  local cols rows size data
+  read -r rows cols < <(stty size 2>/dev/null || echo "24 80")
+  (( rows > 1 )) || rows=24
+  (( cols > 0 )) || cols=80
+  # Clear the pane, scrollback included, and home the cursor.
+  printf '\033[H\033[2J\033[3J'
+  if [[ ! -s "$png" ]]; then
+    printf 'Waiting for a GrADS picture...\n'
+    return
+  fi
+  size=$(wc -c < "$png" | tr -d ' ')
+  data=$(b64 "$png")
+  # One row is left free so the image never scrolls the pane.
+  if [[ -n "${TMUX:-}" ]]; then
+    printf '\033Ptmux;\033\033]1337;File=inline=1;size=%s;width=%d;height=%d;preserveAspectRatio=1:%s\a\033\\' \
+      "$size" "$cols" "$((rows - 1))" "$data"
+  else
+    printf '\033]1337;File=inline=1;size=%s;width=%d;height=%d;preserveAspectRatio=1:%s\a' \
+      "$size" "$cols" "$((rows - 1))" "$data"
+  fi
+}
+
+trap 'redraw=1' WINCH
+trap 'printf "\033[H\033[2J"; exit 0' INT TERM HUP
+
+# No echo or cursor in the viewer pane.
+stty -echo 2>/dev/null || true
+printf '\033[?25l'
+
+while :; do
+  if [[ -n "$grads_pid" ]] && ! kill -0 "$grads_pid" 2>/dev/null; then
+    break
+  fi
+  [[ -d "$dir" ]] || break
+  current=""
+  [[ -r "$seq_file" ]] && read -r current < "$seq_file"
+  if [[ "$current" != "$shown" ]]; then
+    shown="$current"
+    redraw=1
+  fi
+  if (( redraw )); then
+    redraw=0
+    show
+  fi
+  sleep 0.2
+done
+
+printf '\033[?25h'

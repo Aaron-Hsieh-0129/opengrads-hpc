@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display; see COPYING. */
 
 /* Originally authored by B. Doty */
 
@@ -43,6 +44,9 @@ char *gatxtlp(char *str);
 gaint nxtcmd (char *cmd, char *prompt) {
 gaint past,cnt;
 
+#ifndef STNDALN
+  gxidle();
+#endif
   printf ("%s ",gatxtl(prompt,-1));
   past = 0;
   cnt = 0;
@@ -2405,6 +2409,9 @@ off_t ftello(FILE *stream) {
 gaint nxrdln (char *cmd, char *prompt) {
 char *ch, *ch2;
 
+#ifndef STNDALN
+  gxidle();
+#endif
   ch=readline(gatxtlp(prompt));
   if ( ch== NULL) {
     return(-1);

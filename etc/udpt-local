@@ -2,6 +2,7 @@
 # GA_ROOT is set by the repository launcher.
 gxdisplay  Cairo    $GA_ROOT/libgxdCairo.so
 gxdisplay  X11      $GA_ROOT/libgxdX11.so
+gxdisplay  Term     $GA_ROOT/libgxdTerm.so
 gxdisplay  gxdummy  $GA_ROOT/libgxdummy.so
 *
 gxprint    Cairo    $GA_ROOT/libgxpCairo.so

@@ -63,7 +63,7 @@ cd "$build_root"
   --with-adios2="$adios2_root"
 
 make -C src --jobs "$jobs" \
-  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxpCairo.la
+  grads libgxdummy.la libgxdX11.la libgxdCairo.la libgxdTerm.la libgxpCairo.la
 
 OPENGRADS_BUILD_ROOT="$build_root" \
 OPENGRADS_ADIOS2_ROOT="$adios2_root" \
@@ -71,6 +71,7 @@ OPENGRADS_ADIOS2_ROOT="$adios2_root" \
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestSDFOpen.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestOpenMP.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestUndo.sh"
+OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestTermDisplay.sh"
 
 "$repo_root/release/package-linux.sh" \
   "$build_root" "$deps_root" "$adios2_root" "$work_root" "$output_root"

@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display; see COPYING. */
 
 /* Authored by B. Doty */
 
@@ -18,6 +19,8 @@
 #include <string.h>
 #include "grads.h"
 #include "gs.h"
+
+void gxidle (void);   /* in gxsubs.c; gx.h clashes with grads.h here */
 
 static char *rcdef = "rc              ";
 static char *redef = "result          ";
@@ -1141,6 +1144,7 @@ char varnm[16];
       return (99);
     }
     for (i=0; i<10; i++) *(res+i) = '\0';
+    gxidle();
     fgets(res,512,stdin);
     /* Replace newline character or return character at end of user input string with null */
     for (i=0; i<512; i++) {

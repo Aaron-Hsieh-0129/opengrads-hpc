@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display; see COPYING. */
 
 #include <stdlib.h>
 
@@ -237,6 +238,7 @@ struct gxdsubs {
   void (*gxrs1wd) (int,int);
   void (*gxsetpatt) (gaint);
   gaint (*win_data) (struct xinfo*);
+  void (*gxdidle) (void);   /* optional; NULL when the plug-in has none */
 };
 
 /* Function prototypes for GX library routines  */
@@ -379,6 +381,7 @@ char *gxgnam(char *);
 gadouble gxdrawch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 gadouble gxqchl (char, gaint, gadouble);
 void gxsignal (gaint);
+void gxidle (void);
 gaint gxload(char *, char *);
 struct gxpsubs *getpsubs(void);
 struct gxdsubs *getdsubs(void);
