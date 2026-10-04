@@ -624,7 +624,7 @@ libgxdCairo_la_LIBADD = $(X11_ldadd) $(LDADD) $(cairo_libs)
 libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 libgxdTerm_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
-libgxdTerm_la_LIBADD = $(LDADD) $(cairo_libs)
+libgxdTerm_la_LIBADD = $(LDADD) $(cairo_libs) -lz $(host_runtime_libs)
 libgxdTerm_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 libgxdummy_la_CPPFLAGS = -I. $(host_cppflags)  
 libgxdummy_la_LDFLAGS = $(plugin_ldflags)

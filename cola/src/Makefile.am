@@ -145,7 +145,7 @@ libgxdCairo_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 ## display in a terminal with Cairo (no X)
 libgxdTerm_la_CPPFLAGS = -I. $(host_cppflags) $(cairo_inc)
-libgxdTerm_la_LIBADD = $(LDADD) $(cairo_libs)
+libgxdTerm_la_LIBADD = $(LDADD) $(cairo_libs) -lz $(host_runtime_libs)
 libgxdTerm_la_LDFLAGS = -version-info $(LIBGX_VERSION) $(plugin_ldflags)
 
 ## dummy (for display and print)

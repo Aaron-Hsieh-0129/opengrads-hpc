@@ -60,8 +60,9 @@ libraries are available.
 
 - **Plots in the terminal, no X needed.** Over ssh from iTerm2, the picture
   appears in a tmux pane beside the `ga->` prompt and updates after each
-  command, with no X server or `ssh -X`. The launcher picks it automatically.
-  See [terminal display](docs/TERMINAL.md).
+  command, with no X server or `ssh -X`. Animations (`set looping on`, or a
+  `set dbuff on` loop) play as a looping GIF. The launcher picks it
+  automatically. See [terminal display](docs/TERMINAL.md).
 
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
