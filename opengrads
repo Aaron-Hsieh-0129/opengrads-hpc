@@ -28,7 +28,12 @@ bundle_root_explicit=0
 if [[ -n "${OPENGRADS_BUNDLE_ROOT:-}" ]]; then
   bundle_root_explicit=1
 fi
-if [[ -z "$bundle_root" ]]; then
+# Looking beside the launcher for a legacy OpenGrADS bundle is a convenience
+# for a source checkout only. A packaged archive carries its own plug-ins, and
+# one unpacked next to an old OpenGrADS install would otherwise load that
+# install's plug-ins and extensions, built against other libraries, and fail
+# with "libpng15.so.15: cannot open shared object file".
+if [[ -z "$bundle_root" && ! -r "$repo_root/glibc-required.txt" ]]; then
   for candidate in "$repo_root/opengrads/Contents" \
                    "$repo_root/../opengrads-2.2.1.oga.1/Contents"; do
     if [[ -d "$candidate" ]]; then
