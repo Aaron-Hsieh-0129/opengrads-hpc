@@ -310,6 +310,36 @@ grep -Fq 'openmp' <<< "$smoke_output"
 grep -Fq 'netcdf' <<< "$smoke_output"
 grep -Fq 'Calculation threads = 4' <<< "$smoke_output"
 
+# Nor may an old OpenGrADS install unpacked beside the archive. The launcher
+# used to adopt a sibling opengrads-2.2.1.oga.1 bundle and load its plug-ins
+# (built for libpng15 and the like) in place of ours. The decoy here has a
+# plug-in table whose every entry points at a file that is not a library.
+neighbour="$output_root/opengrads-2.2.1.oga.1"
+if [[ ! -e "$neighbour" ]]; then
+  neighbour_gex="$neighbour/Contents/$(uname -s)/Versions/2.2.1.oga.1/$(uname -m)/gex"
+  mkdir -p "$neighbour_gex"
+  printf '2.2.1.oga.1\n' > "$neighbour/Contents/$(uname -s)/Versions/Current@"
+  printf 'not a library\n' > "$neighbour_gex/libgxdummy.so"
+  printf 'gxdisplay gxdummy %s\n*\ngxprint gxdummy %s\n' \
+    "$neighbour_gex/libgxdummy.so" "$neighbour_gex/libgxdummy.so" \
+    > "$neighbour_gex/udpt"
+  : > "$neighbour_gex/udxt"
+  neighbour_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
+    OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
+    -bl -d gxdummy -h gxdummy 2>&1 <<'GRADS' || true
+q config
+quit
+GRADS
+)"
+  rm -rf -- "$neighbour"
+  if ! grep -Fq 'adios2-bp5' <<< "$neighbour_output" ||
+     grep -Fq 'GX Package Error' <<< "$neighbour_output"; then
+    printf 'An OpenGrADS bundle beside the archive replaces its plug-ins:\n%s\n' \
+      "$neighbour_output" >&2
+    exit 1
+  fi
+fi
+
 # A locale the machine does not have must not stop GrADS. Readline 8.2 before
 # its official patch 001 crashed on the first prompt when LC_ALL, LC_CTYPE or
 # LANG named one -- LC_CTYPE=UTF-8 from a macOS ssh session, say.

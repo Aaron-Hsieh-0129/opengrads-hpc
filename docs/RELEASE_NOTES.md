@@ -3,6 +3,20 @@
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
+### Fixed since 1.0.9 (not yet released)
+
+- **Linux: an old OpenGrADS install next to the archive broke it.** The
+  launcher looked beside itself for a legacy `opengrads-2.2.1.oga.1` bundle,
+  a convenience meant for a source checkout, and in a packaged archive it
+  adopted that install's plug-ins and extensions in place of its own. Those
+  were built for other libraries, so GrADS stopped at start-up with
+  `dlopen failed to get a handle on gxprint plug-in named "Cairo"` and
+  `libpng15.so.15: cannot open shared object file`. A packaged archive now
+  uses only its own plug-ins; `OPENGRADS_BUNDLE_ROOT` still selects a bundle
+  explicitly. The packager checks this by starting the archive beside a
+  decoy install. With 1.0.9, move the archive (or the old install) so the two
+  are not in the same directory.
+
 ### Added in 1.0.9
 
 - **Plotting scripts from bGASL.** Thirteen scripts from Bin Guan's GrADS
