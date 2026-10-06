@@ -45,37 +45,42 @@ available (`ssh -X`), the launcher keeps using the X window unless
 
 ## tmux setup
 
-The viewer pane passes the image through tmux to iTerm2. tmux 3.3 and later
-block this unless `allow-passthrough` is on. GrADS turns it on for the
-viewer pane only, so no `.tmux.conf` change is needed.
+GrADS draws into its pane through tmux to iTerm2. tmux 3.3 and later block
+this unless `allow-passthrough` is on. GrADS turns it on for its pane only,
+so no `.tmux.conf` change is needed.
+
+tmux does not place such output at the pane by itself, so each picture
+carries its own cursor movement to the pane's top-left corner, worked out
+from tmux's layout (status line on top included).
 
 Use ordinary tmux. iTerm2's tmux integration (`tmux -CC`) has not been
 tested with inline images.
 
 To keep a shell under the picture, like the lower-right pane in Spyder,
-split the viewer pane once GrADS is running:
+split the picture pane once GrADS is running:
 
 ```bash
 tmux split-window -v -d -t '{right}'
 ```
 
-The picture shrinks to fit the smaller pane.
+The picture is redrawn to fit the smaller pane.
 
 ## Settings
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `GA_TERM_MODE` | `tmux` (viewer pane), `inline` (print under the command), `file` (only write the PNG), or `auto` | `auto`: `tmux` inside tmux, `inline` elsewhere |
-| `GA_TERM_PANE` | Width of the viewer pane | `50%` |
+| `GA_TERM_MODE` | `tmux` (picture pane), `inline` (print under the command), `file` (only write the PNG), or `auto` | `auto`: `tmux` inside tmux, `inline` elsewhere |
+| `GA_TERM_PANE` | Width of the picture pane | `50%` |
 | `GA_TERM_WIDTH` | Width of an inline image, in iTerm2 terms (`70%`, `80` cells, `600px`) | `70%` |
 | `GA_TERM_SCALE` | Pixels per point, 1 to 4. 2 keeps lines and text sharp on Retina screens | `2` |
-| `GA_TERM_ANIM` | `auto`, `gif`, `live`, or `off`; see [Animation](#animation) | `auto` |
-| `GA_TERM_ANIM_DELAY` | Seconds per animation frame | `0.2` |
-| `GA_TERM_ANIM_MAX` | Most frames kept in one animation | `300` |
-| `GA_TERM_ANIM_SCALE` | Size of animation frames relative to the page, 0.25 to 1 | `1` |
+| `GA_TERM_ANIM` | `live`, `gif`, or `off`; see [Animation](#animation) | `live` |
+| `GA_TERM_PROGRESS` | `auto`, `on` (for every picture), or `off`; see [Progress bar](#progress-bar) | `auto` |
+| `GA_TERM_ANIM_DELAY` | Seconds per frame of a looping GIF | `0.2` |
+| `GA_TERM_ANIM_MAX` | Most frames kept in one looping GIF | `300` |
+| `GA_TERM_ANIM_SCALE` | Size of looping-GIF frames relative to the page, 0.25 to 1 | `1` |
 | `GA_TERM_DIR` | Directory that receives `plot.png` and `plot.gif` | a new temporary directory, removed at exit |
-| `GA_TERM_VIEWER` | Viewer program for the tmux pane | `libexec/grads-termview`, set by the launcher |
-| `GA_TERM_SYNC` | `1` finishes writing each picture before GrADS goes on, for scripts that read `plot.png` at once | off |
+| `GA_TERM_VIEWER` | Program that holds the picture pane open, and shows pictures in `file` mode | `libexec/grads-termview`, set by the launcher |
+| `GA_TERM_SYNC` | `1` finishes writing and sending each picture before GrADS goes on, for scripts that read `plot.png` at once | off |
 
 The page is 1000 points along its longer side. Change it with `-g`
 (`./opengrads -l -d Term -g 1200x900`) or, while running, with
@@ -93,60 +98,81 @@ sends nothing. Drawing many times in one command sends one picture, unless
 the command ends frames along the way; see [Animation](#animation).
 
 Encoding happens in a background thread, so the prompt comes back while the
-picture is still being written, and the viewer wakes as soon as it is ready
-rather than checking on a timer.
+picture is still being written and sent.
 
 ## Animation
 
 A frame ends where the picture is replaced: at each `swap` in
-double-buffer mode, or when a page with something on it is cleared.
+double-buffer mode, or when a page with something on it is cleared. As with
+an X window, **every frame is shown, in order, as it is drawn**: the usual
+GrADS idioms animate in the picture pane step by step.
 
-- **Frames are shown as they are made**, in the viewer pane, so a long
-  script shows its progress. When frames come faster than they can be sent,
-  the viewer skips to the newest.
-- **A double-buffered animation loops.** A command that swaps two or more
-  frames leaves behind an animated GIF, which iTerm2 plays on its own, over
-  and over, with nothing more sent over ssh. This covers the usual GrADS
-  idioms:
+```text
+ga-> set looping on
+ga-> set t 1 24
+ga-> d t
+```
 
-  ```text
-  ga-> set looping on
-  ga-> set t 1 24
-  ga-> d t
-  ```
+```text
+'set dbuff on'
+t = 1
+while (t <= 24)
+  'set t 't
+  'd t'
+  'swap'
+  t = t + 1
+endwhile
+```
 
-  and a script loop:
+When the link is slower than the drawing, the drawing waits for it, as it
+would for a forwarded X window, instead of piling pictures up in tmux.
 
-  ```text
-  'set dbuff on'
-  t = 1
-  while (t <= 24)
-    'set t 't
-    'd t'
-    'swap'
-    t = t + 1
-  endwhile
-  ```
+**Ctrl-C** stops the animation: the script ends, frames not yet sent are
+dropped, and nothing more is sent for that command. The picture already on
+its way finishes, so at most one more arrives. On a slow link, data already
+inside ssh (up to its 2 MB window) still has to drain, about 1.6 s at
+10 Mbit/s.
 
 `GA_TERM_ANIM` changes this:
 
-| Value | Live frames | Looping GIF |
+| Value | Frames as they are drawn | Afterwards |
 |---|---|---|
-| `auto` | yes | for double-buffered frames |
-| `gif` | yes | for any command with two or more frames, cleared ones too |
-| `live` | yes | never |
-| `off` | no | never; only the picture at the prompt |
+| `live` (default) | yes | the last frame stays |
+| `gif` | yes | a command that swaps two or more frames also leaves a looping GIF, which iTerm2 plays on its own with nothing more sent over ssh |
+| `off` | no | only the picture at the prompt |
 
-Inline mode prints no live frames, which would fill the scrollback, but
-does print the looping GIF.
+Inline mode prints no frames as they are drawn, which would fill the
+scrollback; it prints the last frame, or the looping GIF with `gif`.
 
-GIF frames are kept at the page size in points (1000 wide by default), with
-up to 256 colours each, and only the part of a frame that changed is
-stored. As a guide, 100 frames of `d ts` from `pytests/data/model.ctl` came
-to 5 MB shaded and 7 MB contoured. Over a slow link, shrink the frames with
+A looping GIF keeps frames at the page size in points (1000 wide by
+default), with up to 256 colours each, and stores only the part of a frame
+that changed. As a guide, 100 frames of `d ts` from `pytests/data/model.ctl`
+came to 5 MB shaded and 7 MB contoured. Shrink them with
 `GA_TERM_ANIM_SCALE=0.5`, which roughly halves the size, or keep fewer with
-`GA_TERM_ANIM_MAX`. Ctrl-C stops a running animation; the frames made so
-far still loop.
+`GA_TERM_ANIM_MAX`.
+
+## Progress bar
+
+With iTerm2, a picture that takes a while to arrive shows iTerm2's own
+progress bar while it loads. The progress marks travel between the parts of
+the picture, so the bar shows what has actually reached your Mac, not what
+has left the server. Until the new picture is complete, the old one stays
+up.
+
+With `GA_TERM_PROGRESS=auto` the bar appears for pictures over 1 MiB, and
+for every picture once the link has turned out to be slow (GrADS had to
+wait for it); fast transfers do not flash a bar. `on` shows it for every
+picture, and `off` never; `off` also sends each picture in one piece when
+it fits, the oldest and most widely understood form of the protocol, which
+is worth trying if pictures do not appear.
+
+## Ctrl-C at the prompt
+
+Ctrl-C while typing a command throws the line away and starts a fresh one,
+as a shell does. It never ends GrADS, however often it is pressed; use
+`quit`, or Ctrl-\\ to force GrADS to stop. While a command or script runs,
+Ctrl-C interrupts it, as before. This holds with any display, not only the
+terminal one.
 
 ## Speed over ssh
 
@@ -159,9 +185,8 @@ adds a third.
 - `GA_TERM_SCALE=1` sends about 40% of the data, at the cost of softer
   lines on a Retina screen.
 
-iTerm2 and tmux both refuse a single image sequence over 1 MiB, so a larger
-picture or animation is sent in parts. iTerm2 understands that from version
-3.5; older versions show nothing for such pictures.
+iTerm2 and tmux both refuse a single image sequence over 1 MiB, so with
+iTerm2 pictures go in parts, which iTerm2 understands from version 3.5.
 
 ## Limits
 
@@ -172,6 +197,9 @@ picture or animation is sent in parts. iTerm2 understands that from version
   `screen` command need a window. They print a warning and do nothing, as
   they do with the Cairo X display.
 - `gxout imap` is not supported, as with the Cairo X display.
-- Animations are GIFs: 256 colours per frame and a fixed delay between
-  frames. For a movie file, write frames with `gxprint`.
+- tmux redraws a pane from what it knows, and it does not know about the
+  picture. After switching tmux windows or reattaching, the pane is blank
+  until the next picture or a resize of the pane.
+- Inline mode is for use outside tmux: inside tmux the picture is not
+  anchored to the scrolling text.
 - `gxprint` and `printim` work as usual and are not affected by the display.

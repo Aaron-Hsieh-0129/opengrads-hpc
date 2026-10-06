@@ -6,30 +6,42 @@
    The picture is rendered by gxC.c into a Cairo image surface. Whenever
    GrADS is about to wait for the user (the command prompt, a script "pull",
    a "q pos"), gxdidle hands a copy of the picture to a worker thread if it
-   changed since the last time. The worker encodes it and tells the viewer,
-   so the prompt comes back without waiting for the encoding. How the
-   picture reaches the screen depends on GA_TERM_MODE:
+   changed since the last time. The worker encodes it and sends it to the
+   terminal with the iTerm2 inline image protocol, so the prompt comes back
+   without waiting. Where the picture goes depends on GA_TERM_MODE:
 
-     tmux    A viewer (GA_TERM_VIEWER, normally libexec/grads-termview) runs
-             in a tmux pane split off beside GrADS and redraws the picture
-             with the iTerm2 inline image protocol each time it changes.
+     tmux    A pane is split off beside GrADS (it runs GA_TERM_VIEWER --hold,
+             normally libexec/grads-termview, only to keep the pane open) and
+             the worker draws each picture into it.
      inline  The picture is printed into the terminal below the command,
-             like a notebook. Needs no tmux and no viewer.
-     file    The picture is only written; the viewer is started by hand
-             with the command printed at start-up.
+             like a notebook. Needs no tmux.
+     file    The picture is only written; grads-termview can show it
+             elsewhere, started by hand with the command printed at start-up.
      auto    tmux when GrADS runs inside tmux and a viewer is available,
              inline otherwise. This is the default.
 
-   Animation. A frame ends where the picture is replaced: at a "swap" in
-   double-buffer mode, or when a drawn page is cleared. Frames are shown as
-   they are made (except inline), and a command that swaps two or more
-   frames -- a "set dbuff on" loop, or "set looping on" -- leaves behind a
-   looping animated GIF, which iTerm2 plays by itself. GA_TERM_ANIM picks
-   the behaviour:
+   Sending. Inside tmux the image sequence carries its own cursor movement,
+   because tmux does not place passthrough output at the pane. tmux keeps
+   whatever it is given and sends it on as fast as the link allows, so the
+   worker writes a picture in pieces and waits for the tmux client's terminal
+   to have room before the next piece: pictures queue here, where Ctrl-C can
+   drop them, instead of in tmux. With iTerm2 (LC_TERMINAL=iTerm2) a picture
+   goes in parts, which keeps the previous picture up until the new one is
+   complete, and when the link is slow or the picture large, iTerm2's own
+   progress bar (OSC 9;4) is updated between the parts, so it shows what has
+   actually arrived.
 
-     auto    as above (the default)
-     gif     any command with two or more frames loops, cleared ones too
-     live    frames are shown as they are made, but nothing loops
+   Animation. A frame ends where the picture is replaced: at a "swap" in
+   double-buffer mode, or when a drawn page is cleared. Every frame is sent,
+   in order, as it is made, as an X window would show it; when the link is
+   slower than the drawing, the drawing waits. Ctrl-C stops the command,
+   drops the frames not yet sent, and sends nothing more for it.
+   GA_TERM_ANIM picks the behaviour:
+
+     live    frames are shown as they are made (the default)
+     gif     as live, and a command that swaps two or more frames (a
+             "set dbuff on" loop, "set looping on") also leaves a looping
+             animated GIF, which iTerm2 plays by itself
      off     only the picture at the prompt is shown
 
    Nothing here needs an X server, so it works over plain ssh.
@@ -41,17 +53,19 @@
      GA_TERM_PANE       Width of the tmux viewer pane, e.g. 45% (default 50%)
      GA_TERM_WIDTH      Width of an inline image, as iTerm2 understands it
                         (default 70%)
-     GA_TERM_ANIM_DELAY Seconds per animation frame (default 0.2)
-     GA_TERM_ANIM_MAX   Most frames kept in one animation (default 300)
-     GA_TERM_ANIM_SCALE Size of animation frames relative to the page, 0.25
-                        to 1 (default 1); 0.5 roughly halves the data
-     GA_TERM_SYNC       1 waits for each picture to be written before going
-                        on, for scripts and tests that read it at once
+     GA_TERM_PROGRESS   auto (default), on (for every picture), or off (no
+                        progress bar, and pictures in one piece when they fit)
+     GA_TERM_ANIM_DELAY Seconds per GIF frame (default 0.2)
+     GA_TERM_ANIM_MAX   Most frames kept in one GIF (default 300)
+     GA_TERM_ANIM_SCALE Size of GIF frames relative to the page, 0.25 to 1
+                        (default 1); 0.5 roughly halves the data
+     GA_TERM_SYNC       1 waits for each picture to be written and sent
+                        before going on, for scripts and tests
 
    The picture size comes from the -g option ("-g 1200x900"), otherwise it
-   is 1000 points along the longer side of the page. Animation frames are
-   kept at that size; the still picture has GA_TERM_SCALE times as many
-   pixels each way.  */
+   is 1000 points along the longer side of the page. GIF frames are kept at
+   that size; the still picture has GA_TERM_SCALE times as many pixels each
+   way.  */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -64,10 +78,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <poll.h>
+#include <time.h>
+#include <spawn.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
 #include <cairo.h>
 #include <zlib.h>
@@ -76,14 +94,19 @@
 #include "gx.h"
 #include "gxC.h"
 
+extern char **environ;
+
 #define TERM_DEFAULT_SIZE 1000       /* points along the longer page side */
 #define SEQ_LIMIT 1000000            /* iTerm2 and tmux drop control sequences
                                         over 1 MiB, so larger files go in parts */
-#define SEQ_PART  65536              /* size of each part */
-#define FRAMEQ    3                  /* animation frames waiting for the worker */
+#define SEQ_PART  65536              /* base64 characters in each part */
+#define PACE_QUIET 0.025             /* seconds the link must stay clear */
+#define PROGRESS_MIN 1048576         /* a picture this large always shows progress */
+#define FRAMEQ    2                  /* frames waiting for the worker */
 
 void gxdXflush (void);
 void gxdidle (void);
+void gxdintr (void);
 
 static gaint batch=0;                       /* Batch mode? */
 static gadouble xscl,yscl;                  /* Pixels per inch */
@@ -98,34 +121,41 @@ static char *ugeom = NULL;                  /* -g geometry string */
 static gaint dirty=0;                       /* changed since it was last sent */
 static gaint drawn=0;                       /* something drawn since the last clear */
 static gaint backdrawn=0;                   /* drawn on the back buffer since the last swap */
-static gaint ngif=0;                        /* of those, frames queued for a GIF */
+static gaint ngif=0;                        /* frames queued for a GIF in this command */
 static gaint gifcut=0;                      /* frames left out past GA_TERM_ANIM_MAX */
+static volatile sig_atomic_t intr=0;        /* Ctrl-C interrupted the command */
 
 /* Settings */
 static char tdir[512];                      /* where the pictures go */
 static gaint ownsdir=0;                     /* we created tdir, remove it at exit */
 static char seqpath[600], seqtmp[600], fifopath[600];
 static gaint mode=0;                        /* 1=tmux 2=inline 3=file */
-static gaint anim=1;                        /* 0=off 1=auto 2=gif 3=live */
-static gaint animdelay=20;                  /* hundredths of a second per frame */
+static gaint anim=1;                        /* 0=off 1=live 2=gif */
+static gaint animdelay=20;                  /* hundredths of a second per GIF frame */
 static gaint animmax=300;                   /* most frames in one GIF */
 static gadouble animscale=1.0;              /* GIF frame size relative to the page */
 static gaint syncwrite=0;                   /* wait for each picture */
+static gaint iterm=0;                       /* the terminal is iTerm2 */
+static gaint progressopt=1;                 /* 0=off 1=auto 2=on */
 static char pane[64];                       /* tmux pane id of the viewer */
+static gaint panefd=-1;                     /* the viewer pane's terminal */
 
 /* ---- work handed to the worker thread ---- */
 
-#define JOB_PNG     1                       /* encode and show a still picture */
-#define JOB_FRAME   2                       /* add a frame to the animation */
-#define JOB_GIFEND  3                       /* finish the animation and show it */
-#define JOB_GIFDROP 4                       /* forget the animation */
+#define JOB_STILL    1                      /* a still picture; a newer one replaces it */
+#define JOB_FRAME    2                      /* an animation frame; never skipped */
+#define JOB_GIFFRAME 3                      /* add a frame to the looping GIF */
+#define JOB_GIFEND   4                      /* finish the GIF and show it */
+#define JOB_GIFDROP  5                      /* forget the GIF */
+
+#define ISFRAME(k) ((k)==JOB_FRAME || (k)==JOB_GIFFRAME)
 
 struct tjob {
   gaint kind;
   unsigned char *px;                        /* copy of the ARGB32 picture */
   gaint w,h,stride;                         /* its size in device pixels */
   gaint lw,lh;                              /* size in points, for GIF frames */
-  gaint first;                              /* first frame of a new animation */
+  gaint first;                              /* first frame of a new GIF */
   struct tjob *next;
 };
 
@@ -134,13 +164,25 @@ static gaint workeron=0;
 static pthread_mutex_t tlock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t twake = PTHREAD_COND_INITIALIZER;  /* work for the worker */
 static pthread_cond_t tdone = PTHREAD_COND_INITIALIZER;  /* the worker made progress */
-static struct tjob *live=NULL;              /* latest still picture; newer ones replace it */
-static struct tjob *qhead=NULL,*qtail=NULL; /* animation work, in order */
+static struct tjob *qhead=NULL,*qtail=NULL; /* work, in order */
 static gaint qframes=0;                     /* frames in the queue */
 static gaint busy=0;                        /* the worker is working */
-static gaint stopping=0;                    /* finish the queue and exit */
-static gaint seq=0;                         /* pictures shown; worker only */
-static char lastfile[64];                   /* file name of the latest picture */
+static volatile gaint stopping=0;           /* finish the queue and exit */
+static volatile gaint quitting=0;           /* GrADS is ending: write, don't send */
+static gaint seq=0;                         /* pictures shown */
+static unsigned char *lastpic=NULL;         /* and its contents */
+static size_t lastpiclen=0;
+
+/* Worker only: what the pane shows, and the link */
+static gaint sentrows=0,sentcols=0;         /* pane size the picture was sent for */
+static gaint panefresh=1;                   /* the pane needs clearing first */
+static double slowuntil=0.0;                /* the link was slow until about then */
+
+static double now (void) {
+struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC,&t);
+  return (t.tv_sec + t.tv_nsec*1e-9);
+}
 
 /* Make a surface of the current picture size */
 
@@ -167,30 +209,43 @@ size_t n=0;
   out[n] = '\0';
 }
 
+static void cloexec (gaint fd) {
+  if (fd>=0) fcntl(fd,F_SETFD,FD_CLOEXEC);
+}
+
 /* Run a command without a shell. Its first line of output goes into out.
-   Returns the exit status, or -1 when it could not be run. */
+   Returns the exit status, or -1 when it could not be run. posix_spawn,
+   not fork, because the worker thread runs commands too. */
 
 static gaint runcmd (char *const argv[], char *out, size_t len) {
-gaint fd[2],status,devnull;
+gaint fd[2],status,rc;
 pid_t pid;
 ssize_t n;
 size_t got=0;
 char buf[256],*nl;
+posix_spawn_file_actions_t fa;
+posix_spawnattr_t at;
+sigset_t none;
 
   if (out && len) *out = '\0';
   if (pipe(fd)) return (-1);
-  pid = fork();
-  if (pid<0) { close(fd[0]); close(fd[1]); return (-1); }
-  if (pid==0) {
-    devnull = open("/dev/null",O_RDWR);
-    if (devnull>=0) { dup2(devnull,0); dup2(devnull,2); }
-    dup2(fd[1],1);
-    close(fd[0]); close(fd[1]);
-    execvp(argv[0],argv);
-    _exit(127);
-  }
+  cloexec(fd[0]);
+  cloexec(fd[1]);
+  posix_spawn_file_actions_init(&fa);
+  posix_spawn_file_actions_addopen(&fa,0,"/dev/null",O_RDONLY,0);
+  posix_spawn_file_actions_addopen(&fa,2,"/dev/null",O_WRONLY,0);
+  posix_spawn_file_actions_adddup2(&fa,fd[1],1);
+  posix_spawnattr_init(&at);
+  sigemptyset(&none);                       /* the worker blocks every signal */
+  posix_spawnattr_setsigmask(&at,&none);
+  posix_spawnattr_setflags(&at,POSIX_SPAWN_SETSIGMASK);
+  rc = posix_spawnp(&pid,argv[0],&fa,&at,argv,environ);
+  posix_spawn_file_actions_destroy(&fa);
+  posix_spawnattr_destroy(&at);
   close(fd[1]);
-  while ((n=read(fd[0],buf,sizeof(buf)))>0) {
+  if (rc) { close(fd[0]); return (-1); }
+  while ((n=read(fd[0],buf,sizeof(buf)))!=0) {
+    if (n<0) { if (errno==EINTR) continue; break; }
     if (out && got+1<len) {
       if ((size_t)n > len-1-got) n = len-1-got;
       memcpy(out+got,buf,n);
@@ -200,7 +255,7 @@ char buf[256],*nl;
   }
   if (out && len && (nl=strchr(out,'\n'))!=NULL) *nl = '\0';
   close(fd[0]);
-  if (waitpid(pid,&status,0)<0) return (-1);
+  while (waitpid(pid,&status,0)<0) if (errno!=EINTR) return (-1);
   return (WIFEXITED(status) ? WEXITSTATUS(status) : -1);
 }
 
@@ -214,10 +269,51 @@ char *v;
   return (v);
 }
 
-/* Split a tmux pane off for the viewer */
+/* Where a tmux pane is on the client's screen, and the client's terminal */
+
+struct paneinfo {
+  gaint row,col;                            /* top left, 0-based, on the screen */
+  gaint rows,cols;
+  char ctty[256];                           /* the tmux client's terminal */
+};
+
+static gaint tmuxinfo (const char *target, struct paneinfo *pi) {
+char out[600],*f[8],*p,*argv[8];
+gaint i,n,status;
+
+  memset(pi,0,sizeof(*pi));
+  i = 0;
+  argv[i++] = "tmux"; argv[i++] = "display-message"; argv[i++] = "-p";
+  if (target && *target) { argv[i++] = "-t"; argv[i++] = (char *)target; }
+  argv[i++] = "#{pane_left}|#{pane_top}|#{pane_width}|#{pane_height}|"
+              "#{client_tty}|#{status-position}|#{status}";
+  argv[i] = NULL;
+  if (runcmd(argv,out,sizeof(out))) return (1);
+  for (n=0, p=out; n<7; n++) {               /* fields may be empty */
+    f[n] = p;
+    p = strchr(p,'|');
+    if (p==NULL) break;
+    *p++ = '\0';
+  }
+  if (n<6) return (1);
+  pi->col = atoi(f[0]);
+  pi->row = atoi(f[1]);
+  pi->cols = atoi(f[2]);
+  pi->rows = atoi(f[3]);
+  snprintf(pi->ctty,sizeof(pi->ctty),"%s",f[4]);
+  if (!strcmp(f[5],"top")) {                 /* the status line comes first */
+    if (!strcmp(f[6],"on")) status = 1;
+    else if (!strcmp(f[6],"off")) status = 0;
+    else status = atoi(f[6]);
+    pi->row += status;
+  }
+  return (pi->cols<=0 || pi->rows<=0);
+}
+
+/* Split a tmux pane off for the pictures */
 
 static gaint tmuxsplit (void) {
-char cmd[2048],qv[700],qd[700],size[32],pct[32];
+char cmd[2048],qv[700],qd[700],size[32],pct[32],tty[256];
 char *v,*p;
 char *argv[16];
 gaint i,rc;
@@ -226,7 +322,7 @@ gaint i,rc;
   if (v==NULL) return (1);
   shquote(qv,sizeof(qv),v);
   shquote(qd,sizeof(qd),tdir);
-  snprintf(cmd,sizeof(cmd),"exec %s %s %d",qv,qd,(gaint)getpid());
+  snprintf(cmd,sizeof(cmd),"exec %s --hold %s %d",qv,qd,(gaint)getpid());
 
   p = getenv("GA_TERM_PANE");
   if (p==NULL || *p=='\0') p = "50%";
@@ -249,8 +345,22 @@ gaint i,rc;
     return (1);
   }
 
-  /* the viewer talks to iTerm2 through tmux; tmux 3.3 and later drop such
-     sequences unless the pane allows them. Older tmux has no such option. */
+  /* the pictures go straight to the pane's terminal */
+  i = 0;
+  argv[i++] = "tmux"; argv[i++] = "display-message"; argv[i++] = "-p";
+  argv[i++] = "-t"; argv[i++] = pane; argv[i++] = "#{pane_tty}"; argv[i] = NULL;
+  if (runcmd(argv,tty,sizeof(tty)) || tty[0]!='/' ||
+      (panefd=open(tty,O_WRONLY|O_NOCTTY))<0) {
+    argv[0] = "tmux"; argv[1] = "kill-pane"; argv[2] = "-t";
+    argv[3] = pane; argv[4] = NULL;
+    runcmd(argv,NULL,0);
+    pane[0] = '\0';
+    return (1);
+  }
+  cloexec(panefd);
+
+  /* tmux 3.3 and later drop passthrough sequences unless the pane allows
+     them. Older tmux has no such option. */
   i = 0;
   argv[i++] = "tmux"; argv[i++] = "set-option"; argv[i++] = "-p";
   argv[i++] = "-t"; argv[i++] = pane; argv[i++] = "allow-passthrough";
@@ -261,11 +371,33 @@ gaint i,rc;
 
 /* ---- PNG ---- */
 
+struct mbuf {
+  unsigned char *p;
+  size_t n,cap;
+  gaint failed;
+};
+
+static void mput (struct mbuf *b, const void *d, size_t n) {
+unsigned char *np;
+size_t nc;
+  if (b->failed) return;
+  if (b->n+n > b->cap) {
+    nc = b->cap ? b->cap : 262144;
+    while (nc < b->n+n) nc *= 2;
+    np = (unsigned char *)realloc(b->p,nc);
+    if (np==NULL) { b->failed = 1; return; }
+    b->p = np;
+    b->cap = nc;
+  }
+  memcpy(b->p+b->n,d,n);
+  b->n += n;
+}
+
 static void be32 (unsigned char *p, unsigned long v) {
   p[0] = (v>>24)&255; p[1] = (v>>16)&255; p[2] = (v>>8)&255; p[3] = v&255;
 }
 
-static gaint pngchunk (FILE *f, const char *type, const unsigned char *data, size_t len) {
+static void pngchunk (struct mbuf *b, const char *type, const unsigned char *data, size_t len) {
 unsigned char hdr[8],crc[4];
 uLong c;
   be32(hdr,(unsigned long)len);
@@ -273,36 +405,34 @@ uLong c;
   c = crc32(0L,(const Bytef *)type,4);
   if (len) c = crc32(c,data,(uInt)len);
   be32(crc,c);
-  if (fwrite(hdr,1,8,f)!=8) return (1);
-  if (len && fwrite(data,1,len,f)!=len) return (1);
-  return (fwrite(crc,1,4,f)!=4);
+  mput(b,hdr,8);
+  if (len) mput(b,data,len);
+  mput(b,crc,4);
 }
 
-/* Write an ARGB32 picture as an RGB PNG. Rows are not filtered: for plots,
+/* Encode an ARGB32 picture as an RGB PNG. Rows are not filtered: for plots,
    which are mostly flat colour, that is both faster and smaller than
    letting the encoder try every filter, as cairo_surface_write_to_png does. */
 
-static gaint pngwrite (const char *fn, const unsigned char *px, gaint w, gaint h, gaint stride) {
+static gaint pngencode (const unsigned char *px, gaint w, gaint h, gaint stride, struct mbuf *b) {
 static const unsigned char sig[8] = {137,80,78,71,13,10,26,10};
 unsigned char ihdr[13],*row,*out;
 const unsigned int *p;
 z_stream zs;
-FILE *f;
 gaint x,y,zrc,err=0;
 const size_t outsz = 65536;
 
-  f = fopen(fn,"wb");
-  if (f==NULL) return (1);
   row = (unsigned char *)malloc(1+3*(size_t)w);
   out = (unsigned char *)malloc(outsz);
   memset(&zs,0,sizeof(zs));
   if (row==NULL || out==NULL || deflateInit(&zs,6)!=Z_OK) {
-    free(row); free(out); fclose(f);
+    free(row); free(out);
     return (1);
   }
   be32(ihdr,w); be32(ihdr+4,h);
   ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
-  if (fwrite(sig,1,8,f)!=8 || pngchunk(f,"IHDR",ihdr,13)) err = 1;
+  mput(b,sig,8);
+  pngchunk(b,"IHDR",ihdr,13);
 
   zs.next_out = out;
   zs.avail_out = outsz;
@@ -322,18 +452,17 @@ const size_t outsz = 65536;
       zrc = deflate(&zs, y<h ? Z_NO_FLUSH : Z_FINISH);
       if (zrc==Z_STREAM_ERROR) { err = 1; break; }
       if (zs.avail_out==0 || (y==h && zrc==Z_STREAM_END)) {
-        if (pngchunk(f,"IDAT",out,outsz-zs.avail_out)) { err = 1; break; }
+        pngchunk(b,"IDAT",out,outsz-zs.avail_out);
         zs.next_out = out;
         zs.avail_out = outsz;
       }
     } while (y<h ? zs.avail_in>0 : zrc!=Z_STREAM_END);
   }
   deflateEnd(&zs);
-  if (!err && pngchunk(f,"IEND",NULL,0)) err = 1;
-  if (fclose(f)) err = 1;
+  pngchunk(b,"IEND",NULL,0);
   free(row);
   free(out);
-  return (err);
+  return (err || b->failed);
 }
 
 /* ---- animated GIF; worker thread only ---- */
@@ -648,9 +777,256 @@ unsigned long r,g,b,n;
   return (out);
 }
 
+/* ---- sending pictures to the terminal ---- */
+
+struct wout {
+  gaint fd;                                 /* where the bytes go */
+  gaint pacefd;                             /* the terminal to pace against, or -1 */
+  gaint tmux;                               /* wrap sequences for tmux */
+  unsigned char buf[16384];
+  size_t n;
+  double waited;                            /* time spent waiting on the link */
+  gaint err;
+};
+
+static void wflush (struct wout *w) {
+size_t off=0;
+ssize_t r;
+double t0;
+
+  t0 = now();
+  while (off<w->n && !w->err) {
+    r = write(w->fd,w->buf+off,w->n-off);
+    if (r<0) {
+      if (errno==EINTR) continue;
+      if (errno==EAGAIN) { usleep(2000); continue; }
+      w->err = 1;
+      break;
+    }
+    off += r;
+  }
+  w->waited += now()-t0;
+  w->n = 0;
+}
+
+/* tmux keeps everything it is given and sends it on as fast as the link
+   allows. Before a picture, wait until tmux has passed on what it holds,
+   so that pictures queue here, where Ctrl-C can drop them: the tmux
+   client's terminal then has room, and keeps it. While tmux still has
+   more to send it fills that room again within a millisecond or two, so
+   the room has to last PACE_QUIET to count. */
+
+static void pace (struct wout *w) {
+struct pollfd p;
+double t0,clear=-1.0,t;
+
+  if (w->pacefd<0) return;
+  t0 = now();
+  while (!stopping) {
+    p.fd = w->pacefd;
+    p.events = POLLOUT;
+    p.revents = 0;
+    if (poll(&p,1,0)<0) {
+      if (errno==EINTR) continue;
+      break;
+    }
+    if (p.revents & (POLLERR|POLLHUP|POLLNVAL)) break;
+    t = now();
+    if (p.revents & POLLOUT) {
+      if (clear<0) clear = t;
+      if (t-clear >= PACE_QUIET) break;
+    } else clear = -1.0;
+    if (t-t0 > 30.0) break;                 /* never hang on a stuck link */
+    usleep(2500);
+  }
+  w->waited += now()-t0-PACE_QUIET;
+}
+
+static void wraw (struct wout *w, const void *p, size_t n) {
+const unsigned char *s = (const unsigned char *)p;
+size_t k;
+  while (n && !w->err) {
+    k = sizeof(w->buf)-w->n;
+    if (k>n) k = n;
+    memcpy(w->buf+w->n,s,k);
+    w->n += k; s += k; n -= k;
+    if (w->n==sizeof(w->buf)) wflush(w);
+  }
+}
+
+static void wstr (struct wout *w, const char *s) {
+  wraw(w,s,strlen(s));
+}
+
+/* An escape sequence for the outer terminal. Inside tmux it travels in a
+   passthrough sequence, where each ESC is doubled. */
+static void wesc (struct wout *w, const char *s) {
+  if (!w->tmux) { wstr(w,s); return; }
+  for (; *s; s++) {
+    if (*s=='\033') wraw(w,"\033\033",2);
+    else wraw(w,s,1);
+  }
+}
+
+static void ptopen (struct wout *w) {
+  if (w->tmux) wstr(w,"\033Ptmux;");
+}
+
+static void ptclose (struct wout *w) {
+  if (w->tmux) wstr(w,"\033\\");
+}
+
+static void b64put (struct wout *w, const unsigned char *d, size_t len) {
+static const char tab[] =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+char out[4096];
+size_t i,o=0;
+unsigned long v;
+  for (i=0; i+2<len; i+=3) {
+    v = ((unsigned long)d[i]<<16) | ((unsigned long)d[i+1]<<8) | d[i+2];
+    out[o++] = tab[(v>>18)&63]; out[o++] = tab[(v>>12)&63];
+    out[o++] = tab[(v>>6)&63];  out[o++] = tab[v&63];
+    if (o==sizeof(out)) { wraw(w,out,o); o = 0; }
+  }
+  if (i<len) {
+    v = (unsigned long)d[i]<<16;
+    if (i+1<len) v |= (unsigned long)d[i+1]<<8;
+    out[o++] = tab[(v>>18)&63]; out[o++] = tab[(v>>12)&63];
+    out[o++] = i+1<len ? tab[(v>>6)&63] : '=';
+    out[o++] = '=';
+  }
+  wraw(w,out,o);
+}
+
+/* Send a picture. Given a pane, it fills the pane, placed by absolute
+   cursor movement inside the image sequence: tmux does not move the
+   terminal's cursor to the pane for passthrough output. Otherwise the
+   picture goes where the cursor is, iwidth wide. */
+
+static void sendpic (gaint fd, gaint pacefd, gaint tmux, const struct paneinfo *pi,
+                     gaint clear, const unsigned char *data, size_t len, const char *iwidth) {
+struct wout *w;
+char args[256],pos[64],tmp[64];
+size_t b64len,off,n,part;
+gaint parts,showprog,pct,lastpct=-1;
+
+  w = (struct wout *)calloc(1,sizeof(struct wout));
+  if (w==NULL) return;
+  w->fd = fd;
+  w->pacefd = pacefd;
+  w->tmux = tmux;
+  b64len = (len+2)/3*4;
+  if (pi) snprintf(args,sizeof(args),"inline=1;size=%lu;width=%d;height=%d;preserveAspectRatio=1",
+                   (unsigned long)len,pi->cols,pi->rows>1 ? pi->rows-1 : 1);
+  else snprintf(args,sizeof(args),"inline=1;size=%lu;width=%s;preserveAspectRatio=1",
+                (unsigned long)len,iwidth);
+  pos[0] = '\0';
+  if (pi) snprintf(pos,sizeof(pos),"\0337\033[%d;%dH",pi->row+1,pi->col+1);
+
+  pace(w);
+  if (w->waited>0.15) slowuntil = now()+20.0;
+  w->waited = 0.0;
+
+  /* iTerm2 takes a picture in parts, which also lets the progress bar
+     follow it; elsewhere only a picture too large for one sequence is
+     split, which needs iTerm2 3.5 anyway */
+  parts = (b64len+200 >= SEQ_LIMIT) || (iterm && progressopt);
+  showprog = parts && progressopt &&
+             (progressopt==2 || b64len>=PROGRESS_MIN || now()<slowuntil);
+
+  if (pi && clear) wstr(w,"\033[H\033[2J");  /* tmux clears the pane's cells */
+  if (!parts) {
+    ptopen(w);
+    wesc(w,pos);
+    wesc(w,"\033]1337;File=");
+    wstr(w,args);
+    wstr(w,":");
+    b64put(w,data,len);
+    wesc(w,"\a");
+    if (pi) wesc(w,"\0338");
+    ptclose(w);
+  } else {
+    ptopen(w);
+    wesc(w,pos);
+    wesc(w,"\033]1337;MultipartFile=");
+    wstr(w,args);
+    wesc(w,"\a");
+    if (pi) wesc(w,"\0338");
+    ptclose(w);
+    part = SEQ_PART/4*3;
+    for (off=0; off<len && !w->err; off+=n) {
+      n = len-off;
+      if (n>part) n = part;
+      ptopen(w);
+      wesc(w,"\033]1337;FilePart=");
+      b64put(w,data+off,n);
+      wesc(w,"\a");
+      ptclose(w);
+      /* writing blocks on a slow link outside tmux: show progress */
+      if (!showprog && progressopt && w->waited>0.15) showprog = 1;
+      if (showprog) {
+        pct = (gaint)((off+n)*100/len);
+        if (pct!=lastpct) {
+          snprintf(tmp,sizeof(tmp),"\033]9;4;1;%d\a",pct);
+          ptopen(w); wesc(w,tmp); ptclose(w);
+          lastpct = pct;
+        }
+      }
+    }
+    ptopen(w);
+    wesc(w,pos);
+    wesc(w,"\033]1337;FileEnd\a");
+    if (pi) wesc(w,"\0338");
+    ptclose(w);
+    if (lastpct>=0) { ptopen(w); wesc(w,"\033]9;4;0\a"); ptclose(w); }
+  }
+  if (!pi) wstr(w,"\n");
+  wflush(w);
+  if (w->waited>0.15) slowuntil = now()+20.0;
+  free(w);
+}
+
+/* The tmux client's terminal, to pace against */
+
+static gaint ctyfd=-1;
+static char ctypath[256];
+
+static gaint pacefor (const char *path) {
+  if (path==NULL || *path!='/') return (-1);
+  if (ctyfd>=0 && !strcmp(path,ctypath)) return (ctyfd);
+  if (ctyfd>=0) close(ctyfd);
+  ctyfd = open(path,O_WRONLY|O_NOCTTY|O_NONBLOCK);
+  cloexec(ctyfd);
+  snprintf(ctypath,sizeof(ctypath),"%s",path);
+  return (ctyfd);
+}
+
+/* Draw the latest picture into the viewer pane; worker only */
+
+static void panesend (gaint clear) {
+struct paneinfo pi;
+
+  if (panefd<0 || lastpic==NULL || quitting) return;
+  if (tmuxinfo(pane,&pi)) return;           /* without its place it would land anywhere */
+  if (pi.rows!=sentrows || pi.cols!=sentcols) clear = 1;
+  sentrows = pi.rows;
+  sentcols = pi.cols;
+  sendpic(panefd,pacefor(pi.ctty),1,&pi,clear || panefresh,lastpic,lastpiclen,NULL);
+  panefresh = 0;
+}
+
+/* The pane changed size: draw the picture again to fit */
+
+static void checkresize (void) {
+struct winsize ws;
+  if (panefd<0 || lastpic==NULL) return;
+  if (ioctl(panefd,TIOCGWINSZ,&ws)) return;
+  if (ws.ws_row!=sentrows || ws.ws_col!=sentcols) panesend(1);
+}
+
 /* ---- worker thread ---- */
 
-/* Record the new picture and wake the viewer */
+/* Record the new picture and wake a viewer started by hand */
 
 static void shown (const char *name) {
 FILE *f;
@@ -658,7 +1034,6 @@ gaint fd,n;
 
   pthread_mutex_lock(&tlock);
   n = ++seq;
-  snprintf(lastfile,sizeof(lastfile),"%s",name);
   pthread_mutex_unlock(&tlock);
   f = fopen(seqtmp,"w");
   if (f) {
@@ -666,7 +1041,7 @@ gaint fd,n;
     fclose(f);
     rename(seqtmp,seqpath);
   }
-  /* the viewer keeps the FIFO open; without one, open fails at once */
+  /* a viewer keeps the FIFO open; without one, open fails at once */
   fd = open(fifopath,O_WRONLY|O_NONBLOCK);
   if (fd>=0) {
     if (write(fd,"\n",1)<0) { /* full or gone: the viewer catches up anyway */ }
@@ -674,31 +1049,46 @@ gaint fd,n;
   }
 }
 
-static void putfile (const char *name, const unsigned char *data, size_t len) {
+/* Write a picture file, keep it as the latest picture (taking the buffer),
+   and show it */
+
+static void publish (const char *name, unsigned char *data, size_t len) {
 char fn[700],tmp[700];
 FILE *f;
 gaint ok;
+
   snprintf(fn,sizeof(fn),"%s/%s",tdir,name);
   snprintf(tmp,sizeof(tmp),"%s/.%s.tmp",tdir,name);
   f = fopen(tmp,"wb");
-  if (f==NULL) return;
-  ok = fwrite(data,1,len,f)==len;
-  if (fclose(f)) ok = 0;
-  if (ok && !rename(tmp,fn)) shown(name);
-  else unlink(tmp);
+  ok = 0;
+  if (f) {
+    ok = fwrite(data,1,len,f)==len;
+    if (fclose(f)) ok = 0;
+  }
+  if (ok && !rename(tmp,fn)) {
+    pthread_mutex_lock(&tlock);
+    free(lastpic);
+    lastpic = data;
+    lastpiclen = len;
+    pthread_mutex_unlock(&tlock);
+    shown(name);
+    panesend(0);
+  } else {
+    unlink(tmp);
+    free(data);
+  }
 }
 
 static void dojob (struct tjob *j) {
-char fn[700],tmp[700];
+struct mbuf mb;
 unsigned char *rgb;
 
-  if (j->kind==JOB_PNG) {
-    snprintf(fn,sizeof(fn),"%s/plot.png",tdir);
-    snprintf(tmp,sizeof(tmp),"%s/.plot.png.tmp",tdir);
-    if (!pngwrite(tmp,j->px,j->w,j->h,j->stride) && !rename(tmp,fn)) shown("plot.png");
-    else unlink(tmp);
+  if (j->kind==JOB_STILL || j->kind==JOB_FRAME) {
+    memset(&mb,0,sizeof(mb));
+    if (pngencode(j->px,j->w,j->h,j->stride,&mb)) free(mb.p);
+    else publish("plot.png",mb.p,mb.n);
   }
-  else if (j->kind==JOB_FRAME) {
+  else if (j->kind==JOB_GIFFRAME) {
     if (j->first) gifreset();
     rgb = downsample(j,j->lw,j->lh);
     if (rgb) gifframe(rgb,j->lw,j->lh);
@@ -706,9 +1096,10 @@ unsigned char *rgb;
     free(rgb);
   }
   else if (j->kind==JOB_GIFEND) {
+    if (gif.frames>0 && !gif.failed) gbyte(0x3b);
     if (gif.frames>0 && !gif.failed) {
-      gbyte(0x3b);
-      if (!gif.failed) putfile("plot.gif",gif.buf,gif.len);
+      publish("plot.gif",gif.buf,gif.len);  /* the buffer is the picture's now */
+      gif.buf = NULL;
     }
     gifreset();
   }
@@ -724,23 +1115,31 @@ static void freejob (struct tjob *j) {
 
 static void *work (void *arg) {
 struct tjob *j;
+struct timespec ts;
 
   pthread_mutex_lock(&tlock);
   while (1) {
-    while (!qhead && !live && !stopping) pthread_cond_wait(&twake,&tlock);
-    if (qhead) {                            /* animation work goes first */
-      j = qhead;
-      qhead = j->next;
-      if (!qhead) qtail = NULL;
-      if (j->kind==JOB_FRAME) qframes--;
-    } else if (live) {
-      j = live;
-      live = NULL;
-    } else break;                           /* stopping, nothing left */
+    if (!qhead) {
+      if (stopping) break;
+      /* wake now and then to notice the pane being resized */
+      clock_gettime(CLOCK_REALTIME,&ts);
+      ts.tv_nsec += 300000000L;
+      if (ts.tv_nsec>=1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+      if (pthread_cond_timedwait(&twake,&tlock,&ts)==ETIMEDOUT && !qhead && !stopping) {
+        pthread_mutex_unlock(&tlock);
+        checkresize();
+        pthread_mutex_lock(&tlock);
+      }
+      continue;
+    }
+    j = qhead;
+    qhead = j->next;
+    if (!qhead) qtail = NULL;
+    if (ISFRAME(j->kind)) qframes--;
     busy = 1;
     pthread_cond_broadcast(&tdone);         /* room in the queue */
     pthread_mutex_unlock(&tlock);
-    dojob(j);
+    if (!intr || j->kind==JOB_GIFDROP) dojob(j);   /* after Ctrl-C, nothing more is sent */
     freejob(j);
     pthread_mutex_lock(&tlock);
     busy = 0;
@@ -755,8 +1154,8 @@ struct tjob *j;
 
 static void startworker (void) {
 sigset_t all,old;
-  /* the worker takes no signals: Ctrl-C belongs to GrADS, and a viewer that
-     went away must not kill us with SIGPIPE */
+  /* the worker takes no signals: Ctrl-C belongs to GrADS, and a terminal
+     that went away must not kill us with SIGPIPE */
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK,&all,&old);
   workeron = !pthread_create(&worker,NULL,work,NULL);
@@ -774,13 +1173,29 @@ static void stopworker (void) {
   workeron = 0;
 }
 
-/* Wait until everything handed to the worker is written */
+/* Wait until everything handed to the worker is written and sent */
 
 static void waitworker (void) {
   if (!workeron) return;
   pthread_mutex_lock(&tlock);
-  while (qhead || live || busy) pthread_cond_wait(&tdone,&tlock);
+  while (qhead || busy) pthread_cond_wait(&tdone,&tlock);
   pthread_mutex_unlock(&tlock);
+}
+
+/* Forget the work not yet started; with tlock held */
+
+static void dropqueue (gaint stillsonly) {
+struct tjob **pp,*k;
+  for (pp=&qhead; *pp; ) {
+    k = *pp;
+    if (!stillsonly || k->kind==JOB_STILL) {
+      *pp = k->next;
+      if (ISFRAME(k->kind)) qframes--;
+      freejob(k);
+    } else pp = &k->next;
+  }
+  for (qtail=qhead; qtail && qtail->next; qtail=qtail->next) ;
+  pthread_cond_broadcast(&tdone);
 }
 
 /* Copy the visible picture for the worker */
@@ -796,7 +1211,7 @@ size_t n;
   j->lh = (gaint)(height*animscale+0.5);
   if (j->lw<16) j->lw = 16;
   if (j->lh<16) j->lh = 16;
-  if (kind==JOB_PNG || kind==JOB_FRAME) {
+  if (kind==JOB_STILL || ISFRAME(kind)) {
     gxCflush(1);
     cairo_surface_flush(surface);
     j->w = cairo_image_surface_get_width(surface);
@@ -810,51 +1225,55 @@ size_t n;
   return (j);
 }
 
-/* Hand work to the worker. A still picture replaces one not yet started;
-   animation work is queued in order, waiting for room if need be. Without
-   a worker the work is done here and now. */
+/* Hand work to the worker, in order. A still picture replaces one not yet
+   started. A frame waits for room, as a slow link holds up an X window;
+   Ctrl-C ends the wait and the frame is dropped. Without a worker the work
+   is done here and now. */
 
 static void post (struct tjob *j) {
+struct timespec ts;
+
   if (j==NULL) return;
+  if (intr && j->kind!=JOB_GIFDROP) { freejob(j); return; }
   if (!workeron) {
     dojob(j);
     freejob(j);
     return;
   }
   pthread_mutex_lock(&tlock);
-  if (j->kind==JOB_PNG) {
-    freejob(live);
-    live = j;
-  } else {
-    if (j->kind==JOB_GIFEND) {              /* the animation is the last word */
-      freejob(live);
-      live = NULL;
-    }
-    while (j->kind==JOB_FRAME && qframes>=FRAMEQ) pthread_cond_wait(&tdone,&tlock);
-    j->next = NULL;
-    if (qtail) qtail->next = j;
-    else qhead = j;
-    qtail = j;
-    if (j->kind==JOB_FRAME) qframes++;
+  if (j->kind==JOB_STILL || j->kind==JOB_GIFEND) dropqueue(1);
+  while (ISFRAME(j->kind) && qframes>=FRAMEQ && !intr) {
+    clock_gettime(CLOCK_REALTIME,&ts);      /* look at intr now and then */
+    ts.tv_nsec += 100000000L;
+    if (ts.tv_nsec>=1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+    pthread_cond_timedwait(&tdone,&tlock,&ts);
   }
+  if (intr && j->kind!=JOB_GIFDROP) {
+    pthread_mutex_unlock(&tlock);
+    freejob(j);
+    return;
+  }
+  j->next = NULL;
+  if (qtail) qtail->next = j;
+  else qhead = j;
+  qtail = j;
+  if (ISFRAME(j->kind)) qframes++;
   pthread_cond_signal(&twake);
   pthread_mutex_unlock(&tlock);
   if (syncwrite) waitworker();
 }
 
-/* ---- frames and the idle point; main thread ---- */
+/* ---- frames, Ctrl-C and the idle point; main thread ---- */
 
 /* The visible picture is about to be replaced, or has just been by a swap */
 
 static void frameend (gaint swapped) {
 struct tjob *j;
-gaint forgif;
 
-  if (batch || surface==NULL || !dirty || !drawn) return;
-  forgif = (anim==2) || (anim==1 && swapped);
-  if (forgif) {
+  if (batch || surface==NULL || !dirty || !drawn || intr) return;
+  if (anim==2 && swapped) {
     if (ngif<animmax) {
-      j = snapshot(JOB_FRAME);
+      j = snapshot(JOB_GIFFRAME);
       if (j) {
         j->first = (ngif==0);
         post(j);
@@ -862,128 +1281,80 @@ gaint forgif;
       }
     } else gifcut++;
   }
-  if (anim!=0 && mode!=2) {                /* show it now */
-    post(snapshot(JOB_PNG));
+  if (anim!=0 && mode!=2) {                 /* show it now */
+    post(snapshot(JOB_FRAME));
     dirty = 0;
   }
 }
 
-/* Print a picture into the terminal with the iTerm2 inline image protocol */
+/* Ctrl-C while a command runs; called from the signal handler */
 
-static void b64out (FILE *f, const unsigned char *buf, size_t len) {
-static const char tab[] =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-size_t i;
-unsigned long v;
-  for (i=0; i+2<len; i+=3) {
-    v = ((unsigned long)buf[i]<<16) | ((unsigned long)buf[i+1]<<8) | buf[i+2];
-    fputc(tab[(v>>18)&63],f); fputc(tab[(v>>12)&63],f);
-    fputc(tab[(v>>6)&63],f);  fputc(tab[v&63],f);
-  }
-  if (i<len) {
-    v = (unsigned long)buf[i]<<16;
-    if (i+1<len) v |= (unsigned long)buf[i+1]<<8;
-    fputc(tab[(v>>18)&63],f); fputc(tab[(v>>12)&63],f);
-    fputc(i+1<len ? tab[(v>>6)&63] : '=',f);
-    fputc('=',f);
-  }
+void gxdintr (void) {
+  intr = 1;
 }
 
-static void oscopen (FILE *f, gaint tmux) {
-  fputs(tmux ? "\033Ptmux;\033\033]" : "\033]",f);
-}
+/* Print the latest picture at the cursor */
 
-static void oscclose (FILE *f, gaint tmux) {
-  fputs(tmux ? "\a\033\\" : "\a",f);
-}
+static void inlineshow (void) {
+unsigned char *d;
+size_t n;
+gaint fd,tmux,pacefd=-1;
+struct paneinfo pi;
+char *w,*t;
 
-static void inlineshow (const char *name) {
-char fn[700];
-FILE *in,*tty;
-unsigned char *buf;
-long len;
-size_t off,n;
-char *w,*t,args[200];
-gaint tmux;
-
-  snprintf(fn,sizeof(fn),"%s/%s",tdir,name);
-  in = fopen(fn,"rb");
-  if (in==NULL) return;
-  fseek(in,0,SEEK_END);
-  len = ftell(in);
-  rewind(in);
-  buf = (unsigned char *)malloc(len>0 ? len : 1);
-  if (buf==NULL || fread(buf,1,len,in)!=(size_t)len) {
-    free(buf);
-    fclose(in);
-    return;
-  }
-  fclose(in);
-
-  tty = fopen("/dev/tty","w");
-  if (tty==NULL) tty = stdout;
-  w = getenv("GA_TERM_WIDTH");
-  if (w==NULL || *w=='\0') w = "70%";
+  pthread_mutex_lock(&tlock);
+  n = lastpiclen;
+  d = n ? (unsigned char *)malloc(n) : NULL;
+  if (d) memcpy(d,lastpic,n);
+  pthread_mutex_unlock(&tlock);
+  if (d==NULL) return;
   t = getenv("TMUX");
   tmux = (t && *t);
-  snprintf(args,sizeof(args),"inline=1;size=%ld;width=%s;preserveAspectRatio=1",len,w);
+  if (tmux && !tmuxinfo(getenv("TMUX_PANE"),&pi)) pacefd = pacefor(pi.ctty);
+  w = getenv("GA_TERM_WIDTH");
+  if (w==NULL || *w=='\0') w = "70%";
+  fd = open("/dev/tty",O_WRONLY|O_NOCTTY);
   fflush(stdout);
-  if (((size_t)len+2)/3*4 + 200 < SEQ_LIMIT) {
-    oscopen(tty,tmux);
-    fprintf(tty,"1337;File=%s:",args);
-    b64out(tty,buf,(size_t)len);
-    oscclose(tty,tmux);
-  } else {
-    /* iTerm2 3.5 and later take a large file in parts */
-    oscopen(tty,tmux);
-    fprintf(tty,"1337;MultipartFile=%s",args);
-    oscclose(tty,tmux);
-    for (off=0; off<(size_t)len; off+=n) {
-      n = (size_t)len-off;
-      if (n > SEQ_PART/4*3) n = SEQ_PART/4*3;
-      oscopen(tty,tmux);
-      fputs("1337;FilePart=",tty);
-      b64out(tty,buf+off,n);
-      oscclose(tty,tmux);
-    }
-    oscopen(tty,tmux);
-    fputs("1337;FileEnd",tty);
-    oscclose(tty,tmux);
-  }
-  fputc('\n',tty);
-  fflush(tty);
-  if (tty!=stdout) fclose(tty);
-  free(buf);
+  sendpic(fd>=0 ? fd : 1,pacefd,tmux,NULL,0,d,n,w);
+  if (fd>=0) close(fd);
+  free(d);
 }
 
-/* GrADS is about to wait for the user: show the picture if it changed */
-
-static gaint shownseq (char *name, size_t len) {
+static gaint shownseq (void) {
 gaint n;
   pthread_mutex_lock(&tlock);
   n = seq;
-  if (name) snprintf(name,len,"%s",lastfile);
   pthread_mutex_unlock(&tlock);
   return (n);
 }
 
+/* GrADS is about to wait for the user: show the picture if it changed */
+
 void gxdidle (void) {
 gaint before,frames;
-char name[64];
 
   if (batch || surface==NULL) return;
-  before = shownseq(NULL,0);
+
+  if (intr) {                               /* Ctrl-C: send nothing more */
+    pthread_mutex_lock(&tlock);
+    dropqueue(0);
+    pthread_mutex_unlock(&tlock);
+    intr = 0;
+    if (ngif) post(snapshot(JOB_GIFDROP));
+    ngif = 0;
+    gifcut = 0;
+    dirty = 0;                              /* the screen keeps the last picture sent */
+    return;
+  }
+
+  before = shownseq();
   frames = ngif;
-
-  /* in "gif" mode the picture left at the end is the last frame */
-  if (ngif>0 && anim==2) frameend(0);
-
   if (ngif>=2) {
     post(snapshot(JOB_GIFEND));
     dirty = 0;
   } else {
     if (ngif==1) post(snapshot(JOB_GIFDROP));
-    if (dirty && (drawn || mode!=2)) post(snapshot(JOB_PNG));
+    if (dirty && (drawn || mode!=2)) post(snapshot(JOB_STILL));
     dirty = 0;
   }
   if (gifcut) {
@@ -996,8 +1367,9 @@ char name[64];
 
   if (mode==2) {
     waitworker();
-    if (shownseq(name,sizeof(name))!=before && (drawn || frames>=2)) inlineshow(name);
+    if (shownseq()!=before && (drawn || frames>=2)) inlineshow();
   }
+  intr = 0;     /* a Ctrl-C while the picture went out was about that picture */
 }
 
 /* Pick the output directory and the display mode */
@@ -1033,11 +1405,10 @@ gadouble f;
   if (mkfifo(fifopath,0600) && errno!=EEXIST) fifopath[0] = '\0';
 
   a = getenv("GA_TERM_ANIM");
-  if (a==NULL || *a=='\0' || !strcmp(a,"auto")) anim = 1;
+  if (a==NULL || *a=='\0' || !strcmp(a,"live") || !strcmp(a,"auto")) anim = 1;
   else if (!strcmp(a,"gif")) anim = 2;
-  else if (!strcmp(a,"live")) anim = 3;
   else if (!strcmp(a,"off")) anim = 0;
-  else printf("Terminal display: unknown GA_TERM_ANIM \"%s\"; using auto\n",a);
+  else printf("Terminal display: unknown GA_TERM_ANIM \"%s\"; using live\n",a);
   a = getenv("GA_TERM_ANIM_DELAY");
   if (a && *a) {
     f = atof(a);
@@ -1055,8 +1426,15 @@ gadouble f;
     if (f>=0.25 && f<=1.0) animscale = f;
     else printf("Terminal display: GA_TERM_ANIM_SCALE must be 0.25 to 1\n");
   }
+  a = getenv("GA_TERM_PROGRESS");
+  if (a==NULL || *a=='\0' || !strcmp(a,"auto")) progressopt = 1;
+  else if (!strcmp(a,"on")) progressopt = 2;
+  else if (!strcmp(a,"off")) progressopt = 0;
+  else printf("Terminal display: unknown GA_TERM_PROGRESS \"%s\"; using auto\n",a);
   a = getenv("GA_TERM_SYNC");
   syncwrite = (a && !strcmp(a,"1"));
+  a = getenv("LC_TERMINAL");
+  iterm = (a && !strcmp(a,"iTerm2"));
 
   m = getenv("GA_TERM_MODE");
   if (m==NULL || *m=='\0') m = "auto";
@@ -1074,7 +1452,7 @@ gadouble f;
       rc = tmuxsplit();
       if (rc) {
         if (v==NULL) printf("Terminal display: viewer not found; set GA_TERM_VIEWER.\n");
-        else printf("Terminal display: unable to open a tmux pane for the viewer.\n");
+        else printf("Terminal display: unable to open a tmux pane for the pictures.\n");
         printf("Terminal display: showing pictures inline instead.\n");
         mode = 2;
       } else mode = 1;
@@ -1091,8 +1469,6 @@ gadouble f;
     if (v) printf("Terminal display: view them with  %s %s\n",v,tdir);
   }
 }
-
-/* tell the interface that we are in batch mode */
 
 void gxdbat (void) {
   batch = 1;
@@ -1151,13 +1527,16 @@ void gxdend (void) {
 char *argv[8];
 char fn[700];
 
-  stopworker();                     /* finishes what it was given */
+  quitting = 1;                     /* finish writing pictures, send nothing more */
+  stopworker();
   gxCend();
   if (surface) {
     cairo_surface_finish (surface);
     cairo_surface_destroy (surface);
     surface = NULL;
   }
+  if (panefd>=0) { close(panefd); panefd = -1; }
+  if (ctyfd>=0) { close(ctyfd); ctyfd = -1; }
   if (mode==1 && pane[0]) {
     argv[0] = "tmux"; argv[1] = "kill-pane"; argv[2] = "-t";
     argv[3] = pane; argv[4] = NULL;

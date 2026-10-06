@@ -1,22 +1,38 @@
 #!/usr/bin/env bash
 # Added in 2026 for terminal graphics display; see COPYING.
 #
-# Shows the picture of a GrADS session that uses the terminal display
-# (grads -d Term). GrADS starts this in a tmux pane beside itself; it can also
-# be run by hand in another pane or window:
-#
+#   grads-termview --hold DIR GRADS_PID
 #   grads-termview DIR [GRADS_PID]
 #
-# DIR holds the pictures written by the terminal display, a file "seq" that
-# names the latest one ("12 plot.png" or "13 plot.gif"), and a FIFO "notify"
-# that GrADS writes a line to whenever the picture changes, so the viewer
-# sleeps until there is something to show. The picture is drawn with the
-# iTerm2 inline image protocol, which iTerm2 and WezTerm understand, and fills
-# the pane; an animated GIF plays by itself. Inside tmux the image is passed
-# through to the outer terminal. The viewer exits when GRADS_PID is gone or
-# DIR is removed.
+# With --hold, this only keeps open the tmux pane that GrADS split off for
+# its pictures: GrADS (grads -d Term) draws into the pane itself. It hides
+# the cursor, ignores typing, and exits when GRADS_PID is gone.
+#
+# Without --hold, it shows the pictures of a GrADS session whose display
+# writes them to DIR (GA_TERM_MODE=file), for example in a second ssh
+# session. DIR holds the pictures, a file "seq" that names the latest one
+# ("12 plot.png"), and a FIFO "notify" that GrADS writes a line to whenever
+# the picture changes, so the viewer sleeps until there is something to
+# show. Pictures are drawn with the iTerm2 inline image protocol, which
+# iTerm2 and WezTerm understand, and fill the window or pane; inside tmux
+# they are passed through to the outer terminal. The viewer exits when
+# GRADS_PID is gone or DIR is removed.
 
 set -u
+
+if [[ "${1:-}" == --hold ]]; then
+  dir="${2:-}"
+  grads_pid="${3:-}"
+  stty -echo 2>/dev/null || true
+  printf '\033[?25l\033[H\033[2JWaiting for a GrADS picture...'
+  trap 'printf "\033[?25h"; exit 0' INT TERM HUP
+  while [[ -d "$dir" ]] &&
+        { [[ -z "$grads_pid" ]] || kill -0 "$grads_pid" 2>/dev/null; }; do
+    sleep 1
+  done
+  printf '\033[?25h'
+  exit 0
+fi
 
 dir="${1:-}"
 grads_pid="${2:-}"
@@ -30,6 +46,7 @@ fifo="$dir/notify"
 shown=""
 redraw=1
 have_fifo=0
+copy="$(mktemp "${TMPDIR:-/tmp}/grads-termview.XXXXXX")" || exit 1
 
 # iTerm2 and tmux both drop a control sequence over 1 MiB; a larger file is
 # sent in parts, which iTerm2 understands from version 3.5.
@@ -50,32 +67,65 @@ b64()
   base64 -w 0 "$1" 2>/dev/null || base64 < "$1" | tr -d '\n'
 }
 
+# Inside tmux the image must say where it goes: tmux does not move the
+# terminal's cursor to this pane for passthrough output. Print the cursor
+# save-and-move, doubled ESCs and all, and set "restore" for afterwards.
+place()
+{
+  local info left top position status
+  restore=""
+  [[ -n "${TMUX:-}" ]] || return 0
+  info="$(tmux display-message -p -t "${TMUX_PANE:-}" \
+    '#{pane_left}|#{pane_top}|#{status-position}|#{status}' 2>/dev/null)" || return 0
+  IFS='|' read -r left top position status <<< "$info"
+  if [[ "$position" == top ]]; then
+    case "$status" in
+      on) top=$((top + 1)) ;;
+      off) ;;
+      *) top=$((top + status)) ;;
+    esac
+  fi
+  printf '\033\033%s\033\033[%d;%dH' 7 "$((top + 1))" "$((left + 1))"
+  restore=$'\033\0338'
+}
+
 show()
 {
-  local file="$dir/$1" cols rows size args
+  local file="$dir/$1" cols rows size args restore=""
   read -r rows cols < <(stty size 2>/dev/null || echo "24 80")
   (( rows > 1 )) || rows=24
   (( cols > 0 )) || cols=80
   # Clear the pane, scrollback included, and home the cursor.
   printf '\033[H\033[2J\033[3J'
-  if [[ ! -s "$file" ]]; then
+  # Work on a copy: GrADS may replace the file while it is being sent.
+  if [[ ! -s "$file" ]] || ! cp "$file" "$copy" 2>/dev/null; then
     printf 'Waiting for a GrADS picture...\n'
     return
   fi
-  size=$(wc -c < "$file" | tr -d ' ')
+  size=$(wc -c < "$copy" | tr -d ' ')
   # One row is left free so the image never scrolls the pane.
   args="inline=1;size=$size;width=$cols;height=$((rows - 1));preserveAspectRatio=1"
   if (( (size + 2) / 3 * 4 + 200 < seq_limit )); then
-    printf '%s1337;File=%s:' "$osc_open" "$args"
-    b64 "$file"
-    printf '%s' "$osc_close"
+    if [[ -n "${TMUX:-}" ]]; then printf '\033Ptmux;'; place; printf '\033\033]'
+    else printf '\033]'; fi
+    printf '1337;File=%s:' "$args"
+    b64 "$copy"
+    printf '\a%s' "$restore"
+    [[ -n "${TMUX:-}" ]] && printf '\033\\'
   else
-    printf '%s1337;MultipartFile=%s%s' "$osc_open" "$args" "$osc_close"
-    b64 "$file" | fold -w "$part_size" |
+    if [[ -n "${TMUX:-}" ]]; then printf '\033Ptmux;'; place; printf '\033\033]'
+    else printf '\033]'; fi
+    printf '1337;MultipartFile=%s\a%s' "$args" "$restore"
+    [[ -n "${TMUX:-}" ]] && printf '\033\\'
+    b64 "$copy" | fold -w "$part_size" |
       O="$osc_open" C="$osc_close" \
       awk '{ printf "%s1337;FilePart=%s%s", ENVIRON["O"], $0, ENVIRON["C"] }'
-    printf '%s1337;FileEnd%s' "$osc_open" "$osc_close"
+    if [[ -n "${TMUX:-}" ]]; then printf '\033Ptmux;'; place; printf '\033\033]'
+    else printf '\033]'; fi
+    printf '1337;FileEnd\a%s' "$restore"
+    [[ -n "${TMUX:-}" ]] && printf '\033\\'
   fi
+  return 0
 }
 
 # The FIFO is opened for reading and writing, so opening it never blocks and
@@ -84,7 +134,7 @@ if [[ -p "$fifo" ]] && exec 3<>"$fifo"; then
   have_fifo=1
 fi
 trap 'redraw=1; (( have_fifo )) && printf "\n" >&3' WINCH
-trap 'printf "\033[?25h\033[H\033[2J"; exit 0' INT TERM HUP
+trap 'rm -f "$copy"; printf "\033[?25h\033[H\033[2J"; exit 0' INT TERM HUP
 
 # No echo or cursor in the viewer pane.
 stty -echo 2>/dev/null || true
@@ -116,4 +166,5 @@ while :; do
   fi
 done
 
+rm -f "$copy"
 printf '\033[?25h'

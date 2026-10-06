@@ -1,5 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
-/* Modified in 2026 for optional ADIOS2 BP5 and CLI support; see COPYING. */
+/* Modified in 2026 for optional ADIOS2 BP5, CLI support, and Ctrl-C handling; see COPYING. */
 
 /* Main program for GrADS (Grid Analysis and Display System).
    This program loops on commands from the user, and calls the
@@ -596,9 +596,21 @@ gaint i;
   gcmn.gxpopt[0] = '\0';
 }
 
+/* Ctrl-C. While a command line is being typed, it starts a fresh line. While
+   a command or script runs, it interrupts it, and the display stops sending
+   its pictures. It never ends GrADS; type quit, or Ctrl-\ to force it. */
+
+extern volatile sig_atomic_t ga_at_prompt;
+void ga_prompt_sigint (void);
+void gxintr (void);
+
 void gasig(gaint i) {
-  if (gcmn.sig) exit(0);
+  if (ga_at_prompt) {
+    ga_prompt_sigint();
+    return;
+  }
   gcmn.sig = 1;
+  gxintr();
 }
 
 gaint gaqsig (void) {

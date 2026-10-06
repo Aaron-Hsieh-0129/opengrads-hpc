@@ -60,9 +60,10 @@ libraries are available.
 
 - **Plots in the terminal, no X needed.** Over ssh from iTerm2, the picture
   appears in a tmux pane beside the `ga->` prompt and updates after each
-  command, with no X server or `ssh -X`. Animations (`set looping on`, or a
-  `set dbuff on` loop) play as a looping GIF. The launcher picks it
-  automatically. See [terminal display](docs/TERMINAL.md).
+  command, with no X server or `ssh -X`. Animations play frame by frame as
+  they are drawn, as in an X window, and slow transfers show iTerm2's
+  progress bar. The launcher picks it automatically. See
+  [terminal display](docs/TERMINAL.md).
 
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
@@ -70,7 +71,8 @@ libraries are available.
   settings or open files. See [undo documentation](docs/UNDO.md).
 
 - **Modern interactive and release experience.** Optional GNU Readline adds
-  command history and Tab completion. The release builders produce three
+  command history and Tab completion. Ctrl-C clears a half-typed command, as
+  in a shell, and interrupts a running one, but never ends GrADS. The release builders produce three
   self-contained archives — Linux x86_64 and aarch64, and macOS arm64 —
   carrying BP5, OpenMP, the graphics plug-ins available on that platform, and
   every required runtime library.

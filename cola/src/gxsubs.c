@@ -320,8 +320,10 @@ gaint gxload(char *gxdopt, char *gxpopt) {
   if ((err=dlerror())!=NULL) {printf("Error in gxload: %s\n",err); return(2);}
   dsubs.win_data = dlsym(dhandle,"win_data"); 
   if ((err=dlerror())!=NULL) {printf("Error in gxload: %s\n",err); return(2);}
-  /* Optional: told when GrADS is about to wait for the user */
+  /* Optional: told when GrADS is about to wait for the user, and of Ctrl-C */
   dsubs.gxdidle  = dlsym(dhandle,"gxdidle"); 
+  dlerror();
+  dsubs.gxdintr  = dlsym(dhandle,"gxdintr"); 
   dlerror();
   return(0);
 }
@@ -373,6 +375,12 @@ void gxsignal (gaint sig) {
    straight to the screen (the terminal display) shows its picture now. */
 void gxidle (void) {
   if (intflg && dsubs.gxdidle) dsubs.gxdidle();
+}
+
+/* Ctrl-C interrupted a command. Called from the signal handler, so the
+   display may only note it. */
+void gxintr (void) {
+  if (intflg && dsubs.gxdintr) dsubs.gxdintr();
 }
 
 

@@ -247,8 +247,8 @@ after_query="$(seq_number "$test_root/seq_after_query")"
 grep -Fq 'pictures are written to' <<< "$output" ||
   fail 'file mode did not say where the pictures go' "$output"
 
-# 2. By default, cleared frames are shown as they are made, but a script
-#    that clears between pictures does not become a loop.
+# 2. Frames are shown as they are made: a script that clears between
+#    pictures shows each one.
 live="$test_root/live"
 GA_TERM_MODE=file GA_TERM_DIR="$live" GA_TERM_SCALE=1 GA_TERM_SYNC=1 \
   run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
@@ -261,12 +261,22 @@ quit
 GRADS_COMMANDS
 shown=$(( $(seq_number "$test_root/live_after") - $(seq_number "$test_root/live_before") ))
 (( shown == 5 )) || fail "a five-frame script showed $shown pictures, expected 5"
-read -r _ name < "$test_root/live_after"
-[[ "$name" == plot.png && ! -e "$live/plot.gif" ]] ||
-  fail 'cleared frames turned into an animation in auto mode'
 
-# 3. A double-buffered loop leaves a looping GIF of all its frames, which
-#    decodes; GA_TERM_ANIM=gif does the same for cleared frames.
+# 3. By default a double-buffered loop shows every frame, in order, with no
+#    GIF afterwards; written in the background, no frame is skipped.
+GA_TERM_MODE=file GA_TERM_DIR="$test_root/frames" \
+  run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
+open $model_ctl
+run $test_root/dbuffloop.gs
+quit
+GRADS_COMMANDS
+read -r n name < "$test_root/frames/seq"
+(( n == 6 )) || fail "a blank page and five frames made $n pictures, expected 6"
+[[ "$name" == plot.png && ! -e "$test_root/frames/plot.gif" ]] ||
+  fail 'a double-buffered loop left a GIF without GA_TERM_ANIM=gif'
+
+# 4. With GA_TERM_ANIM=gif a double-buffered loop also leaves a looping GIF
+#    of all its frames, which decodes.
 check_animation()
 {
   local label="$1" dir="$2" expect="$3" info
@@ -281,7 +291,7 @@ check_animation()
   fi
 }
 
-GA_TERM_MODE=file GA_TERM_DIR="$test_root/dbuff" GA_TERM_SYNC=1 \
+GA_TERM_MODE=file GA_TERM_DIR="$test_root/dbuff" GA_TERM_SYNC=1 GA_TERM_ANIM=gif \
   run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
 open $model_ctl
 run $test_root/dbuffloop.gs
@@ -291,7 +301,7 @@ check_animation 'double-buffer loop' "$test_root/dbuff" '400x300 5 1 20 1'
 read -r _ name < "$test_root/dbuff/seq"
 [[ "$name" == plot.gif ]] || fail "the last picture shown is $name, not the animation"
 
-GA_TERM_MODE=file GA_TERM_DIR="$test_root/looping" GA_TERM_SYNC=1 \
+GA_TERM_MODE=file GA_TERM_DIR="$test_root/looping" GA_TERM_SYNC=1 GA_TERM_ANIM=gif \
   run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
 open $model_ctl
 set looping on
@@ -301,17 +311,17 @@ quit
 GRADS_COMMANDS
 check_animation 'set looping on' "$test_root/looping" '400x300 5 1 20 1'
 
-GA_TERM_MODE=file GA_TERM_DIR="$test_root/gifmode" GA_TERM_SYNC=1 \
+GA_TERM_MODE=file GA_TERM_DIR="$test_root/gifopts" GA_TERM_SYNC=1 \
 GA_TERM_ANIM=gif GA_TERM_ANIM_DELAY=0.5 GA_TERM_ANIM_SCALE=0.5 \
   run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
 open $model_ctl
-run $test_root/clearloop.gs
+run $test_root/dbuffloop.gs
 quit
 GRADS_COMMANDS
-check_animation 'GA_TERM_ANIM=gif' "$test_root/gifmode" '200x150 5 1 50 1'
+check_animation 'GIF delay and scale' "$test_root/gifopts" '200x150 5 1 50 1'
 
 output="$(
-  GA_TERM_MODE=file GA_TERM_DIR="$test_root/cut" GA_TERM_SYNC=1 \
+  GA_TERM_MODE=file GA_TERM_DIR="$test_root/cut" GA_TERM_SYNC=1 GA_TERM_ANIM=gif \
   GA_TERM_ANIM_MAX=3 run_grads -g 400x300 <<GRADS_COMMANDS
 open $model_ctl
 run $test_root/dbuffloop.gs
@@ -322,19 +332,18 @@ check_animation 'GA_TERM_ANIM_MAX=3' "$test_root/cut" '400x300 3 1 20 1'
 grep -Fq 'keeps its first 3 frames; 2 more were left out' <<< "$output" ||
   fail 'a cut-short animation gave no warning' "$output"
 
-# 4. Without GA_TERM_SYNC the pictures are written in the background; what
-#    was handed over is still written before GrADS exits.
-GA_TERM_MODE=file GA_TERM_DIR="$test_root/async" \
+GA_TERM_MODE=file GA_TERM_DIR="$test_root/async" GA_TERM_ANIM=gif \
   run_grads -g 400x300 > /dev/null <<GRADS_COMMANDS
 open $model_ctl
 run $test_root/dbuffloop.gs
 quit
 GRADS_COMMANDS
-check_animation 'background writing' "$test_root/async" '400x300 5 1 20 1'
+check_animation 'GIF written in the background' "$test_root/async" '400x300 5 1 20 1'
 
-# 5. Inline mode: one image per drawn picture, none for a cleared page, an
-#    animation as one GIF, and the temporary directory is gone afterwards.
-#    Without a terminal the images go to standard output.
+# 5. Inline mode: one image per drawn picture, none for a cleared page, the
+#    last frame of an animation (a GIF with GA_TERM_ANIM=gif), and the
+#    temporary directory is gone afterwards. Without a terminal the images
+#    go to standard output.
 mkdir "$test_root/tmp"
 output="$(
   TMPDIR="$test_root/tmp" GA_TERM_MODE=inline GA_TERM_SCALE=1 \
@@ -348,7 +357,18 @@ GRADS_COMMANDS
 )"
 images="$(grep -o $'\033\\]1337;File=inline=1;size=[0-9]*' <<< "$output" | wc -l)"
 (( images == 2 )) || fail "inline mode printed $images images, expected 2"
-grep -ao $'\033\\]1337;File=[^:]*:R0lGODlh' <<< "$output" > /dev/null ||
+if grep -aq $'\033\\]1337;File=[^:]*:R0lGODlh' <<< "$output"; then
+  fail 'inline mode printed a GIF without GA_TERM_ANIM=gif'
+fi
+output="$(
+  TMPDIR="$test_root/tmp" GA_TERM_MODE=inline GA_TERM_SCALE=1 GA_TERM_ANIM=gif \
+    run_grads -g 200x150 <<GRADS_COMMANDS
+open $model_ctl
+run $test_root/dbuffloop.gs
+quit
+GRADS_COMMANDS
+)"
+grep -aq $'\033\\]1337;File=[^:]*:R0lGODlh' <<< "$output" ||
   fail 'inline mode did not print the animation as a GIF'
 if compgen -G "$test_root/tmp/grads-term-*" > /dev/null; then
   fail 'the temporary picture directory was left behind'
@@ -414,5 +434,168 @@ done
 if kill -0 "$viewer_pid" 2>/dev/null; then
   fail 'the viewer did not exit after the GrADS process it follows'
 fi
+
+# 8. In --hold mode the viewer only keeps the pane: it draws nothing but
+#    its waiting line, and exits with GrADS.
+sleep 30 &
+follow_pid=$!
+background_pids+=("$follow_pid")
+"$viewer" --hold "$view" "$follow_pid" > "$test_root/hold.out" 2>/dev/null < /dev/null &
+hold_pid=$!
+background_pids+=("$hold_pid")
+sleep 0.5
+kill "$follow_pid"
+for i in $(seq 1 30); do
+  kill -0 "$hold_pid" 2>/dev/null || break
+  sleep 0.1
+done
+if kill -0 "$hold_pid" 2>/dev/null; then
+  fail 'the --hold viewer did not exit after GrADS'
+fi
+grep -aFq 'Waiting for a GrADS picture' "$test_root/hold.out" ||
+  fail 'the --hold viewer showed no waiting line'
+if grep -aq '1337' "$test_root/hold.out"; then
+  fail 'the --hold viewer drew a picture'
+fi
+
+if ! command -v python3 > /dev/null 2>&1; then
+  printf 'SKIP: Ctrl-C and tmux checks need python3\n'
+  printf 'Terminal display checks passed\n'
+  exit 0
+fi
+
+# 9. Ctrl-C, typed into a terminal. Half-way through a command line it
+#    starts a fresh line, at an empty prompt it does nothing, and it never
+#    ends GrADS. During an animation it stops the script, and nothing more
+#    is shown until the next command draws. (The script leaves double
+#    buffering on, so that command must turn it off, as it would with X.)
+cat > "$test_root/long.gs" <<'GRADS_SCRIPT'
+'set dbuff on'
+i=1
+while (i<=400)
+  'set t '%(math_mod(i-1,5)+1)
+  'd ts'
+  'swap'
+  i=i+1
+endwhile
+say 'loop finished'
+GRADS_SCRIPT
+cat > "$test_root/ctrlc.py" <<'PYTHON'
+import os, pty, sys, time, select
+launcher, ctl, root = sys.argv[1:4]
+pid, fd = pty.fork()
+if pid == 0:
+    os.execv(launcher, [launcher, '-l', '-d', 'Term', '-g', '400x300'])
+out = bytearray()
+def pump(t):
+    end = time.time() + t
+    while time.time() < end:
+        r, _, _ = select.select([fd], [], [], 0.05)
+        if r:
+            try: out.extend(os.read(fd, 65536))
+            except OSError: return
+def send(b, t=0.5):
+    os.write(fd, b); pump(t)
+pump(2)
+send(('open ' + ctl + '\r').encode(), 1)
+send(b'd ts')
+send(b'\x03')
+send(b'q dims\r', 1)
+send(b'\x03'); send(b'\x03')
+send(('run ' + root + '/long.gs\r').encode(), 2)
+send(b'\x03', 1.5)
+send(('!cp ' + root + '/ctrlc_pics/seq ' + root + '/seq_a\r').encode(), 1.5)
+send(('!cp ' + root + '/ctrlc_pics/seq ' + root + '/seq_b\r').encode(), 1)
+send(b'set dbuff off\r', 1)      # the interrupted script left it on
+send(('!cp ' + root + '/ctrlc_pics/seq ' + root + '/seq_b2\r').encode(), 1)
+send(b'd ps\r', 1)
+send(('!cp ' + root + '/ctrlc_pics/seq ' + root + '/seq_c\r').encode(), 1)
+alive = os.waitpid(pid, os.WNOHANG) == (0, 0)
+if alive: send(b'quit\r', 2)
+text = out.decode(errors='replace')
+print('alive' if alive else 'exited')
+print('typed-line-ran' if 'Contouring' in text.split('q dims')[0] else 'typed-line-dropped')
+print('dims' if 'Default file number' in text else 'no-dims')
+print('loop-finished' if 'loop finished' in text else 'loop-stopped')
+PYTHON
+mkdir "$test_root/ctrlc_pics"
+result="$(
+  OPENGRADS_BUILD_ROOT="$build_root" OPENGRADS_COLOR=0 GA_TERM_VIEWER="$viewer" \
+  GA_TERM_MODE=file GA_TERM_DIR="$test_root/ctrlc_pics" GA_TERM_SYNC=1 \
+    python3 "$test_root/ctrlc.py" "$launcher" "$model_ctl" "$test_root"
+)"
+[[ "$result" == *alive* ]] || fail 'Ctrl-C ended GrADS' "$result"
+[[ "$result" == *typed-line-dropped* ]] ||
+  fail 'Ctrl-C did not drop the half-typed command' "$result"
+[[ "$result" == *dims* ]] || fail 'the command typed after Ctrl-C did not run' "$result"
+[[ "$result" == *loop-stopped* ]] || fail 'Ctrl-C did not stop the animation' "$result"
+a="$(seq_number "$test_root/seq_a")"
+b="$(seq_number "$test_root/seq_b")"
+b2="$(seq_number "$test_root/seq_b2")"
+c="$(seq_number "$test_root/seq_c")"
+(( a == b )) || fail "pictures were still shown after Ctrl-C ($a, then $b)"
+(( c == b2 + 1 )) || fail "the next command after Ctrl-C showed $((c - b2)) pictures, expected 1"
+
+# 10. Inside tmux, with a client attached on a terminal: each picture is
+#     placed at the viewer pane by absolute cursor movement inside the image
+#     sequence, every frame arrives, and the pane closes with GrADS.
+if ! command -v tmux > /dev/null 2>&1; then
+  printf 'SKIP: tmux checks need tmux\n'
+  printf 'Terminal display checks passed\n'
+  exit 0
+fi
+cat > "$test_root/intmux.py" <<'PYTHON'
+import os, pty, fcntl, termios, struct, subprocess, time, select, re, sys
+launcher, ctl, root, viewer, build = sys.argv[1:6]
+sock = root + '/tmux.sock'
+env = dict(os.environ, TERM='xterm-256color', OPENGRADS_COLOR='0',
+           OPENGRADS_BUILD_ROOT=build, GA_TERM_VIEWER=viewer)
+env.pop('TMUX', None)
+env.pop('TMUX_PANE', None)
+tm = ['tmux', '-S', sock, '-f', '/dev/null']
+subprocess.run(tm + ['new-session', '-d', '-s', 't', '-x', '160', '-y', '45',
+               launcher + ' -l -d Term; sleep 30'], env=env, check=True)
+master, slave = pty.openpty()
+fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 45, 160, 0, 0))
+client = subprocess.Popen(tm + ['attach', '-t', 't'], stdin=slave, stdout=slave,
+                          stderr=slave, env=env, start_new_session=True)
+out = bytearray()
+def pump(t):
+    end = time.time() + t
+    while time.time() < end:
+        r, _, _ = select.select([master], [], [], 0.05)
+        if r: out.extend(os.read(master, 1 << 20))
+def keys(*k):
+    subprocess.run(tm + ['send-keys', '-t', 't:0.0'] + list(k), check=True)
+pump(3)
+panes = subprocess.run(tm + ['list-panes', '-t', 't', '-F', '#{pane_left} #{pane_top}'],
+                       capture_output=True, text=True).stdout.split()
+keys('open ' + ctl, 'Enter'); pump(1)
+keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(6)
+keys('quit', 'Enter'); pump(2)
+after = subprocess.run(tm + ['list-panes', '-t', 't'], capture_output=True, text=True).stdout
+client.terminate()
+subprocess.run(tm + ['kill-server'], capture_output=True)
+d = bytes(out)
+want = (int(panes[3]) + 1, int(panes[2]) + 1) if len(panes) == 4 else None
+pics = re.findall(rb'\x1b\]1337;File=', d)
+placed = re.findall(rb'\x1b7\x1b\[(\d+);(\d+)H\x1b\]1337;File=', d)
+print('panes', len(panes) // 2)
+print('pictures', len(pics))
+print('placed', sum(1 for r, c in placed if (int(r), int(c)) == want))
+print('wrapped', d.count(b'Ptmux;'))
+print('panes-after', len([l for l in after.splitlines() if l.strip()]))
+PYTHON
+result="$(python3 "$test_root/intmux.py" "$launcher" "$model_ctl" "$test_root" \
+  "$viewer" "$build_root" 2>&1)"
+grep -qx 'panes 2' <<< "$result" || fail 'GrADS did not split a pane in tmux' "$result"
+grep -qx 'pictures 6' <<< "$result" ||
+  fail 'a blank page and five frames did not all arrive through tmux' "$result"
+grep -qx 'placed 6' <<< "$result" ||
+  fail 'pictures were not placed at the viewer pane' "$result"
+grep -qx 'wrapped 0' <<< "$result" ||
+  fail 'passthrough wrapping reached the terminal' "$result"
+grep -qx 'panes-after 0' <<< "$result" || grep -qx 'panes-after 1' <<< "$result" ||
+  fail 'the viewer pane outlived GrADS' "$result"
 
 printf 'Terminal display checks passed\n'

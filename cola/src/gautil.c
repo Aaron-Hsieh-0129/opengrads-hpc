@@ -9,6 +9,8 @@
 #include <limits.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
+#include <unistd.h>
 /* 
  * Include ./configure's header file
  */
@@ -37,6 +39,11 @@ static char pout[1256];   /* Build Error msgs here */
 char *gatxtl(char *str, gaint color);
 char *gatxtlp(char *str);
 
+/* Set while GrADS waits for a command line, so that Ctrl-C starts a fresh
+   line instead of interrupting anything: 1 with readline, 2 without. */
+volatile sig_atomic_t ga_at_prompt = 0;
+static char ga_prompt_text[300];
+
 /* Retrieves the next command from the user.  Leading blanks
    are stripped.  The number of characters entered before the
    CR is returned.                                                    */
@@ -47,15 +54,19 @@ gaint past,cnt;
 #ifndef STNDALN
   gxidle();
 #endif
-  printf ("%s ",gatxtl(prompt,-1));
+  snprintf(ga_prompt_text,sizeof(ga_prompt_text),"%s ",gatxtl(prompt,-1));
+  printf ("%s",ga_prompt_text);
+  fflush(stdout);
   past = 0;
   cnt = 0;
+  ga_at_prompt = 2;
   while (1) {
     *cmd = getchar();
-    if (*cmd == EOF) return (-1);
+    if (*cmd == EOF) { ga_at_prompt = 0; return (-1); }
     if (*cmd == '\n') {
       cmd++;
       *cmd = '\0';
+      ga_at_prompt = 0;
       return (cnt);
     }
     if (past || *cmd != ' ') {
@@ -2412,7 +2423,9 @@ char *ch, *ch2;
 #ifndef STNDALN
   gxidle();
 #endif
+  ga_at_prompt = 1;
   ch=readline(gatxtlp(prompt));
+  ga_at_prompt = 0;
   if ( ch== NULL) {
     return(-1);
   } else {
@@ -2422,6 +2435,34 @@ char *ch, *ch2;
     if (*ch) add_history(ch);   /* Skip blank lines */
   }
   return(strlen(cmd)+1);
+}
+
+/* Ctrl-C while readline waits for a command: readline has already echoed
+   ^C and put the terminal back, and calls the GrADS handler, which calls
+   this. Drop what was typed and start a new line, as a shell does. */
+
+void ga_prompt_sigint (void) {
+  if (ga_at_prompt==1) {
+    rl_crlf();
+    rl_on_new_line();
+    rl_replace_line("",0);
+    rl_redisplay();
+    return;
+  }
+  if (ga_at_prompt==2) {
+    /* the terminal driver has already thrown the typed line away */
+    if (write(1,"\n",1)<0) return;
+    if (write(1,ga_prompt_text,strlen(ga_prompt_text))<0) return;
+  }
+}
+
+#else
+
+void ga_prompt_sigint (void) {
+  if (ga_at_prompt==2) {
+    if (write(1,"\n",1)<0) return;
+    if (write(1,ga_prompt_text,strlen(ga_prompt_text))<0) return;
+  }
 }
 
 #endif  /* matches #if READLINE==1 */
