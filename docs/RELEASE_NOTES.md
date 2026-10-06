@@ -1,9 +1,40 @@
-## opengrads-hpc 1.0.9
+## opengrads-hpc 1.0.10
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
 
-### Fixed since 1.0.9 (not yet released)
+### Added in 1.0.10
+
+- **Plots in the terminal, without X.** A new display, `-d Term`, draws GrADS
+  pictures inside the terminal with the iTerm2 inline image protocol (iTerm2,
+  WezTerm), so a session on a cluster needs no X server and no `ssh -X`.
+  Inside tmux, GrADS splits a pane off beside the prompt and draws each
+  picture there, sized to the pane; outside tmux it prints the picture below
+  the command. Pictures are encoded in a background thread, so the prompt
+  comes back at once. The launcher picks this display when there is no
+  `DISPLAY` and the terminal is iTerm2 or WezTerm, which it learns from
+  `LC_TERMINAL` (ssh forwards it); `OPENGRADS_TERM=1` or `0` overrides the
+  choice. Linux archives only. See [TERMINAL.md](TERMINAL.md).
+- **Animations play frame by frame in the terminal.** `set looping on`, or a
+  `set dbuff on` loop, shows every frame in order as it is drawn, as an X
+  window does. On a slow link the drawing waits for it rather than piling
+  pictures up, and Ctrl-C stops the animation and sends nothing more.
+  `GA_TERM_ANIM=gif` also leaves a looping GIF, which iTerm2 plays on its
+  own.
+- **A progress bar for slow pictures.** With iTerm2, a picture over 1 MiB,
+  or every picture once the link has proved slow, shows iTerm2's progress
+  bar. It is updated between the parts of the picture, so it follows what
+  has actually arrived rather than what has left the server.
+
+### Changed in 1.0.10
+
+- **Ctrl-C no longer ends GrADS.** At the prompt it now throws away a
+  half-typed command and starts a fresh line, as a shell does. Before, the
+  next line was appended to the half-typed one (`d ts`, Ctrl-C, `q dims` ran
+  `d tsqdims`), and a second Ctrl-C ended GrADS. While a command or script
+  runs, Ctrl-C interrupts it, as before. To force GrADS to stop, use Ctrl-\\.
+
+### Fixed in 1.0.10
 
 - **Linux: an old OpenGrADS install next to the archive broke it.** The
   launcher looked beside itself for a legacy `opengrads-2.2.1.oga.1` bundle,
@@ -16,6 +47,28 @@ calculations, and native archives for Linux and macOS.
   explicitly. The packager checks this by starting the archive beside a
   decoy install. With 1.0.9, move the archive (or the old install) so the two
   are not in the same directory.
+- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
+  and `sum` with the boundary flag are meant to count each time by how much
+  of its cell lies between the two bounds: times inside fully, the first and
+  last in part, as they already did over longitude, latitude, and level. Over
+  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
+  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
+  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
+  out two and a half times too large and `ave` leaned toward the early
+  times. Each time now counts by its overlap with the bounds, in the
+  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
+  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
+  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
+  2.2.3, so results from those versions with `-b` over time differ from these.
+  This fix was listed under 1.0.9, but it came after that release was
+  built; the 1.0.9 archives still have the old weights.
+- **1.0.9-term: pictures went to the wrong place inside tmux.** The preview
+  of the terminal display wrote its pictures where the terminal's cursor
+  happened to be, since tmux does not move it to the pane for such output:
+  usually the bottom row of the picture pane, which scrolls the whole
+  screen, or the GrADS prompt. Each picture now moves the cursor to its pane
+  itself. 1.0.10 also replaces the preview's end-of-command GIF with frames
+  shown as they are drawn.
 
 ### Added in 1.0.9
 
@@ -123,19 +176,6 @@ calculations, and native archives for Linux and macOS.
   the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
   The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
   override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
-- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
-  and `sum` with the boundary flag are meant to count each time by how much
-  of its cell lies between the two bounds: times inside fully, the first and
-  last in part, as they already did over longitude, latitude, and level. Over
-  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
-  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
-  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
-  out two and a half times too large and `ave` leaned toward the early
-  times. Each time now counts by its overlap with the bounds, in the
-  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
-  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
-  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
-  2.2.3, so results from those versions with `-b` over time differ from these.
 
 ### Added in 1.0.8
 
@@ -285,6 +325,8 @@ built with `ADIOS2_USE_MPI=OFF`.
 - **OpenMP-threaded calculations.** Defaults to 4 threads; `-j N` or
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
+- **Plots in the terminal** over plain ssh, from iTerm2 or WezTerm, in a
+  tmux pane beside the prompt; no X server needed (Linux).
 - **Three native archives**, each self-contained: Linux x86_64 and aarch64,
   and macOS arm64. No dependency installation and no library paths to set.
 
@@ -295,7 +337,7 @@ which constrains what each platform can carry:
 
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
-| Linux | `Cairo`, `X11`, `gxdummy` | `Cairo`, `gxdummy` |
+| Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
 | macOS | `gxdummy` | `Cairo`, `gxdummy` |
 
 macOS runs headless but keeps the full Cairo hardcopy path, so `printim` and
@@ -307,9 +349,9 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.9-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.9-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.9-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.10-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.10-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.10-linux-x86_64
 ./opengrads
 ```
 
@@ -323,3 +365,7 @@ actually ships, so no extra flags are needed.
   glibc when it is 2.28 or newer and their bundled glibc and loader otherwise.
 - Reading BP5 written by a multi-rank MPI job is supported by ADIOS2's format
   but is not yet covered by the regression suite.
+- The terminal display is tested through tmux 3.4 with a terminal emulator
+  standing in for iTerm2, not yet on iTerm2 itself. If no picture appears,
+  try `GA_TERM_PROGRESS=off`, which sends each picture in the oldest form of
+  the protocol. Large pictures need iTerm2 3.5 or newer.
