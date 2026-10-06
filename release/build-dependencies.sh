@@ -32,12 +32,25 @@ sources_for()
   esac
 }
 
+# Hosts that could not be reached during this run. They are tried last for
+# the files that follow, rather than first: with both ftp.gnu.org and
+# ftpmirror.gnu.org down, waiting on each of them for each of the fifteen
+# GNU files took longer than the whole build.
+unreachable=" "
+
+host_of()
+{
+  local host="${1#*://}"
+  printf '%s\n' "${host%%/*}"
+}
+
 fetch()
 {
   local url="$1"
   local sha256="$2"
   local target="$3"
-  local source
+  local source host rc
+  local first=() last=()
 
   if [[ -f "$target" ]] &&
      printf '%s  %s\n' "$sha256" "$target" | sha256sum --check --status -; then
@@ -45,17 +58,34 @@ fetch()
     return 0
   fi
   while read -r source; do
+    if [[ "$unreachable" == *" $(host_of "$source") "* ]]; then
+      last+=("$source")
+    else
+      first+=("$source")
+    fi
+  done < <(sources_for "$url")
+  for source in ${first[@]+"${first[@]}"} ${last[@]+"${last[@]}"}; do
+    host="$(host_of "$source")"
     rm -f -- "$target.part"
-    if curl -fL --connect-timeout 30 --retry 3 --retry-delay 2 \
-         "$source" -o "$target.part" &&
+    if curl -fL --connect-timeout 20 --retry 2 --retry-delay 2 \
+         "$source" -o "$target.part"; then
+      rc=0
+    else
+      rc=$?
+    fi
+    if (( rc == 0 )) &&
        printf '%s  %s\n' "$sha256" "$target.part" | sha256sum --check --status -; then
       mv -- "$target.part" "$target"
       printf '%s: OK, from %s\n' "$target" "$source"
       return 0
     fi
+    case "$rc" in
+      6|7|28|35)                  # name lookup, connect, timeout, TLS connect
+        [[ "$unreachable" == *" $host "* ]] || unreachable+="$host " ;;
+    esac
     printf 'Could not get %s from %s, or it did not match its checksum.\n' \
       "${target##*/}" "$source" >&2
-  done < <(sources_for "$url")
+  done
   rm -f -- "$target.part"
   printf 'No source had %s with SHA-256 %s.\n' "${target##*/}" "$sha256" >&2
   return 1
