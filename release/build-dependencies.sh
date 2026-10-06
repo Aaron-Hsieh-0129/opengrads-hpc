@@ -16,16 +16,49 @@ jobs="${OPENGRADS_BUILD_JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf 
 
 mkdir -p "$download_root" "$source_root" "$build_root" "$deps_root" "$adios2_root"
 
+# Where a file may be fetched from, best first. GNU's own server is at times
+# unreachable (the 1.0.10 build timed out on ftp.gnu.org); its mirrors carry
+# the same files. The pinned checksum, not the server, decides whether a
+# download is accepted.
+sources_for()
+{
+  local url="$1"
+  printf '%s\n' "$url"
+  case "$url" in
+    https://ftp.gnu.org/gnu/*)
+      printf '%s\n' "https://ftpmirror.gnu.org/${url#https://ftp.gnu.org/gnu/}" \
+                    "https://mirrors.kernel.org/gnu/${url#https://ftp.gnu.org/gnu/}"
+      ;;
+  esac
+}
+
 fetch()
 {
   local url="$1"
   local sha256="$2"
   local target="$3"
+  local source
 
-  if [[ ! -f "$target" ]]; then
-    curl -fL --retry 3 --retry-delay 2 "$url" -o "$target"
+  if [[ -f "$target" ]] &&
+     printf '%s  %s\n' "$sha256" "$target" | sha256sum --check --status -; then
+    printf '%s: OK\n' "$target"
+    return 0
   fi
-  printf '%s  %s\n' "$sha256" "$target" | sha256sum --check -
+  while read -r source; do
+    rm -f -- "$target.part"
+    if curl -fL --connect-timeout 30 --retry 3 --retry-delay 2 \
+         "$source" -o "$target.part" &&
+       printf '%s  %s\n' "$sha256" "$target.part" | sha256sum --check --status -; then
+      mv -- "$target.part" "$target"
+      printf '%s: OK, from %s\n' "$target" "$source"
+      return 0
+    fi
+    printf 'Could not get %s from %s, or it did not match its checksum.\n' \
+      "${target##*/}" "$source" >&2
+  done < <(sources_for "$url")
+  rm -f -- "$target.part"
+  printf 'No source had %s with SHA-256 %s.\n' "${target##*/}" "$sha256" >&2
+  return 1
 }
 
 extract()
