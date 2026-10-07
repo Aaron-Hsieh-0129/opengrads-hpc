@@ -586,17 +586,23 @@ if control:
 out = bytearray()
 marks = []                                  # (bytes read before, when)
 def pump(most, idle=1.5):
-    # read at about 1 MB/s until nothing has come for idle seconds
-    end = time.time() + most
-    last = time.time()
+    # Read at about 1 MB/s until nothing has come for idle seconds. Sleep
+    # only when ahead of that: a macOS pty hands over a KB or two at a time,
+    # and a sleep after each read would make the link ten times slower.
+    start = last = time.time()
+    end = start + most
+    got = 0
     while time.time() < end and time.time() - last < idle:
         r, _, _ = select.select([master], [], [], 0.05)
         if r:
             chunk = os.read(master, 4096)
             marks.append((len(out), time.time()))
             out.extend(chunk)
+            got += len(chunk)
             last = time.time()
-            time.sleep(len(chunk) / 1e6)
+            ahead = got / 1e6 - (last - start)
+            if ahead > 0:
+                time.sleep(ahead)
 def when(i):
     t = None
     for n, at in marks:
@@ -614,7 +620,7 @@ panes = subprocess.run(tm + ['list-panes', '-t', 't', '-F', '#{pane_id} #{pane_l
                        capture_output=True, text=True, env=env).stdout.split()
 keys('open ' + ctl, 'Enter'); pump(2, 1)
 t0 = time.time()
-keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(30)
+keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(120, 3)
 print('pumped %.2f' % (time.time() - t0))
 discarded = fmt('#{client_discarded}')
 keys('quit', 'Enter'); pump(3, 1)
