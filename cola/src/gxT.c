@@ -20,16 +20,27 @@
      auto    tmux when GrADS runs inside tmux and a viewer is available,
              inline otherwise. This is the default.
 
-   Sending. Inside tmux the image sequence carries its own cursor movement,
-   because tmux does not place passthrough output at the pane. tmux keeps
-   whatever it is given and sends it on as fast as the link allows, so the
-   worker writes a picture in pieces and waits for the tmux client's terminal
-   to have room before the next piece: pictures queue here, where Ctrl-C can
-   drop them, instead of in tmux. With iTerm2 (LC_TERMINAL=iTerm2) a picture
-   goes in parts, which keeps the previous picture up until the new one is
-   complete, and when the link is slow or the picture large, iTerm2's own
-   progress bar (OSC 9;4) is updated between the parts, so it shows what has
-   actually arrived.
+   Sending. Inside tmux the image sequence travels in a passthrough sequence
+   and carries its own cursor movement, because tmux does not place
+   passthrough output at the pane. tmux 3.3 and later keep whatever they are
+   given and send it on as fast as the link allows, so before each picture
+   the worker waits for the tmux client's terminal to have room: pictures
+   queue here, where Ctrl-C can drop them, instead of in tmux. Older tmux
+   throws away all it holds for a client once that is more than 8 bytes per
+   cell of the client's terminal, passthrough included, and redraws; there
+   the picture goes in parts of a fraction of that, each sent once the
+   client's terminal has had room for a moment. That is no proof: tmux 3.2a
+   can sit on what it holds while the terminal has room, until more comes
+   in. Should tmux report a loss (client_discarded), the cut-off sequence is
+   ended, tmux redraws, and the picture is sent again in smaller parts.
+   With iTerm2's tmux integration (tmux -CC), tmux hands the pane's output
+   to iTerm2 as it is, and iTerm2 draws the pane itself, so the image
+   sequence goes into the pane unwrapped, after moving to the pane's own
+   top left corner, in parts as iTerm2 asks for there. With iTerm2
+   (LC_TERMINAL=iTerm2) a picture goes in parts, which keeps the previous
+   picture up until the new one is complete, and when the link is slow or
+   the picture large, iTerm2's own progress bar (OSC 9;4) is updated
+   between the parts, so it shows what has actually arrived.
 
    Animation. A frame ends where the picture is replaced: at a "swap" in
    double-buffer mode, or when a drawn page is cleared. Every frame is sent,
@@ -61,6 +72,11 @@
                         (default 1); 0.5 roughly halves the data
      GA_TERM_SYNC       1 waits for each picture to be written and sent
                         before going on, for scripts and tests
+     GA_TERM_TMUX_STEP  Bytes handed to tmux before waiting for it to pass
+                        them on; 0 for no waiting within a picture (default:
+                        worked out from the tmux version and terminal size)
+     GA_TERM_LOG        A file to log what tmux reported and how each
+                        picture was sent, for tracking down display problems
 
    The picture size comes from the -g option ("-g 1200x900"), otherwise it
    is 1000 points along the longer side of the page. GIF frames are kept at
@@ -73,6 +89,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -101,6 +118,9 @@ extern char **environ;
                                         over 1 MiB, so larger files go in parts */
 #define SEQ_PART  65536              /* base64 characters in each part */
 #define PACE_QUIET 0.025             /* seconds the link must stay clear */
+#define STEP_QUIET 0.005             /* the same, between the parts of a picture */
+#define STEP_MIN  1024               /* smallest step for old tmux, in bytes */
+#define CC_PART   4096               /* base64 characters per part under tmux -CC */
 #define PROGRESS_MIN 1048576         /* a picture this large always shows progress */
 #define FRAMEQ    2                  /* frames waiting for the worker */
 
@@ -139,6 +159,14 @@ static gaint iterm=0;                       /* the terminal is iTerm2 */
 static gaint progressopt=1;                 /* 0=off 1=auto 2=on */
 static char pane[64];                       /* tmux pane id of the viewer */
 static gaint panefd=-1;                     /* the viewer pane's terminal */
+static gaint tmuxkeeps=-1;                  /* tmux never drops passthrough (3.3+):
+                                               1 yes, 0 no, -1 not asked yet */
+static gaint stepopt=-1;                    /* GA_TERM_TMUX_STEP, or -1 */
+
+/* How a picture reaches the terminal */
+#define VIA_TERM 0                          /* straight to it */
+#define VIA_TMUX 1                          /* through tmux, in passthrough sequences */
+#define VIA_CC   2                          /* through tmux -CC, as pane output */
 
 /* ---- work handed to the worker thread ---- */
 
@@ -177,11 +205,34 @@ static size_t lastpiclen=0;
 static gaint sentrows=0,sentcols=0;         /* pane size the picture was sent for */
 static gaint panefresh=1;                   /* the pane needs clearing first */
 static double slowuntil=0.0;                /* the link was slow until about then */
+static gaint stepshift=0;                   /* steps halved this often after losses */
+static gaint linkslow=0;                    /* the last picture mostly waited on the link */
+static gaint posted=0;                      /* a picture was handed to the worker; main thread */
+
+/* Problems the worker found, for the main thread to report once */
+static volatile gaint warnplace=0;          /* tmux did not say where the pane is */
+static volatile gaint warnlost=0;           /* tmux dropped a picture: 1 once, 2 again and again */
+static gaint warnedplace=0,warnedlost=0;
 
 static double now (void) {
 struct timespec t;
   clock_gettime(CLOCK_MONOTONIC,&t);
   return (t.tv_sec + t.tv_nsec*1e-9);
+}
+
+/* GA_TERM_LOG */
+
+static FILE *tlog=NULL;
+
+static void tlogf (const char *fmt, ...) {
+va_list ap;
+  if (tlog==NULL) return;
+  va_start(ap,fmt);
+  fprintf(tlog,"%.3f ",now());
+  vfprintf(tlog,fmt,ap);
+  fputc('\n',tlog);
+  fflush(tlog);
+  va_end(ap);
 }
 
 /* Make a surface of the current picture size */
@@ -275,10 +326,16 @@ struct paneinfo {
   gaint row,col;                            /* top left, 0-based, on the screen */
   gaint rows,cols;
   char ctty[256];                           /* the tmux client's terminal */
+  gaint cw,ch;                              /* and its size; 0 when not known */
+  gaint control;                            /* the client is iTerm2's tmux -CC */
+  unsigned long lost;                       /* bytes tmux dropped for the client */
 };
 
+/* Ask tmux about a pane and the client showing it. Fields that an older
+   tmux does not know come back empty and read as 0. */
+
 static gaint tmuxinfo (const char *target, struct paneinfo *pi) {
-char out[600],*f[8],*p,*argv[8];
+char out[700],*f[12],*p,*argv[8];
 gaint i,n,status;
 
   memset(pi,0,sizeof(*pi));
@@ -286,21 +343,27 @@ gaint i,n,status;
   argv[i++] = "tmux"; argv[i++] = "display-message"; argv[i++] = "-p";
   if (target && *target) { argv[i++] = "-t"; argv[i++] = (char *)target; }
   argv[i++] = "#{pane_left}|#{pane_top}|#{pane_width}|#{pane_height}|"
-              "#{client_tty}|#{status-position}|#{status}";
+              "#{client_tty}|#{status-position}|#{status}|#{client_width}|"
+              "#{client_height}|#{client_control_mode}|#{client_discarded}";
   argv[i] = NULL;
   if (runcmd(argv,out,sizeof(out))) return (1);
-  for (n=0, p=out; n<7; n++) {               /* fields may be empty */
-    f[n] = p;
+  for (n=0, p=out; n<11; ) {                 /* fields may be empty */
+    f[n++] = p;
     p = strchr(p,'|');
     if (p==NULL) break;
     *p++ = '\0';
   }
-  if (n<6) return (1);
+  if (n<7) return (1);
+  for (i=n; i<11; i++) f[i] = "";
   pi->col = atoi(f[0]);
   pi->row = atoi(f[1]);
   pi->cols = atoi(f[2]);
   pi->rows = atoi(f[3]);
   snprintf(pi->ctty,sizeof(pi->ctty),"%s",f[4]);
+  pi->cw = atoi(f[7]);
+  pi->ch = atoi(f[8]);
+  pi->control = atoi(f[9])==1;
+  pi->lost = strtoul(f[10],NULL,10);
   if (!strcmp(f[5],"top")) {                 /* the status line comes first */
     if (!strcmp(f[6],"on")) status = 1;
     else if (!strcmp(f[6],"off")) status = 0;
@@ -314,7 +377,7 @@ gaint i,n,status;
 
 static gaint tmuxsplit (void) {
 char cmd[2048],qv[700],qd[700],size[32],pct[32],tty[256];
-char *v,*p;
+char *v,*p,*msg;
 char *argv[16];
 gaint i,rc;
 
@@ -359,14 +422,34 @@ gaint i,rc;
   }
   cloexec(panefd);
 
+  /* Everything shown in the pane comes from here, in order; the viewer
+     only keeps the pane open. */
+  msg = "\033[?25l\033[H\033[2JWaiting for a GrADS picture...";
+  if (write(panefd,msg,strlen(msg))<0) { /* the pictures will tell */ }
+
   /* tmux 3.3 and later drop passthrough sequences unless the pane allows
-     them. Older tmux has no such option. */
+     them. Older tmux has no such option, and drops output, passthrough
+     included, that the terminal cannot take fast enough. */
   i = 0;
   argv[i++] = "tmux"; argv[i++] = "set-option"; argv[i++] = "-p";
   argv[i++] = "-t"; argv[i++] = pane; argv[i++] = "allow-passthrough";
   argv[i++] = "on"; argv[i] = NULL;
-  runcmd(argv,NULL,0);
+  tmuxkeeps = runcmd(argv,NULL,0)==0;
   return (0);
+}
+
+/* Does this tmux pass passthrough on, however slow the terminal? tmux 3.3
+   stopped dropping it and is also the first with allow-passthrough, so
+   asking for that option tells. */
+
+static gaint tmuxprobe (const char *target) {
+char *argv[8];
+gaint i;
+  i = 0;
+  argv[i++] = "tmux"; argv[i++] = "show-options"; argv[i++] = "-p";
+  if (target && *target) { argv[i++] = "-t"; argv[i++] = (char *)target; }
+  argv[i++] = "allow-passthrough"; argv[i] = NULL;
+  return (runcmd(argv,NULL,0)==0);
 }
 
 /* ---- PNG ---- */
@@ -782,7 +865,11 @@ unsigned long r,g,b,n;
 struct wout {
   gaint fd;                                 /* where the bytes go */
   gaint pacefd;                             /* the terminal to pace against, or -1 */
-  gaint tmux;                               /* wrap sequences for tmux */
+  gaint via;                                /* VIA_TERM, VIA_TMUX or VIA_CC */
+  size_t step;                              /* bytes to hand tmux before waiting, or 0 */
+  size_t since;                             /* bytes handed over since the last wait */
+  gaint steps;                              /* waits within the picture */
+  double t0;                                /* when the picture started to go out */
   unsigned char buf[16384];
   size_t n;
   double waited;                            /* time spent waiting on the link */
@@ -814,12 +901,13 @@ double t0;
    so that pictures queue here, where Ctrl-C can drop them: the tmux
    client's terminal then has room, and keeps it. While tmux still has
    more to send it fills that room again within a millisecond or two, so
-   the room has to last PACE_QUIET to count. */
+   the room has to last a while (quiet) to count. */
 
-static void pace (struct wout *w) {
+static void pace (struct wout *w, double quiet) {
 struct pollfd p;
 double t0,clear=-1.0,t;
 
+  w->since = 0;
   if (w->pacefd<0) return;
   t0 = now();
   while (!stopping) {
@@ -834,17 +922,38 @@ double t0,clear=-1.0,t;
     t = now();
     if (p.revents & POLLOUT) {
       if (clear<0) clear = t;
-      if (t-clear >= PACE_QUIET) break;
+      if (t-clear >= quiet) break;
     } else clear = -1.0;
     if (t-t0 > 30.0) break;                 /* never hang on a stuck link */
-    usleep(2500);
+    usleep(quiet<0.01 ? 1000 : 2500);
   }
-  w->waited += now()-t0-PACE_QUIET;
+  w->waited += now()-t0-quiet;
+}
+
+/* Older tmux drops what it holds for a client once that is too much, so
+   hand it no more than a step at a time: n more bytes are coming. Once
+   the link turns out to be what holds the picture up, tmux is holding on
+   to more, so only half a step. */
+
+static void room (struct wout *w, size_t n) {
+size_t lim;
+double t;
+  if (quitting) w->err = 1;                 /* the pane is going: stop here */
+  if (w->step==0 || w->since==0) return;
+  lim = w->step;
+  t = now()-w->t0;
+  if (linkslow || (t>0.1 && w->waited>0.5*t)) lim = w->step/2;
+  if (w->since+n > lim) {
+    wflush(w);
+    pace(w,STEP_QUIET);
+    w->steps++;
+  }
 }
 
 static void wraw (struct wout *w, const void *p, size_t n) {
 const unsigned char *s = (const unsigned char *)p;
 size_t k;
+  w->since += n;
   while (n && !w->err) {
     k = sizeof(w->buf)-w->n;
     if (k>n) k = n;
@@ -858,10 +967,11 @@ static void wstr (struct wout *w, const char *s) {
   wraw(w,s,strlen(s));
 }
 
-/* An escape sequence for the outer terminal. Inside tmux it travels in a
-   passthrough sequence, where each ESC is doubled. */
+/* An escape sequence for the outer terminal. Through tmux it travels in a
+   passthrough sequence, where each ESC is doubled; tmux -CC hands the
+   pane's output to iTerm2 as it is. */
 static void wesc (struct wout *w, const char *s) {
-  if (!w->tmux) { wstr(w,s); return; }
+  if (w->via!=VIA_TMUX) { wstr(w,s); return; }
   for (; *s; s++) {
     if (*s=='\033') wraw(w,"\033\033",2);
     else wraw(w,s,1);
@@ -869,11 +979,11 @@ static void wesc (struct wout *w, const char *s) {
 }
 
 static void ptopen (struct wout *w) {
-  if (w->tmux) wstr(w,"\033Ptmux;");
+  if (w->via==VIA_TMUX) wstr(w,"\033Ptmux;");
 }
 
 static void ptclose (struct wout *w) {
-  if (w->tmux) wstr(w,"\033\\");
+  if (w->via==VIA_TMUX) wstr(w,"\033\\");
 }
 
 static void b64put (struct wout *w, const unsigned char *d, size_t len) {
@@ -898,44 +1008,84 @@ unsigned long v;
   wraw(w,out,o);
 }
 
-/* Send a picture. Given a pane, it fills the pane, placed by absolute
-   cursor movement inside the image sequence: tmux does not move the
-   terminal's cursor to the pane for passthrough output. Otherwise the
-   picture goes where the cursor is, iwidth wide. */
+/* How much to hand tmux at a time. tmux before 3.3 drops all it holds for
+   a client once that reaches 8 bytes per cell of the client's terminal,
+   so stay at a quarter of that (an eighth on a slow link, see room); each
+   loss seen halves it again. */
 
-static void sendpic (gaint fd, gaint pacefd, gaint tmux, const struct paneinfo *pi,
+static size_t tmuxstep (const struct paneinfo *pi) {
+long cells,s;
+  if (stepopt>=0) return ((size_t)stepopt);
+  if (tmuxkeeps==1) return (0);
+  cells = (long)(pi->cw>0 ? pi->cw : 80) * (pi->ch>0 ? pi->ch : 24);
+  s = (cells*8/4) >> stepshift;
+  if (s>SEQ_PART) s = SEQ_PART;
+  if (s<STEP_MIN) s = STEP_MIN;
+  return ((size_t)s);
+}
+
+/* Send a picture. Given a pane, it fills the pane. Through plain tmux it
+   is placed by absolute cursor movement inside the image sequence, since
+   tmux does not move the terminal's cursor to the pane for passthrough
+   output; under tmux -CC iTerm2 draws the pane itself, so the cursor goes
+   to the pane's own top left corner. Otherwise the picture goes where the
+   cursor is, iwidth wide. */
+
+static void sendpic (gaint fd, gaint pacefd, gaint via, size_t step, const struct paneinfo *pi,
                      gaint clear, const unsigned char *data, size_t len, const char *iwidth) {
 struct wout *w;
 char args[256],pos[64],tmp[64];
+const char *back="",*home="";
 size_t b64len,off,n,part;
 gaint parts,showprog,pct,lastpct=-1;
+double t0;
 
   w = (struct wout *)calloc(1,sizeof(struct wout));
   if (w==NULL) return;
   w->fd = fd;
   w->pacefd = pacefd;
-  w->tmux = tmux;
+  w->via = via;
   b64len = (len+2)/3*4;
   if (pi) snprintf(args,sizeof(args),"inline=1;size=%lu;width=%d;height=%d;preserveAspectRatio=1",
                    (unsigned long)len,pi->cols,pi->rows>1 ? pi->rows-1 : 1);
   else snprintf(args,sizeof(args),"inline=1;size=%lu;width=%s;preserveAspectRatio=1",
                 (unsigned long)len,iwidth);
   pos[0] = '\0';
-  if (pi) snprintf(pos,sizeof(pos),"\0337\033[%d;%dH",pi->row+1,pi->col+1);
+  if (pi && via==VIA_CC) home = "\033[H";
+  else if (pi) {
+    snprintf(pos,sizeof(pos),"\0337\033[%d;%dH",pi->row+1,pi->col+1);
+    back = "\0338";
+  }
 
-  pace(w);
+  t0 = now();
+  pace(w,PACE_QUIET);
+  tlogf("picture: %lu bytes, via %s, step %lu, paced on fd %d, waited %.3f s for the link",
+        (unsigned long)len,via==VIA_CC ? "tmux -CC" : (via==VIA_TMUX ? "tmux" : "terminal"),
+        (unsigned long)step,pacefd,now()-t0);
   if (w->waited>0.15) slowuntil = now()+20.0;
   w->waited = 0.0;
+  w->step = step;
+  w->t0 = now();
 
   /* iTerm2 takes a picture in parts, which also lets the progress bar
-     follow it; elsewhere only a picture too large for one sequence is
-     split, which needs iTerm2 3.5 anyway */
-  parts = (b64len+200 >= SEQ_LIMIT) || (iterm && progressopt);
+     follow it; under tmux -CC it only takes parts. Elsewhere only a
+     picture too large for one sequence, or for one step of an older
+     tmux, is split, which needs iTerm2 3.5 anyway. */
+  parts = via==VIA_CC || (b64len+200 >= SEQ_LIMIT) || (step && b64len+200 > step) ||
+          (iterm && progressopt);
   showprog = parts && progressopt &&
              (progressopt==2 || b64len>=PROGRESS_MIN || now()<slowuntil);
+  part = SEQ_PART;
+  if (via==VIA_CC) part = CC_PART;
+  else if (step) {                          /* half a step, so a slow link can take one */
+    part = step/2>320 ? step/2-64 : 256;
+    if (part>SEQ_PART) part = SEQ_PART;
+  }
+  part = part/4*3;                          /* raw bytes per part, whole base64 groups */
 
   if (pi && clear) wstr(w,"\033[H\033[2J");  /* tmux clears the pane's cells */
   if (!parts) {
+    wstr(w,home);
     ptopen(w);
     wesc(w,pos);
     wesc(w,"\033]1337;File=");
@@ -943,20 +1093,21 @@ gaint parts,showprog,pct,lastpct=-1;
     wstr(w,":");
     b64put(w,data,len);
     wesc(w,"\a");
-    if (pi) wesc(w,"\0338");
+    wesc(w,back);
     ptclose(w);
   } else {
+    wstr(w,home);
     ptopen(w);
     wesc(w,pos);
     wesc(w,"\033]1337;MultipartFile=");
     wstr(w,args);
     wesc(w,"\a");
-    if (pi) wesc(w,"\0338");
+    wesc(w,back);
     ptclose(w);
-    part = SEQ_PART/4*3;
     for (off=0; off<len && !w->err; off+=n) {
       n = len-off;
       if (n>part) n = part;
+      room(w,(n+2)/3*4+32);
       ptopen(w);
       wesc(w,"\033]1337;FilePart=");
       b64put(w,data+off,n);
@@ -973,16 +1124,25 @@ gaint parts,showprog,pct,lastpct=-1;
         }
       }
     }
+    room(w,64);
+    wstr(w,home);
     ptopen(w);
     wesc(w,pos);
     wesc(w,"\033]1337;FileEnd\a");
-    if (pi) wesc(w,"\0338");
+    wesc(w,back);
     ptclose(w);
     if (lastpct>=0) { ptopen(w); wesc(w,"\033]9;4;0\a"); ptclose(w); }
   }
   if (!pi) wstr(w,"\n");
   wflush(w);
+  if (step) {
+    pace(w,STEP_QUIET);                     /* let tmux pass on the last step */
+    linkslow = now()-w->t0>0.1 && w->waited>0.5*(now()-w->t0);
+  }
   if (w->waited>0.15) slowuntil = now()+20.0;
+  tlogf("picture: sent in %s, %lu-byte parts, %d steps, %.3f s, %.3f s of it waiting%s%s",
+        parts ? "parts" : "one piece",(unsigned long)part,w->steps,now()-t0,w->waited,
+        step && linkslow ? "; the link is slow" : "",w->err ? "; writing failed" : "");
   free(w);
 }
 
@@ -1001,18 +1161,60 @@ static gaint pacefor (const char *path) {
   return (ctyfd);
 }
 
-/* Draw the latest picture into the viewer pane; worker only */
+/* After tmux dropped output: end an image sequence it may have cut off,
+   which would otherwise swallow what follows, and have tmux redraw the
+   screen, since its own redraw may have gone that way. */
+
+static void mend (const struct paneinfo *pi) {
+static const char st[] = "\033Ptmux;\033\033\\\033\\";
+char *argv[6];
+  if (write(panefd,st,sizeof(st)-1)<0) return;
+  argv[0] = "tmux"; argv[1] = "refresh-client";
+  argv[2] = pi->ctty[0] ? "-t" : NULL; argv[3] = (char *)pi->ctty; argv[4] = NULL;
+  runcmd(argv,NULL,0);
+  usleep(100000);
+}
+
+/* Draw the latest picture into the viewer pane; worker only. tmux before
+   3.3 can hold more than it lets the terminal's free room show, so a
+   picture may be dropped all the same; tmux says so in client_discarded.
+   Then send it again, in smaller steps from now on, once tmux is done
+   dropping (it looks every 100 ms) and the screen is mended. */
 
 static void panesend (gaint clear) {
-struct paneinfo pi;
+struct paneinfo pi,after;
+gaint tries,via;
 
   if (panefd<0 || lastpic==NULL || quitting) return;
-  if (tmuxinfo(pane,&pi)) return;           /* without its place it would land anywhere */
-  if (pi.rows!=sentrows || pi.cols!=sentcols) clear = 1;
-  sentrows = pi.rows;
-  sentcols = pi.cols;
-  sendpic(panefd,pacefor(pi.ctty),1,&pi,clear || panefresh,lastpic,lastpiclen,NULL);
-  panefresh = 0;
+  for (tries=0; ; tries++) {
+    if (tmuxinfo(pane,&pi)) {              /* without its place it would land anywhere */
+      tlogf("pane %s: tmux did not say where it is",pane);
+      warnplace = 1;
+      return;
+    }
+    tlogf("pane %s: %dx%d at row %d column %d; client %s, %dx%d%s, %lu bytes dropped so far",
+          pane,pi.cols,pi.rows,pi.row,pi.col,pi.ctty[0] ? pi.ctty : "(none)",pi.cw,pi.ch,
+          pi.control ? ", tmux -CC" : "",pi.lost);
+    if (pi.rows!=sentrows || pi.cols!=sentcols) clear = 1;
+    sentrows = pi.rows;
+    sentcols = pi.cols;
+    via = pi.control ? VIA_CC : VIA_TMUX;
+    sendpic(panefd,pacefor(pi.ctty),via,via==VIA_TMUX ? tmuxstep(&pi) : 0,&pi,
+            clear || panefresh,lastpic,lastpiclen,NULL);
+    panefresh = 0;
+    if (via!=VIA_TMUX || tmuxkeeps==1 || quitting || stopping) return;
+    if (tmuxinfo(pane,&after) || after.lost<=pi.lost) return;
+    tlogf("pane %s: tmux dropped %lu bytes while the picture went out",pane,after.lost-pi.lost);
+    if (stepshift<4) stepshift++;
+    if (!warnlost) warnlost = 1;
+    usleep(300000);
+    mend(&after);
+    if (tries>=2) {
+      warnlost = 2;
+      return;
+    }
+    clear = 1;
+  }
 }
 
 /* The pane changed size: draw the picture again to fit */
@@ -1235,6 +1437,7 @@ struct timespec ts;
 
   if (j==NULL) return;
   if (intr && j->kind!=JOB_GIFDROP) { freejob(j); return; }
+  if (j->kind!=JOB_GIFDROP) posted = 1;
   if (!workeron) {
     dojob(j);
     freejob(j);
@@ -1297,8 +1500,8 @@ void gxdintr (void) {
 
 static void inlineshow (void) {
 unsigned char *d;
-size_t n;
-gaint fd,tmux,pacefd=-1;
+size_t n,step=0;
+gaint fd,via=VIA_TERM,pacefd=-1;
 struct paneinfo pi;
 char *w,*t;
 
@@ -1309,13 +1512,19 @@ char *w,*t;
   pthread_mutex_unlock(&tlock);
   if (d==NULL) return;
   t = getenv("TMUX");
-  tmux = (t && *t);
-  if (tmux && !tmuxinfo(getenv("TMUX_PANE"),&pi)) pacefd = pacefor(pi.ctty);
+  if (t && *t) {
+    via = VIA_TMUX;
+    if (tmuxkeeps<0) tmuxkeeps = tmuxprobe(getenv("TMUX_PANE"));
+    if (tmuxinfo(getenv("TMUX_PANE"),&pi)) memset(&pi,0,sizeof(pi));
+    else pacefd = pacefor(pi.ctty);
+    if (pi.control) via = VIA_CC;
+    else step = tmuxstep(&pi);
+  }
   w = getenv("GA_TERM_WIDTH");
   if (w==NULL || *w=='\0') w = "70%";
   fd = open("/dev/tty",O_WRONLY|O_NOCTTY);
   fflush(stdout);
-  sendpic(fd>=0 ? fd : 1,pacefd,tmux,NULL,0,d,n,w);
+  sendpic(fd>=0 ? fd : 1,pacefd,via,step,NULL,0,d,n,w);
   if (fd>=0) close(fd);
   free(d);
 }
@@ -1354,7 +1563,9 @@ gaint before,frames;
     dirty = 0;
   } else {
     if (ngif==1) post(snapshot(JOB_GIFDROP));
-    if (dirty && (drawn || mode!=2)) post(snapshot(JOB_STILL));
+    /* A blank page is worth sending only to replace a picture; the tmux
+       pane says it is waiting until then */
+    if (dirty && (drawn || mode==3 || (mode==1 && posted))) post(snapshot(JOB_STILL));
     dirty = 0;
   }
   if (gifcut) {
@@ -1368,6 +1579,19 @@ gaint before,frames;
   if (mode==2) {
     waitworker();
     if (shownseq()!=before && (drawn || frames>=2)) inlineshow();
+  }
+  if (warnplace && !warnedplace) {
+    printf("Terminal display: tmux did not say where the picture pane is, so pictures are not shown\n");
+    warnedplace = 1;
+  }
+  if (warnlost>warnedlost) {
+    if (warnlost==1)
+      printf("Terminal display: tmux dropped a picture the terminal could not take fast enough;\n"
+             "Terminal display: it was sent again, and pictures now go in smaller pieces.\n");
+    else
+      printf("Terminal display: tmux keeps dropping pictures the terminal cannot take fast enough.\n");
+    printf("Terminal display: tmux 3.3 or later, or iTerm2's tmux -CC, does not drop them.\n");
+    warnedlost = warnlost;
   }
   intr = 0;     /* a Ctrl-C while the picture went out was about that picture */
 }
@@ -1431,8 +1655,20 @@ gadouble f;
   else if (!strcmp(a,"on")) progressopt = 2;
   else if (!strcmp(a,"off")) progressopt = 0;
   else printf("Terminal display: unknown GA_TERM_PROGRESS \"%s\"; using auto\n",a);
+  a = getenv("GA_TERM_LOG");
+  if (a && *a && tlog==NULL) {
+    tlog = fopen(a,"a");
+    if (tlog==NULL) printf("Terminal display: unable to write the log %s\n",a);
+    else cloexec(fileno(tlog));
+  }
   a = getenv("GA_TERM_SYNC");
   syncwrite = (a && !strcmp(a,"1"));
+  a = getenv("GA_TERM_TMUX_STEP");
+  if (a && *a) {
+    if (atol(a)==0 && strcmp(a,"0")) printf("Terminal display: GA_TERM_TMUX_STEP must be a number of bytes\n");
+    else if (atol(a)==0) stepopt = 0;
+    else stepopt = atol(a)<STEP_MIN ? STEP_MIN : (atol(a)>SEQ_PART ? SEQ_PART : atol(a));
+  }
   a = getenv("LC_TERMINAL");
   iterm = (a && !strcmp(a,"iTerm2"));
 
@@ -1464,6 +1700,10 @@ gadouble f;
     mode = 2;
   }
 
+  tlogf("start: mode %s, pane %s, tmux %s, iTerm2 %s, GA_TERM_TMUX_STEP %ld",
+        mode==1 ? "tmux" : (mode==2 ? "inline" : "file"),pane[0] ? pane : "(none)",
+        tmuxkeeps==1 ? "3.3 or later" : (tmuxkeeps==0 ? "before 3.3" : "not asked"),
+        iterm ? "yes" : "no",(long)stepopt);
   if (mode==3) {
     printf("Terminal display: pictures are written to %s\n",tdir);
     if (v) printf("Terminal display: view them with  %s %s\n",v,tdir);

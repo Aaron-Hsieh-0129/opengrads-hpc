@@ -21,7 +21,7 @@ WezTerm support. Other terminals ignore it or print noise.
 
 ```bash
 ssh cluster
-tmux                      # or: tmux attach
+tmux                      # or: tmux attach, tmux -CC
 ./opengrads               # picks the terminal display by itself
 ```
 
@@ -45,16 +45,30 @@ available (`ssh -X`), the launcher keeps using the X window unless
 
 ## tmux setup
 
-GrADS draws into its pane through tmux to iTerm2. tmux 3.3 and later block
-this unless `allow-passthrough` is on. GrADS turns it on for its pane only,
-so no `.tmux.conf` change is needed.
+Both ordinary tmux and iTerm2's tmux integration (`tmux -CC`, where tmux
+panes become native iTerm2 splits) work; GrADS tells them apart by itself.
+No `.tmux.conf` change is needed.
 
-tmux does not place such output at the pane by itself, so each picture
-carries its own cursor movement to the pane's top-left corner, worked out
-from tmux's layout (status line on top included).
+With ordinary tmux, GrADS draws into its pane through tmux to iTerm2. tmux
+3.3 and later block this unless `allow-passthrough` is on; GrADS turns it on
+for its pane only. tmux does not place such output at the pane by itself,
+so each picture carries its own cursor movement to the pane's top-left
+corner, worked out from tmux's layout (status line on top included).
 
-Use ordinary tmux. iTerm2's tmux integration (`tmux -CC`) has not been
-tested with inline images.
+**tmux before 3.3** (3.2a is common on clusters, RHEL 9 among them) throws
+away everything it holds for your terminal once that is more than 8 bytes
+per cell of the terminal, pictures included, and redraws the screen. GrADS
+asks tmux which kind it is and, for an older one, sends each picture in
+small parts, waiting for tmux to pass each on. On a slow link tmux can still
+drop a part. It reports this, and GrADS then repairs the screen and sends the
+picture again in smaller parts, which later pictures keep. A note at the
+prompt says when this happened. tmux 3.3 or later, or `tmux -CC`, never
+drops pictures, and sends them faster.
+
+With `tmux -CC`, iTerm2 draws each pane itself from what runs in it, so
+GrADS puts the picture into its pane as a program outside tmux would. This
+has been checked against tmux's output in that mode, not yet on iTerm2
+itself.
 
 To keep a shell under the picture, like the lower-right pane in Spyder,
 split the picture pane once GrADS is running:
@@ -81,6 +95,8 @@ The picture is redrawn to fit the smaller pane.
 | `GA_TERM_DIR` | Directory that receives `plot.png` and `plot.gif` | a new temporary directory, removed at exit |
 | `GA_TERM_VIEWER` | Program that holds the picture pane open, and shows pictures in `file` mode | `libexec/grads-termview`, set by the launcher |
 | `GA_TERM_SYNC` | `1` finishes writing and sending each picture before GrADS goes on, for scripts that read `plot.png` at once | off |
+| `GA_TERM_TMUX_STEP` | Bytes handed to tmux at a time before waiting for it to pass them on; `0` for no waiting within a picture | worked out from the tmux version and terminal size |
+| `GA_TERM_LOG` | A file to log what tmux reported and how each picture was sent | off |
 
 The page is 1000 points along its longer side. Change it with `-g`
 (`./opengrads -l -d Term -g 1200x900`) or, while running, with
@@ -187,6 +203,24 @@ adds a third.
 
 iTerm2 and tmux both refuse a single image sequence over 1 MiB, so with
 iTerm2 pictures go in parts, which iTerm2 understands from version 3.5.
+
+## When no picture appears
+
+Start GrADS with a log, draw something, and look at the log:
+
+```bash
+GA_TERM_LOG=/tmp/grads-term.log ./opengrads
+```
+
+The `start:` line gives the mode and which kind of tmux GrADS found. A
+`pane` line says where the picture pane is and which terminal shows it, and
+`tmux -CC` when iTerm2's integration is in use. Two `picture:` lines per
+picture say how it was sent and how long the link took. `tmux dropped` means
+tmux threw part of it away, as tmux before 3.3 does on a slow link.
+
+If the log looks right and still nothing shows, try `GA_TERM_PROGRESS=off`,
+which sends a picture in one piece when it fits, the oldest form of the
+protocol. Pictures in parts need iTerm2 3.5 or newer.
 
 ## Limits
 

@@ -5,8 +5,8 @@
 #   grads-termview DIR [GRADS_PID]
 #
 # With --hold, this only keeps open the tmux pane that GrADS split off for
-# its pictures: GrADS (grads -d Term) draws into the pane itself. It hides
-# the cursor, ignores typing, and exits when GRADS_PID is gone.
+# its pictures: GrADS (grads -d Term) draws into the pane itself. It prints
+# nothing, ignores typing, and exits when GRADS_PID is gone.
 #
 # Without --hold, it shows the pictures of a GrADS session whose display
 # writes them to DIR (GA_TERM_MODE=file), for example in a second ssh
@@ -24,13 +24,14 @@ if [[ "${1:-}" == --hold ]]; then
   dir="${2:-}"
   grads_pid="${3:-}"
   stty -echo 2>/dev/null || true
-  printf '\033[?25l\033[H\033[2JWaiting for a GrADS picture...'
-  trap 'printf "\033[?25h"; exit 0' INT TERM HUP
+  # GrADS writes everything the pane shows, the waiting note and the hidden
+  # cursor included: anything printed here could land after its first
+  # picture. The pane closes with GrADS.
+  trap 'exit 0' INT TERM HUP
   while [[ -d "$dir" ]] &&
         { [[ -z "$grads_pid" ]] || kill -0 "$grads_pid" 2>/dev/null; }; do
     sleep 1
   done
-  printf '\033[?25h'
   exit 0
 fi
 

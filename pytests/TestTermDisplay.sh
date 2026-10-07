@@ -6,8 +6,10 @@
 # checks cover what can be seen without a real iTerm2: the PNG and its size,
 # one picture per prompt, live frames, looping GIF animations (decoded by an
 # independent decoder when python3 is available), the inline image sequence,
-# cleanup, and the viewer's FIFO wake-up, tmux wrapping and multipart
-# transfer. Skipped when the build has no Cairo, which the display needs.
+# cleanup, the viewer's FIFO wake-up, tmux wrapping and multipart transfer,
+# and, inside a real tmux (plain, in small steps, and -CC), that every
+# picture arrives whole at its pane. Skipped when the build has no Cairo,
+# which the display needs.
 
 set -euo pipefail
 
@@ -435,8 +437,9 @@ if kill -0 "$viewer_pid" 2>/dev/null; then
   fail 'the viewer did not exit after the GrADS process it follows'
 fi
 
-# 8. In --hold mode the viewer only keeps the pane: it draws nothing but
-#    its waiting line, and exits with GrADS.
+# 8. In --hold mode the viewer only keeps the pane: it prints nothing (GrADS
+#    writes all the pane shows, so nothing can land after a picture), and
+#    exits with GrADS.
 sleep 30 &
 follow_pid=$!
 background_pids+=("$follow_pid")
@@ -452,10 +455,8 @@ done
 if kill -0 "$hold_pid" 2>/dev/null; then
   fail 'the --hold viewer did not exit after GrADS'
 fi
-grep -aFq 'Waiting for a GrADS picture' "$test_root/hold.out" ||
-  fail 'the --hold viewer showed no waiting line'
-if grep -aq '1337' "$test_root/hold.out"; then
-  fail 'the --hold viewer drew a picture'
+if [[ -s "$test_root/hold.out" ]]; then
+  fail 'the --hold viewer printed something' "$(od -c "$test_root/hold.out" | head -5)"
 fi
 
 if ! command -v python3 > /dev/null 2>&1; then
@@ -536,66 +537,131 @@ c="$(seq_number "$test_root/seq_c")"
 (( a == b )) || fail "pictures were still shown after Ctrl-C ($a, then $b)"
 (( c == b2 + 1 )) || fail "the next command after Ctrl-C showed $((c - b2)) pictures, expected 1"
 
-# 10. Inside tmux, with a client attached on a terminal: each picture is
-#     placed at the viewer pane by absolute cursor movement inside the image
-#     sequence, every frame arrives, and the pane closes with GrADS.
-if ! command -v tmux > /dev/null 2>&1; then
+# 10. Inside tmux, with a client attached on a terminal read at 1 MB/s,
+#     like an ssh link: the pane says it is waiting until the first picture,
+#     every frame arrives whole, each is placed at the viewer pane, and the
+#     pane closes with GrADS. Three ways: plain tmux; plain tmux handed the
+#     picture a few KB at a time, in parts, as for tmux before 3.3, which
+#     drops output the terminal cannot take fast enough; and iTerm2's tmux
+#     integration (tmux -CC), where the sequences go into the pane unwrapped
+#     and placed at its own top left corner. TEST_TMUX names another tmux to
+#     run, such as a build of 3.2a.
+tmux_bin="${TEST_TMUX:-tmux}"
+if ! command -v "$tmux_bin" > /dev/null 2>&1; then
   printf 'SKIP: tmux checks need tmux\n'
   printf 'Terminal display checks passed\n'
   exit 0
 fi
 cat > "$test_root/intmux.py" <<'PYTHON'
-import os, pty, fcntl, termios, struct, subprocess, time, select, re, sys
-launcher, ctl, root, viewer, build = sys.argv[1:6]
-sock = root + '/tmux.sock'
+import os, pty, fcntl, termios, struct, subprocess, time, select, re, sys, base64
+launcher, ctl, root, viewer, build, tmux, how = sys.argv[1:8]
+control = how == 'control'
+sock = root + '/tmux-' + how + '.sock'
 env = dict(os.environ, TERM='xterm-256color', OPENGRADS_COLOR='0',
            OPENGRADS_BUILD_ROOT=build, GA_TERM_VIEWER=viewer)
-env.pop('TMUX', None)
-env.pop('TMUX_PANE', None)
-tm = ['tmux', '-S', sock, '-f', '/dev/null']
-subprocess.run(tm + ['new-session', '-d', '-s', 't', '-x', '160', '-y', '45',
+if os.sep in tmux:
+    env['PATH'] = os.path.dirname(os.path.abspath(tmux)) + os.pathsep + env['PATH']
+for k in ('TMUX', 'TMUX_PANE', 'LC_TERMINAL', 'GA_TERM_TMUX_STEP'):
+    env.pop(k, None)
+if how == 'steps':
+    env.update(GA_TERM_TMUX_STEP='4096', LC_TERMINAL='iTerm2')
+COLS, ROWS = 160, 45
+tm = [tmux, '-S', sock, '-f', '/dev/null']
+subprocess.run(tm + ['new-session', '-d', '-s', 't', '-x', str(COLS), '-y', str(ROWS),
                launcher + ' -l -d Term; sleep 30'], env=env, check=True)
 master, slave = pty.openpty()
-fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 45, 160, 0, 0))
-client = subprocess.Popen(tm + ['attach', '-t', 't'], stdin=slave, stdout=slave,
-                          stderr=slave, env=env, start_new_session=True)
+fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', ROWS, COLS, 0, 0))
+client = subprocess.Popen(tm + (['-CC'] if control else []) + ['attach', '-t', 't'],
+                          stdin=slave, stdout=slave, stderr=slave, env=env,
+                          start_new_session=True)
+if control:
+    os.write(master, b'refresh-client -C %d,%d\n' % (COLS, ROWS))
 out = bytearray()
-def pump(t):
-    end = time.time() + t
-    while time.time() < end:
+def pump(most, idle=1.5):
+    # read at about 1 MB/s until nothing has come for idle seconds
+    end = time.time() + most
+    last = time.time()
+    while time.time() < end and time.time() - last < idle:
         r, _, _ = select.select([master], [], [], 0.05)
-        if r: out.extend(os.read(master, 1 << 20))
+        if r:
+            chunk = os.read(master, 4096)
+            out.extend(chunk)
+            last = time.time()
+            time.sleep(len(chunk) / 1e6)
 def keys(*k):
-    subprocess.run(tm + ['send-keys', '-t', 't:0.0'] + list(k), check=True)
-pump(3)
-panes = subprocess.run(tm + ['list-panes', '-t', 't', '-F', '#{pane_left} #{pane_top}'],
-                       capture_output=True, text=True).stdout.split()
-keys('open ' + ctl, 'Enter'); pump(1)
-keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(6)
-keys('quit', 'Enter'); pump(2)
-after = subprocess.run(tm + ['list-panes', '-t', 't'], capture_output=True, text=True).stdout
+    subprocess.run(tm + ['send-keys', '-t', 't:0.0'] + list(k), check=True, env=env)
+pump(3, 3)
+panes = subprocess.run(tm + ['list-panes', '-t', 't', '-F', '#{pane_id} #{pane_left} #{pane_top}'],
+                       capture_output=True, text=True, env=env).stdout.split()
+keys('open ' + ctl, 'Enter'); pump(2, 1)
+keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(30)
+keys('quit', 'Enter'); pump(3, 1)
+after = subprocess.run(tm + ['list-panes', '-t', 't'], capture_output=True, text=True,
+                       env=env).stdout
 client.terminate()
-subprocess.run(tm + ['kill-server'], capture_output=True)
+subprocess.run(tm + ['kill-server'], capture_output=True, env=env)
 d = bytes(out)
-want = (int(panes[3]) + 1, int(panes[2]) + 1) if len(panes) == 4 else None
-pics = re.findall(rb'\x1b\]1337;File=', d)
-placed = re.findall(rb'\x1b7\x1b\[(\d+);(\d+)H\x1b\]1337;File=', d)
-print('panes', len(panes) // 2)
-print('pictures', len(pics))
-print('placed', sum(1 for r, c in placed if (int(r), int(c)) == want))
+print('panes', len(panes) // 3)
+if len(panes) != 6:
+    sys.exit()
+if control:
+    # the picture pane's own output, as tmux hands it to iTerm2
+    pane = bytearray()
+    for line in d.split(b'\n'):
+        m = re.match(rb'%output (%\d+) (.*)', line.rstrip(b'\r'))
+        if m and m.group(1) == panes[3].encode():
+            pane.extend(re.sub(rb'\\([0-7]{3})', lambda x: bytes([int(x.group(1), 8)]),
+                               m.group(2)))
+    d = bytes(pane)
+    at = rb'\x1b\[H'
+else:
+    at = rb'\x1b7\x1b\[%d;%dH' % (int(panes[5]) + 1, int(panes[4]) + 1)
+pics = whole = placed = 0
+for m in re.finditer(rb'\x1b\]1337;(File=|MultipartFile=)([^:\x07]*)', d):
+    pics += 1
+    size = int(re.search(rb'size=(\d+)', m.group(2)).group(1))
+    if m.group(1) == b'File=':
+        e = re.match(rb'[^:]*:([A-Za-z0-9+/=]*)\x07', d[m.end():])
+        b64 = e.group(1) if e else b''
+        ends = []
+    else:
+        rest = d[m.end():]
+        end = rest.find(b'\x1b]1337;FileEnd\x07')
+        b64 = b''.join(re.findall(rb'\x1b\]1337;FilePart=([A-Za-z0-9+/=]*)\x07', rest[:end]))
+        if end < 0 or re.search(rb'FilePart=[A-Za-z0-9+/=]*[^A-Za-z0-9+/=\x07]', rest[:end]):
+            b64 = b''
+        ends = [m.end() + end]
+    try:
+        png = base64.b64decode(b64, validate=True)
+    except ValueError:
+        png = b''
+    whole += len(png) == size and png.startswith(b'\x89PNG') and b'IEND' in png[-12:]
+    placed += all(re.search(at + rb'$', d[max(0, i - 32):i]) for i in [m.start()] + ends)
+first = d.find(b'\x1b]1337;')
+print('waiting', int(0 <= d.find(b'Waiting for a GrADS picture') < first))
+print('pictures', pics)
+print('whole', whole)
+print('placed', placed)
 print('wrapped', d.count(b'Ptmux;'))
 print('panes-after', len([l for l in after.splitlines() if l.strip()]))
 PYTHON
-result="$(python3 "$test_root/intmux.py" "$launcher" "$model_ctl" "$test_root" \
-  "$viewer" "$build_root" 2>&1)"
-grep -qx 'panes 2' <<< "$result" || fail 'GrADS did not split a pane in tmux' "$result"
-grep -qx 'pictures 6' <<< "$result" ||
-  fail 'a blank page and five frames did not all arrive through tmux' "$result"
-grep -qx 'placed 6' <<< "$result" ||
-  fail 'pictures were not placed at the viewer pane' "$result"
-grep -qx 'wrapped 0' <<< "$result" ||
-  fail 'passthrough wrapping reached the terminal' "$result"
-grep -qx 'panes-after 0' <<< "$result" || grep -qx 'panes-after 1' <<< "$result" ||
-  fail 'the viewer pane outlived GrADS' "$result"
+for how in plain steps control; do
+  result="$(python3 "$test_root/intmux.py" "$launcher" "$model_ctl" "$test_root" \
+    "$viewer" "$build_root" "$tmux_bin" "$how" 2>&1)"
+  grep -qx 'panes 2' <<< "$result" ||
+    fail "GrADS did not split a pane in tmux ($how)" "$result"
+  grep -qx 'waiting 1' <<< "$result" ||
+    fail "the pane did not say it was waiting before the first picture ($how)" "$result"
+  grep -qx 'pictures 5' <<< "$result" ||
+    fail "five frames, and only those, did not arrive through tmux ($how)" "$result"
+  grep -qx 'whole 5' <<< "$result" ||
+    fail "pictures arrived incomplete through tmux ($how)" "$result"
+  grep -qx 'placed 5' <<< "$result" ||
+    fail "pictures were not placed at the viewer pane ($how)" "$result"
+  grep -qx 'wrapped 0' <<< "$result" ||
+    fail "passthrough wrapping reached the terminal ($how)" "$result"
+  grep -qx 'panes-after 0' <<< "$result" || grep -qx 'panes-after 1' <<< "$result" ||
+    fail "the viewer pane outlived GrADS ($how)" "$result"
+done
 
 printf 'Terminal display checks passed\n'
