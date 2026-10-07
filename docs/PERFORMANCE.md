@@ -34,13 +34,14 @@ bandwidth often limits grid arithmetic before all cores are useful.
 ## How long it will take
 
 A calculation that runs for more than a second shows a progress line on the
-terminal while it works: what is running, how far along it is, how long it
-has taken, and about how long is left.
+terminal while it works: what is running, how far along it is, the
+calculation threads at work (`set threads`), how long it has taken, and about
+how long is left.
 
 ```text
 ga-> d ave(t,t=1,t=2920)
 Averaging.  dim = 3, start = 1, end = 2920
-ave [██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░]  35%  1022/2920  0:41, about 1:16 left
+ave [██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░]  35%  1022/2920  4 threads  0:41, about 1:16 left
 ```
 
 It follows `ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc`,

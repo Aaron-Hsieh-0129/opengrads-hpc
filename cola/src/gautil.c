@@ -2411,7 +2411,8 @@ off_t ftello(FILE *stream) {
 /* Progress of a long calculation (ave, sum, tloop, define and the like),
    shown on the terminal so it is plain how much is left. A loop says how
    many steps it takes (gaprogbeg), how many it has done (gaprogstep), and
-   when it is through (gaprogend). Loops inside loops narrow it down: a
+   when it is through (gaprogend). The line also gives the number of
+   calculation threads (set threads). Loops inside loops narrow it down: a
    define over 12 times of an ave over 1000 is 1/12000 of the way per step
    of the ave. Nothing shows for the first second, or when standard output
    is not a terminal, and the line is taken away before anything else is
@@ -2421,6 +2422,7 @@ off_t ftello(FILE *stream) {
 
 #include <time.h>
 #include <sys/ioctl.h>
+#include "gaomp.h"
 
 #define PROG_LEVELS 8
 
@@ -2497,7 +2499,7 @@ void gaprogpause (void) {
 
 static void progdraw (void) {
 struct winsize ws;
-char line[512],bar[400],el[32],left[32],label[64],count[48];
+char line[256],bar[512],el[32],left[32],label[64],count[80];
 gadouble f,t,elapsed;
 gaint i,cols,width,fill,pct,used;
 
@@ -2526,7 +2528,9 @@ gaint i,cols,width,fill,pct,used;
     if (i) strncat(label," > ",sizeof(label)-strlen(label)-1);
     strncat(label,prog[i].what,sizeof(label)-strlen(label)-1);
   }
-  snprintf(count,sizeof(count),"%d/%d",prog[0].done,prog[0].total);
+  i = ga_omp_get_threads();                /* the calculation threads at work */
+  snprintf(count,sizeof(count),"%d/%d  %d thread%s",prog[0].done,prog[0].total,
+           i,i==1 ? "" : "s");
   progtime(el,sizeof(el),elapsed);
   if (f>0.0 && elapsed>=1.0) {
     progtime(left,sizeof(left),elapsed*(1.0-f)/f);

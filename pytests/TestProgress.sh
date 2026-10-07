@@ -101,10 +101,13 @@ onterm()
 
 # 2. On a terminal: the line names the calculation and how far it is, and
 #    is taken away before the next output, the prompt included.
-result="$(onterm 'GA_PROGRESS=0.000001 LANG=C' "open $model_ctl" 'set t 1' \
+result="$(onterm 'GA_PROGRESS=0.000001 LANG=C' "open $model_ctl" 'set t 1' 'set threads 3' \
   'd ave(ts,t=1,t=5)' 'set lon 0' 'set lat 0' 'set t 1 5' 'd tloop(ts+1)')"
-grep -Eq '^frame ave \[[#.]+\] +[0-9]+%  [0-9]/5  ' <<< "$result" ||
-  fail 'ave showed no progress line' "$result"
+# 3 with OpenMP; a build without it says 1
+threads="$(sed -n 's/^text Calculation threads set to \([0-9]*\).*/\1/p' <<< "$result")"
+[[ "$threads" == 1 ]] && word=thread || word=threads
+grep -Eq "^frame ave \[[#.]+\] +[0-9]+%  [0-9]/5  ${threads:-x} $word  " <<< "$result" ||
+  fail "ave showed no progress line, or not its ${threads:-?} $word" "$result"
 grep -Eq '^frame tloop \[[#.]+\] +[0-9]+%  [0-9]/5  ' <<< "$result" ||
   fail 'tloop showed no progress line' "$result"
 awk '/^frame /{shown=1} /^erase$/{shown=0} /^text .*ga->/{if (shown) bad=1}
@@ -141,4 +144,4 @@ grep -Eq '^iterm 1 [0-9]+$' <<< "$result" || fail 'iTerm2 was not told the progr
 [[ "$(grep '^iterm ' <<< "$result" | tail -n 1)" == 'iterm 0 ' ]] ||
   fail "iTerm2's progress bar was left up" "$result"
 
-printf 'Progress checks passed: ave, tloop, define of an ave, delay, off, iTerm2, no terminal\n'
+printf 'Progress checks passed: ave with its threads, tloop, define of an ave, delay, off, iTerm2, no terminal\n'

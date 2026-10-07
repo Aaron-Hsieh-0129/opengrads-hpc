@@ -33,8 +33,9 @@ calculations, and native archives for Linux and macOS.
   own.
 - **How long a calculation will take.** A calculation that runs for more
   than a second shows a progress line on the terminal: what runs, how far
-  along it is, the time taken and about how long is left, as in
-  `ave [██████░░░░]  35%  1022/2920  0:41, about 1:16 left`. It follows
+  along it is, the calculation threads at work, the time taken and about
+  how long is left, as in
+  `ave [██████░░░░]  35%  1022/2920  4 threads  0:41, about 1:16 left`. It follows
   `ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc`, `tloop`,
   `eloop`, `gint`, and `define`; one inside another counts as part of its
   step (`define > ave`). The line goes away before any other output and when
