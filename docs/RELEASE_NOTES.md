@@ -15,10 +15,16 @@ calculations, and native archives for Linux and macOS.
   `DISPLAY` and the terminal is iTerm2 or WezTerm, which it learns from
   `LC_TERMINAL` (ssh forwards it); `OPENGRADS_TERM=1` or `0` overrides the
   choice. Both ordinary tmux and iTerm2's tmux integration (`tmux -CC`)
-  work, tmux before 3.3 included. `GA_TERM_LOG=file` records which kind of
-  tmux GrADS found and how each picture was sent, for tracking down a
-  picture that does not appear. Linux and macOS archives. See
-  [TERMINAL.md](TERMINAL.md).
+  work, tmux before 3.3 (3.2a, as on RHEL 9 and many clusters) included:
+  there, since such a tmux throws away output a slow terminal cannot take,
+  each picture goes in small parts. tmux may also skip a picture without a
+  word while it waits to redraw; GrADS sets `allow-passthrough all` on its
+  pane where tmux has it (3.4 and later), checks with any tmux that each
+  picture was passed on, and sends it again if not. A picture drawn while
+  its pane is in another tmux window waits until the pane is shown.
+  `GA_TERM_LOG=file` records which kind of tmux GrADS found and how each
+  picture was sent, for tracking down a picture that does not appear.
+  Linux and macOS archives. See [TERMINAL.md](TERMINAL.md).
 - **Animations play frame by frame in the terminal.** `set looping on`, or a
   `set dbuff on` loop, shows every frame in order as it is drawn, as an X
   window does. On a slow link the drawing waits for it rather than piling
@@ -64,14 +70,6 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed in 1.0.10
 
-- **tmux no longer skips pictures on a slow link.** tmux passes nothing on,
-  and says nothing, from a pane whose redraw waits for the terminal to
-  catch up, so on a slow link, and with the tmux 3.7 on a Mac, pictures
-  could go missing. GrADS now sets `allow-passthrough all` on its pane
-  where tmux has it (3.4 and later), checks with every tmux that each
-  picture was passed on (tmux's `client_written`), and sends it again if
-  not. A picture drawn while its pane is in another tmux window, or behind
-  a zoomed pane, now waits and appears when the pane is shown again.
 - **Plug-in names now match whatever the case.** `-d x11` found no `X11`
   display, and `-h cairo` no `Cairo` printer; display and print plug-in
   names are now compared without regard to case. The error for a display
@@ -115,37 +113,6 @@ calculations, and native archives for Linux and macOS.
   2.2.3, so results from those versions with `-b` over time differ from these.
   This fix was listed under 1.0.9, but it came after that release was
   built; the 1.0.9 archives still have the old weights.
-- **1.0.9-term: pictures went to the wrong place inside tmux.** The preview
-  of the terminal display wrote its pictures where the terminal's cursor
-  happened to be, since tmux does not move it to the pane for such output:
-  usually the bottom row of the picture pane, which scrolls the whole
-  screen, or the GrADS prompt. Each picture now moves the cursor to its pane
-  itself. 1.0.10 also replaces the preview's end-of-command GIF with frames
-  shown as they are drawn.
-- **1.0.9-term: no picture with tmux before 3.3.** With tmux 3.2a, the
-  version on RHEL 9 and many clusters, the picture pane stayed empty while
-  iTerm2's progress bar came and went, and the screen could come out
-  garbled. tmux before 3.3 throws away everything it holds for a terminal
-  once that is more than 8 bytes per cell of it, image data included, and
-  redraws; a picture of a few hundred KB handed over at once always
-  exceeded that, and a sequence cut off part-way could swallow tmux's
-  redraw. GrADS now asks tmux which kind it is, and for an older one sends
-  each picture in parts of a quarter of that, waiting for tmux to pass each
-  on. On a slow link tmux can still drop a part; it reports that, and GrADS
-  then ends the cut-off sequence, has tmux redraw the screen, and sends the
-  picture again in smaller parts, which later pictures keep. A note at the
-  prompt says when this happened. tmux 3.3 and later never drop such output.
-- **1.0.9-term: no picture under `tmux -CC`.** In iTerm2's tmux integration,
-  iTerm2 draws each pane itself from the pane's output, so the picture
-  sequences, wrapped and positioned for plain tmux, never showed. Under
-  `-CC` GrADS now puts the picture into its pane unwrapped, starting at the
-  pane's own top-left corner, in parts as iTerm2 takes them there.
-- **1.0.9-term: the waiting note could stay over the picture pane.**
-  "Waiting for a GrADS picture..." was printed by the program that keeps
-  the pane open, which could start after GrADS had already cleared the pane
-  for its first picture, a blank page sent at start-up. GrADS now writes the
-  note itself, before anything else, and sends no blank page until there is
-  a picture to replace.
 
 ### Added in 1.0.9
 
@@ -446,7 +413,7 @@ WezTerm otherwise, and runs headless elsewhere, so no extra flags are needed.
   glibc when it is 2.28 or newer and their bundled glibc and loader otherwise.
 - Reading BP5 written by a multi-rank MPI job is supported by ADIOS2's format
   but is not yet covered by the regression suite.
-- The terminal display is tested through tmux 3.2a and 3.4, plain and
+- The terminal display is tested through tmux 3.2a, 3.4, and 3.7c, plain and
   `-CC`, with a terminal emulator standing in for iTerm2, not yet on iTerm2
   itself. If no picture appears, `GA_TERM_LOG=/tmp/grads-term.log` records
   what happened; `GA_TERM_PROGRESS=off` sends each picture in the oldest form
