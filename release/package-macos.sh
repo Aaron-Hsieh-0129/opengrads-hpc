@@ -25,14 +25,18 @@ plugin_root="$bundle_root/plugins"
 
 rm -rf -- "$bundle_root"
 mkdir -p "$bundle_root/bin" "$lib_root" "$plugin_root" "$bundle_root/etc" \
-  "$bundle_root/cola/data" "$bundle_root/lib/scripts" "$bundle_root/docs"
+  "$bundle_root/cola/data" "$bundle_root/lib/scripts" "$bundle_root/docs" \
+  "$bundle_root/libexec"
 
 install -m 0755 "$build_root/src/grads" "$bundle_root/bin/grads"
+# The terminal display starts this in the tmux pane it draws into.
+install -m 0755 "$repo_root/libexec/grads-termview" "$bundle_root/libexec/grads-termview"
 
 # The X displays (Cairo, the default, and X11) open a window through
 # XQuartz. They are plug-ins, loaded only when asked for, so the archive does
 # not depend on XQuartz: without it, it runs headless, and Cairo still
-# provides the full hardcopy path (printim, print).
+# provides the full hardcopy path (printim, print). The terminal display
+# (Term) needs no X server: it shows the picture in iTerm2 or WezTerm.
 plugin_sources=()
 plugin_stems=()
 
@@ -55,12 +59,14 @@ install_plugin libgxdummy
 install_plugin libgxpCairo
 install_plugin libgxdCairo
 install_plugin libgxdX11
+install_plugin libgxdTerm
 
 cat > "$bundle_root/etc/udpt" <<'UDPT'
 # opengrads-hpc macOS release plug-in table.
 # GA_ROOT is set by the bundled launcher.
 gxdisplay  Cairo    $GA_ROOT/libgxdCairo.dylib
 gxdisplay  X11      $GA_ROOT/libgxdX11.dylib
+gxdisplay  Term     $GA_ROOT/libgxdTerm.dylib
 gxdisplay  gxdummy  $GA_ROOT/libgxdummy.dylib
 *
 gxprint    Cairo    $GA_ROOT/libgxpCairo.dylib
@@ -268,6 +274,36 @@ for display in Cairo X11; do
     exit 1
   fi
 done
+
+# The terminal display draws without an X server: it writes the picture to a
+# directory, or prints it as an iTerm2 image sequence. With OPENGRADS_TERM=1,
+# as inside iTerm2 or WezTerm with no X server, the launcher picks it.
+for how in file inline picked; do
+  case "$how" in
+    file) term_args=(-l -d Term -g 400x300); term_env=(GA_TERM_MODE=file) ;;
+    inline) term_args=(-l -d Term -g 400x300); term_env=(GA_TERM_MODE=inline) ;;
+    picked) term_args=(); term_env=(GA_TERM_MODE=file OPENGRADS_TERM=1) ;;
+  esac
+  smoke_output="$(env -i HOME="$smoke_root" PATH=/usr/bin:/bin TMPDIR="$smoke_root" \
+    OPENGRADS_COLOR=0 GA_TERM_DIR="$smoke_root/term-$how" GA_TERM_SYNC=1 "${term_env[@]}" \
+    "$bundle_root/opengrads" ${term_args[@]+"${term_args[@]}"} 2>&1 <<GRADS || true
+draw recf 1 1 6 5
+q pos
+quit
+GRADS
+)"
+  if [[ "$how" == inline ]]; then
+    grep -aFq $'\033]1337;File=inline=1;size=' <<< "$smoke_output" &&
+      grep -aFq ':iVBORw0KGgo' <<< "$smoke_output" && continue
+  elif [[ -s "$smoke_root/term-$how/plot.png" &&
+          "$(head -c 4 "$smoke_root/term-$how/plot.png" | od -An -c | tr -d ' ')" == '211PNG' ]]; then
+    continue
+  fi
+  printf 'The Term display did not draw from the macOS bundle (%s).\n' "$how" >&2
+  printf '%s\n' "$smoke_output" | head -c 4000 >&2
+  exit 1
+done
+printf 'The Term display drew from the macOS bundle.\n'
 
 # Where XQuartz is installed, draw in a window on its virtual X server and
 # print from that session.

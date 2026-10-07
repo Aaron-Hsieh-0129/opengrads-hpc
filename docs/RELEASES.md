@@ -70,14 +70,17 @@ platform can carry:
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
 | Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
-| macOS | `Cairo`, `X11` (with XQuartz), `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `Cairo`, `X11` (with XQuartz), `Term`, `gxdummy` | `Cairo`, `gxdummy` |
 
 On macOS the X displays draw in a window through XQuartz. They are loaded
 only when asked for, with X libraries bundled in the archive, so the archive
 needs XQuartz only for a window: without it, it runs headless and keeps the
 full Cairo hardcopy path, so `printim` and `print` produce PNG, PS, PDF, and
-SVG output. The macOS launcher opens a window when `DISPLAY` is set, which
-XQuartz does for the login session, and runs headless otherwise. Both
+SVG output. The terminal display, `Term`, needs no X server: it draws in
+iTerm2 or WezTerm, as on Linux, and its tmux pane viewer is bundled as
+`libexec/grads-termview`. The macOS launcher opens a window when `DISPLAY`
+is set, which XQuartz does for the login session, draws in the terminal in
+iTerm2 or WezTerm otherwise, and runs headless elsewhere. Both
 launchers pass the drivers their archive actually carries, so `./opengrads`
 and `opengrads.cmd` work without extra flags; anything the caller passes
 still wins.
@@ -153,6 +156,7 @@ The macOS builder uses Homebrew dependencies and must run on a Mac:
 ```bash
 brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
   libomp libtool libx11 libxext libxmu netcdf pkgconf readline udunits
+brew install tmux                # optional: runs the terminal display's tmux checks
 brew install --cask xquartz      # optional: lets the packager draw with the X displays
 ./release/build-release-macos.sh
 ```
@@ -165,7 +169,8 @@ platform uses UDUNITS-2 — `libudunits2-dev` on Linux, the `udunits` formula on
 macOS. An earlier attempt to build UDUNITS 1.12.11 from source was dropped: it
 fails against modern bison on Linux and on the Fortran probe on macOS, and it
 was never necessary. The builders run the BP5, SDF, OpenMP, and undo
-regressions before packaging their archive.
+regressions before packaging their archive, and the terminal display's
+checks where it is built (Linux and macOS).
 
 The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
 re-signs the result, because editing a Mach-O header invalidates the ad-hoc
@@ -173,7 +178,9 @@ signature that arm64 macOS requires. Its smoke test runs the archive under
 `env -i` and asserts that Cairo wrote a real PNG, which proves the bundle does
 not reach back into the Homebrew prefix it was built from. It also starts
 both X displays with no X server, which they must reach before failing, and,
-where XQuartz is installed, draws with them on its `Xvfb`.
+where XQuartz is installed, draws with them on its `Xvfb`. The terminal
+display draws a picture to a file and as an inline image, and is checked to
+be the launcher's choice with `OPENGRADS_TERM=1`.
 
 ## GitHub Actions and publication gate
 

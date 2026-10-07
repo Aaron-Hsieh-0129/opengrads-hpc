@@ -95,7 +95,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <poll.h>
+#include <sys/select.h>
 #include <time.h>
 #include <spawn.h>
 #include <pthread.h>
@@ -111,7 +111,12 @@
 #include "gx.h"
 #include "gxC.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>                    /* a dylib cannot reach environ itself */
+#define environ (*_NSGetEnviron())
+#else
 extern char **environ;
+#endif
 
 #define TERM_DEFAULT_SIZE 1000       /* points along the longer page side */
 #define SEQ_LIMIT 1000000            /* iTerm2 and tmux drop control sequences
@@ -904,23 +909,27 @@ double t0;
    the room has to last a while (quiet) to count. */
 
 static void pace (struct wout *w, double quiet) {
-struct pollfd p;
+fd_set wr;
+struct timeval tv;
 double t0,clear=-1.0,t;
+gaint r;
 
   w->since = 0;
-  if (w->pacefd<0) return;
+  if (w->pacefd<0 || w->pacefd>=FD_SETSIZE) return;
   t0 = now();
   while (!stopping) {
-    p.fd = w->pacefd;
-    p.events = POLLOUT;
-    p.revents = 0;
-    if (poll(&p,1,0)<0) {
+    /* select, not poll: macOS poll does not take terminals */
+    FD_ZERO(&wr);
+    FD_SET(w->pacefd,&wr);
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    r = select(w->pacefd+1,NULL,&wr,NULL,&tv);
+    if (r<0) {
       if (errno==EINTR) continue;
       break;
     }
-    if (p.revents & (POLLERR|POLLHUP|POLLNVAL)) break;
     t = now();
-    if (p.revents & POLLOUT) {
+    if (r>0 && FD_ISSET(w->pacefd,&wr)) {
       if (clear<0) clear = t;
       if (t-clear >= quiet) break;
     } else clear = -1.0;

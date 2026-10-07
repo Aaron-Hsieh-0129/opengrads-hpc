@@ -19,7 +19,11 @@ launcher="${OPENGRADS_LAUNCHER:-$repo_root/opengrads}"
 viewer="$repo_root/libexec/grads-termview"
 model_ctl="$repo_root/pytests/data/model.ctl"
 
-if [[ ! -r "$build_root/src/.libs/libgxdTerm.so" ]]; then
+case "${OPENGRADS_RELEASE_PLATFORM:-$(uname -s)}" in
+  Darwin*) plugin_ext=dylib ;;
+  *) plugin_ext=so ;;
+esac
+if [[ ! -r "$build_root/src/.libs/libgxdTerm.$plugin_ext" ]]; then
   printf 'SKIP: terminal display plug-in was not built (needs Cairo)\n'
   exit 0
 fi
@@ -29,7 +33,8 @@ background_pids=()
 cleanup()
 {
   local pid
-  for pid in "${background_pids[@]}"; do
+  # bash 3.2, on macOS, takes an empty array for an unset one under set -u
+  for pid in ${background_pids[@]+"${background_pids[@]}"}; do
     kill "$pid" 2>/dev/null || true
   done
   rm -rf -- "$test_root"

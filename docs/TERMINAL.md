@@ -43,6 +43,18 @@ OPENGRADS_TERM=1 ./opengrads     # or: ./opengrads -l -d Term
 available (`ssh -X`), the launcher keeps using the X window unless
 `OPENGRADS_TERM=1` is set.
 
+## On a Mac
+
+The macOS archive carries the terminal display too, so in iTerm2 or WezTerm
+on the Mac itself `./opengrads` draws in the terminal, inside tmux as well,
+without XQuartz. XQuartz sets `DISPLAY` for the whole login session, so
+once it is installed the launcher opens an X window instead; ask for the
+terminal by name to keep the pictures in iTerm2:
+
+```bash
+./opengrads -l -d Term           # or: OPENGRADS_TERM=1 ./opengrads
+```
+
 ## tmux setup
 
 Both ordinary tmux and iTerm2's tmux integration (`tmux -CC`, where tmux

@@ -59,8 +59,10 @@ cd "$build_root"
   --with-adios2="$(brew --prefix adios2)"
 # The X displays need Homebrew's X libraries (Cairo already depends on them)
 # and, for the X11 display, the Xmu headers. They are loaded only when asked
-# for, so the archive still runs without XQuartz.
-make -C src --jobs "$jobs" grads libgxdummy.la libgxpCairo.la libgxdCairo.la libgxdX11.la
+# for, so the archive still runs without XQuartz. The terminal display
+# (Term) draws with Cairo alone and shows the picture in iTerm2 or WezTerm.
+make -C src --jobs "$jobs" grads libgxdummy.la libgxpCairo.la libgxdCairo.la libgxdX11.la \
+  libgxdTerm.la
 
 runtime_libraries="$(brew --prefix adios2)/lib:$(brew --prefix gcc)/lib/gcc/current:$(brew --prefix libomp)/lib:$(brew --prefix netcdf)/lib"
 export OPENGRADS_BUILD_ROOT="$build_root"
@@ -72,5 +74,7 @@ export OPENGRADS_RUNTIME_LIBRARY_PATH="$runtime_libraries"
 "$repo_root/pytests/TestSDFOpen.sh"
 "$repo_root/pytests/TestOpenMP.sh"
 "$repo_root/pytests/TestUndo.sh"
+# Its tmux checks run when tmux is installed (the release workflow installs it).
+"$repo_root/pytests/TestTermDisplay.sh"
 
 "$repo_root/release/package-macos.sh" "$build_root" "$output_root"

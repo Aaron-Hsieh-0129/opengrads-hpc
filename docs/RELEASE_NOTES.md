@@ -17,7 +17,7 @@ calculations, and native archives for Linux and macOS.
   choice. Both ordinary tmux and iTerm2's tmux integration (`tmux -CC`)
   work, tmux before 3.3 included. `GA_TERM_LOG=file` records which kind of
   tmux GrADS found and how each picture was sent, for tracking down a
-  picture that does not appear. Linux archives only. See
+  picture that does not appear. Linux and macOS archives. See
   [TERMINAL.md](TERMINAL.md).
 - **Animations play frame by frame in the terminal.** `set looping on`, or a
   `set dbuff on` loop, shows every frame in order as it is drawn, as an X
@@ -38,6 +38,13 @@ calculations, and native archives for Linux and macOS.
   nothing. Before, `-d X11` stopped at start-up with `Could not find a
   record for the display plug-in`. The packager checks that both load from
   the archive, and draws with them on XQuartz's virtual X server.
+- **macOS: plots in the terminal.** The macOS archive also carries the
+  terminal display, `-d Term`, so in iTerm2 or WezTerm on a Mac pictures
+  appear in the terminal, inside tmux too, without XQuartz. The launcher
+  picks it when there is no `DISPLAY` and the terminal is iTerm2 or WezTerm;
+  with XQuartz installed the X window wins, and `-d Term` or
+  `OPENGRADS_TERM=1` asks for the terminal instead. The terminal display's
+  tests, tmux included, now run on macOS too.
 
 ### Changed in 1.0.10
 
@@ -388,7 +395,7 @@ built with `ADIOS2_USE_MPI=OFF`.
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
 - **Plots in the terminal** over plain ssh, from iTerm2 or WezTerm, in a
-  tmux pane beside the prompt; no X server needed (Linux).
+  tmux pane beside the prompt; no X server needed (Linux and macOS).
 - **Three native archives**, each self-contained: Linux x86_64 and aarch64,
   and macOS arm64. No dependency installation and no library paths to set.
 
@@ -400,11 +407,12 @@ which constrains what each platform can carry:
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
 | Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
-| macOS | `Cairo`, `X11` (with XQuartz), `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `Cairo`, `X11` (with XQuartz), `Term`, `gxdummy` | `Cairo`, `gxdummy` |
 
-On macOS the `Cairo` and `X11` displays draw in a window through XQuartz.
-Without XQuartz the archive runs headless but keeps the full Cairo hardcopy
-path, so `printim` and `print` produce PNG, PS, PDF, and SVG.
+On macOS the `Cairo` and `X11` displays draw in a window through XQuartz,
+and `Term` draws in iTerm2 or WezTerm. Without either the archive runs
+headless but keeps the full Cairo hardcopy path, so `printim` and `print`
+produce PNG, PS, PDF, and SVG.
 
 A native Windows build is not published yet; see `docs/RELEASES.md` for its
 status.
@@ -419,8 +427,9 @@ cd opengrads-hpc-1.0.10-linux-x86_64
 ```
 
 On macOS start `./opengrads`. The launcher opens a GrADS window when
-XQuartz is installed (it sets `DISPLAY`) and runs headless otherwise, so no
-extra flags are needed.
+XQuartz is installed (it sets `DISPLAY`), draws in the terminal in iTerm2 or
+WezTerm otherwise, and runs headless elsewhere, so no extra flags are needed.
+`./opengrads -l -d Term` draws in the terminal even with XQuartz.
 
 ### Known limitations
 

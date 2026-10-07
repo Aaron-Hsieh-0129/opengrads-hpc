@@ -62,8 +62,8 @@ libraries are available.
   appears in a tmux pane beside the `ga->` prompt and updates after each
   command, with no X server or `ssh -X`. Animations play frame by frame as
   they are drawn, as in an X window, and slow transfers show iTerm2's
-  progress bar. The launcher picks it automatically. See
-  [terminal display](docs/TERMINAL.md).
+  progress bar. The launcher picks it automatically, on Linux and on a Mac.
+  See [terminal display](docs/TERMINAL.md).
 
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
