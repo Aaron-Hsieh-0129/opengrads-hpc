@@ -8,7 +8,8 @@
 # independent decoder when python3 is available), the inline image sequence,
 # cleanup, the viewer's FIFO wake-up, tmux wrapping and multipart transfer,
 # and, inside a real tmux (plain, in small steps, and -CC), that every
-# picture arrives whole at its pane. Skipped when the build has no Cairo,
+# picture arrives whole at its pane, and that a picture for a pane in
+# another tmux window waits for it. Skipped when the build has no Cairo,
 # which the display needs.
 
 set -euo pipefail
@@ -669,7 +670,8 @@ print('whole', whole)
 print('placed', placed)
 print('wrapped', d.count(b'Ptmux;'))
 print('panes-after', len([l for l in after.splitlines() if l.strip()]))
-print('tmux', version, 'discarded', discarded, 'arrived', ' '.join(arrived))
+print('tmux', version, 'discarded', discarded, 'bytes', len(d), 'images', d.count(b'1337;File='),
+      d.count(b'1337;MultipartFile='), 'arrived', ' '.join(arrived))
 PYTHON
 for how in plain steps control; do
   result="$(python3 "$test_root/intmux.py" "$launcher" "$model_ctl" "$test_root" \
@@ -692,5 +694,60 @@ for how in plain steps control; do
     fail "the viewer pane outlived GrADS ($how)" "$result"
   printf '  in tmux (%s): %s\n' "$how" "$(grep '^tmux ' <<< "$result")"
 done
+
+# 11. A picture drawn while its pane is in another tmux window waits, and
+#     appears when the window is shown again.
+cat > "$test_root/hidden.py" <<'PYTHON'
+import os, pty, fcntl, termios, struct, subprocess, time, select, sys
+launcher, ctl, root, viewer, build, tmux = sys.argv[1:7]
+sock = root + '/tmux-hidden.sock'
+env = dict(os.environ, TERM='xterm-256color', OPENGRADS_COLOR='0', OPENGRADS_BUILD_ROOT=build,
+           GA_TERM_VIEWER=viewer, GA_TERM_LOG=root + '/term-hidden.log')
+if os.sep in tmux:
+    env['PATH'] = os.path.dirname(os.path.abspath(tmux)) + os.pathsep + env['PATH']
+for k in ('TMUX', 'TMUX_PANE', 'LC_TERMINAL', 'GA_TERM_TMUX_STEP'):
+    env.pop(k, None)
+tm = [tmux, '-S', sock, '-f', '/dev/null']
+subprocess.run(tm + ['new-session', '-d', '-s', 'h', '-x', '160', '-y', '45',
+               launcher + ' -l -d Term; sleep 30'], env=env, check=True)
+master, slave = pty.openpty()
+fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 45, 160, 0, 0))
+client = subprocess.Popen(tm + ['attach', '-t', 'h'], stdin=slave, stdout=slave, stderr=slave,
+                          env=env, start_new_session=True)
+out = bytearray()
+def pump(t):
+    end = time.time() + t
+    while time.time() < end:
+        r, _, _ = select.select([master], [], [], 0.05)
+        if r:
+            out.extend(os.read(master, 65536))
+def pics():
+    return out.count(b'1337;File=') + out.count(b'1337;MultipartFile=')
+def keys(*k):
+    subprocess.run(tm + ['send-keys', '-t', 'h:0.0'] + list(k), env=env, check=True)
+pump(3)
+keys('open ' + ctl, 'Enter'); pump(1)
+keys('d ts', 'Enter'); pump(3)
+print('shown', pics())
+subprocess.run(tm + ['new-window', '-t', 'h', 'sleep 60'], env=env, check=True); pump(1)
+n = pics()
+keys('c', 'Enter'); pump(0.5)
+keys('d ps', 'Enter'); pump(3)
+print('hidden', pics() - n)
+subprocess.run(tm + ['select-window', '-t', 'h:0'], env=env, check=True); pump(3)
+print('back', pics() - n)
+keys('quit', 'Enter'); pump(1)
+client.terminate()
+subprocess.run(tm + ['kill-server'], capture_output=True, env=env)
+PYTHON
+result="$(python3 "$test_root/hidden.py" "$launcher" "$model_ctl" "$test_root" \
+  "$viewer" "$build_root" "$tmux_bin" 2>&1)"
+result="$result"$'\n'"$(cat "$test_root/term-hidden.log" 2>/dev/null || true)"
+grep -qx 'shown 1' <<< "$result" ||
+  fail 'the first picture did not arrive (hidden pane check)' "$result"
+grep -qx 'hidden 0' <<< "$result" ||
+  fail 'a picture was drawn while its pane was in another window' "$result"
+grep -qx 'back 1' <<< "$result" ||
+  fail 'the held picture did not appear when its window came back' "$result"
 
 printf 'Terminal display checks passed\n'

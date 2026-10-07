@@ -33,6 +33,12 @@
    can sit on what it holds while the terminal has room, until more comes
    in. Should tmux report a loss (client_discarded), the cut-off sequence is
    ended, tmux redraws, and the picture is sent again in smaller parts.
+   tmux also skips a passthrough sequence, without a word, while a redraw
+   waits for the terminal to catch up, so GrADS asks for allow-passthrough
+   all (tmux 3.4), which passes it on regardless, and holds a picture back
+   while its pane is not on screen, sending it when the pane is back. tmux
+   counts what it queues for the terminal (client_written): a picture that
+   did not add to it is sent again.
    With iTerm2's tmux integration (tmux -CC), tmux hands the pane's output
    to iTerm2 as it is, and iTerm2 draws the pane itself, so the image
    sequence goes into the pane unwrapped, after moving to the pane's own
@@ -166,6 +172,7 @@ static char pane[64];                       /* tmux pane id of the viewer */
 static gaint panefd=-1;                     /* the viewer pane's terminal */
 static gaint tmuxkeeps=-1;                  /* tmux never drops passthrough (3.3+):
                                                1 yes, 0 no, -1 not asked yet */
+static gaint tmuxall=0;                     /* the pane has allow-passthrough all (3.4+) */
 static gaint stepopt=-1;                    /* GA_TERM_TMUX_STEP, or -1 */
 
 /* How a picture reaches the terminal */
@@ -334,13 +341,16 @@ struct paneinfo {
   gaint cw,ch;                              /* and its size; 0 when not known */
   gaint control;                            /* the client is iTerm2's tmux -CC */
   unsigned long lost;                       /* bytes tmux dropped for the client */
+  unsigned long written;                    /* bytes tmux queued for the client */
+  gaint haswritten;                         /* and tmux said so */
+  gaint hidden;                             /* the pane is not on the client's screen */
 };
 
 /* Ask tmux about a pane and the client showing it. Fields that an older
    tmux does not know come back empty and read as 0. */
 
 static gaint tmuxinfo (const char *target, struct paneinfo *pi) {
-char out[700],*f[12],*p,*argv[8];
+char out[700],*f[16],*p,*argv[8];
 gaint i,n,status;
 
   memset(pi,0,sizeof(*pi));
@@ -349,17 +359,18 @@ gaint i,n,status;
   if (target && *target) { argv[i++] = "-t"; argv[i++] = (char *)target; }
   argv[i++] = "#{pane_left}|#{pane_top}|#{pane_width}|#{pane_height}|"
               "#{client_tty}|#{status-position}|#{status}|#{client_width}|"
-              "#{client_height}|#{client_control_mode}|#{client_discarded}";
+              "#{client_height}|#{client_control_mode}|#{client_discarded}|"
+              "#{client_written}|#{window_active}|#{window_zoomed_flag}|#{pane_active}";
   argv[i] = NULL;
   if (runcmd(argv,out,sizeof(out))) return (1);
-  for (n=0, p=out; n<11; ) {                 /* fields may be empty */
+  for (n=0, p=out; n<15; ) {                 /* fields may be empty */
     f[n++] = p;
     p = strchr(p,'|');
     if (p==NULL) break;
     *p++ = '\0';
   }
   if (n<7) return (1);
-  for (i=n; i<11; i++) f[i] = "";
+  for (i=n; i<15; i++) f[i] = "";
   pi->col = atoi(f[0]);
   pi->row = atoi(f[1]);
   pi->cols = atoi(f[2]);
@@ -369,6 +380,10 @@ gaint i,n,status;
   pi->ch = atoi(f[8]);
   pi->control = atoi(f[9])==1;
   pi->lost = strtoul(f[10],NULL,10);
+  pi->haswritten = f[11][0]!='\0';
+  pi->written = strtoul(f[11],NULL,10);
+  /* another window, or another pane zoomed over this one */
+  pi->hidden = (f[12][0] && atoi(f[12])==0) || (atoi(f[13])==1 && atoi(f[14])==0);
   if (!strcmp(f[5],"top")) {                 /* the status line comes first */
     if (!strcmp(f[6],"on")) status = 1;
     else if (!strcmp(f[6],"off")) status = 0;
@@ -434,12 +449,18 @@ gaint i,rc;
 
   /* tmux 3.3 and later drop passthrough sequences unless the pane allows
      them. Older tmux has no such option, and drops output, passthrough
-     included, that the terminal cannot take fast enough. */
+     included, that the terminal cannot take fast enough. With "on", tmux
+     also skips passthrough, without a word, whenever a redraw is waiting
+     for the terminal to catch up, which on a slow link is often; "all"
+     (tmux 3.4) passes it on regardless, and on screens that do not show
+     the pane, so pictures are held back while the pane is hidden. */
   i = 0;
   argv[i++] = "tmux"; argv[i++] = "set-option"; argv[i++] = "-p";
   argv[i++] = "-t"; argv[i++] = pane; argv[i++] = "allow-passthrough";
-  argv[i++] = "on"; argv[i] = NULL;
-  tmuxkeeps = runcmd(argv,NULL,0)==0;
+  argv[i++] = "all"; argv[i] = NULL;
+  tmuxall = runcmd(argv,NULL,0)==0;
+  argv[6] = "on";
+  tmuxkeeps = tmuxall || runcmd(argv,NULL,0)==0;
   return (0);
 }
 
@@ -1184,15 +1205,42 @@ char *argv[6];
   usleep(100000);
 }
 
-/* Draw the latest picture into the viewer pane; worker only. tmux before
-   3.3 can hold more than it lets the terminal's free room show, so a
-   picture may be dropped all the same; tmux says so in client_discarded.
-   Then send it again, in smaller steps from now on, once tmux is done
-   dropping (it looks every 100 ms) and the screen is mended. */
+/* Did tmux pass the picture on? tmux counts what it queues for the client
+   (client_written), and a passthrough sequence it skips adds nothing to
+   that: tmux 3.2a and 3.3, and 3.4 and later with allow-passthrough on,
+   skip it without a word while a redraw waits for the terminal to catch
+   up. tmux takes a moment to read the end of it. Returns 1 when it went
+   out, 0 when it did not, -1 when tmux does not say; after is filled. */
+
+static gaint passedon (const struct paneinfo *pi, struct paneinfo *after, size_t want) {
+gaint i;
+useconds_t wait=10000;
+  for (i=0; ; i++) {
+    if (tmuxinfo(pane,after)) return (-1);
+    if (!pi->haswritten || !after->haswritten || strcmp(after->ctty,pi->ctty) ||
+        after->written<pi->written) return (-1);      /* another client */
+    if (after->lost>pi->lost) return (0);   /* queued, then dropped */
+    if (after->written-pi->written >= want) return (1);
+    if (i>=6 || stopping || quitting) return (0);
+    usleep(wait);                           /* about 1.3 s in all */
+    wait *= 2;
+  }
+}
+
+/* Draw the latest picture into the viewer pane; worker only. A picture
+   for a pane that is not on screen waits until it is. tmux may not pass
+   a picture on: tmux before 3.3 drops all it holds for a client once that
+   is too much, and says so in client_discarded, and tmux skips one while
+   a redraw waits (see passedon). Then send it again, in smaller steps
+   from now on after a drop, once tmux is done dropping (it looks every
+   100 ms) and the screen is mended. */
+
+static gaint panehidden=0;                  /* worker: a picture waits for the pane */
 
 static void panesend (gaint clear) {
 struct paneinfo pi,after;
-gaint tries,via;
+gaint tries,via,got;
+size_t want;
 
   if (panefd<0 || lastpic==NULL || quitting) return;
   for (tries=0; ; tries++) {
@@ -1201,9 +1249,15 @@ gaint tries,via;
       warnplace = 1;
       return;
     }
-    tlogf("pane %s: %dx%d at row %d column %d; client %s, %dx%d%s, %lu bytes dropped so far",
-          pane,pi.cols,pi.rows,pi.row,pi.col,pi.ctty[0] ? pi.ctty : "(none)",pi.cw,pi.ch,
-          pi.control ? ", tmux -CC" : "",pi.lost);
+    if (!pi.hidden || !panehidden)          /* once while it is hidden */
+      tlogf("pane %s: %dx%d at row %d column %d; client %s, %dx%d%s%s, %lu bytes dropped so far",
+            pane,pi.cols,pi.rows,pi.row,pi.col,pi.ctty[0] ? pi.ctty : "(none)",pi.cw,pi.ch,
+            pi.control ? ", tmux -CC" : "",pi.hidden ? ", not on screen" : "",pi.lost);
+    if (pi.hidden) {                       /* tmux would drop it, or draw it elsewhere */
+      panehidden = 1;
+      return;
+    }
+    panehidden = 0;
     if (pi.rows!=sentrows || pi.cols!=sentcols) clear = 1;
     sentrows = pi.rows;
     sentcols = pi.cols;
@@ -1211,13 +1265,20 @@ gaint tries,via;
     sendpic(panefd,pacefor(pi.ctty),via,via==VIA_TMUX ? tmuxstep(&pi) : 0,&pi,
             clear || panefresh,lastpic,lastpiclen,NULL);
     panefresh = 0;
-    if (via!=VIA_TMUX || tmuxkeeps==1 || quitting || stopping) return;
-    if (tmuxinfo(pane,&after) || after.lost<=pi.lost) return;
-    tlogf("pane %s: tmux dropped %lu bytes while the picture went out",pane,after.lost-pi.lost);
-    if (stepshift<4) stepshift++;
+    if (via!=VIA_TMUX || quitting || stopping) return;
+    want = (lastpiclen+2)/3*4;
+    got = passedon(&pi,&after,want);
+    if (got<0 && tmuxkeeps!=1 && !tmuxinfo(pane,&after) && after.lost>pi.lost) got = 0;
+    if (got!=0) return;
+    if (after.lost>pi.lost) {
+      tlogf("pane %s: tmux dropped %lu bytes while the picture went out",pane,after.lost-pi.lost);
+      if (tmuxkeeps!=1 && stepshift<4) stepshift++;
+    } else
+      tlogf("pane %s: tmux passed on %lu bytes of the picture's %lu",pane,
+            after.written-pi.written,(unsigned long)want);
     if (!warnlost) warnlost = 1;
     usleep(300000);
-    mend(&after);
+    if (after.lost>pi.lost || after.written>pi.written) mend(&after);
     if (tries>=2) {
       warnlost = 2;
       return;
@@ -1226,11 +1287,16 @@ gaint tries,via;
   }
 }
 
-/* The pane changed size: draw the picture again to fit */
+/* The pane changed size, or came back: draw the picture again to fit */
 
 static void checkresize (void) {
 struct winsize ws;
+static gaint ticks=0;
   if (panefd<0 || lastpic==NULL) return;
+  if (panehidden) {                         /* now and then, see if it is back */
+    if (++ticks%3==0) panesend(1);
+    return;
+  }
   if (ioctl(panefd,TIOCGWINSZ,&ws)) return;
   if (ws.ws_row!=sentrows || ws.ws_col!=sentcols) panesend(1);
 }
@@ -1711,7 +1777,8 @@ gadouble f;
 
   tlogf("start: mode %s, pane %s, tmux %s, iTerm2 %s, GA_TERM_TMUX_STEP %ld",
         mode==1 ? "tmux" : (mode==2 ? "inline" : "file"),pane[0] ? pane : "(none)",
-        tmuxkeeps==1 ? "3.3 or later" : (tmuxkeeps==0 ? "before 3.3" : "not asked"),
+        tmuxall ? "3.4 or later, passthrough all" :
+        (tmuxkeeps==1 ? "3.3" : (tmuxkeeps==0 ? "before 3.3" : "not asked")),
         iterm ? "yes" : "no",(long)stepopt);
   if (mode==3) {
     printf("Terminal display: pictures are written to %s\n",tdir);

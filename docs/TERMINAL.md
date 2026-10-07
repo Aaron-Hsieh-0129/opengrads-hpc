@@ -67,6 +67,14 @@ for its pane only. tmux does not place such output at the pane by itself,
 so each picture carries its own cursor movement to the pane's top-left
 corner, worked out from tmux's layout (status line on top included).
 
+tmux also skips such output, without saying so, while it waits for your
+terminal to catch up before redrawing, which on a slow link is often. With
+tmux 3.4 or later GrADS sets `allow-passthrough` to `all`, which passes it
+on regardless. With any tmux, GrADS checks that tmux passed each picture on
+(tmux counts what it sends your terminal) and sends it again if not. A
+picture drawn while its pane is not on screen, in another tmux window or
+behind a zoomed pane, waits until the pane is back.
+
 **tmux before 3.3** (3.2a is common on clusters, RHEL 9 among them) throws
 away everything it holds for your terminal once that is more than 8 bytes
 per cell of the terminal, pictures included, and redraws the screen. GrADS
@@ -75,7 +83,7 @@ small parts, waiting for tmux to pass each on. On a slow link tmux can still
 drop a part. It reports this, and GrADS then repairs the screen and sends the
 picture again in smaller parts, which later pictures keep. A note at the
 prompt says when this happened. tmux 3.3 or later, or `tmux -CC`, never
-drops pictures, and sends them faster.
+throws pictures away like that, and sends them faster.
 
 With `tmux -CC`, iTerm2 draws each pane itself from what runs in it, so
 GrADS puts the picture into its pane as a program outside tmux would. This
@@ -228,7 +236,10 @@ The `start:` line gives the mode and which kind of tmux GrADS found. A
 `pane` line says where the picture pane is and which terminal shows it, and
 `tmux -CC` when iTerm2's integration is in use. Two `picture:` lines per
 picture say how it was sent and how long the link took. `tmux dropped` means
-tmux threw part of it away, as tmux before 3.3 does on a slow link.
+tmux threw part of it away, as tmux before 3.3 does on a slow link, and
+`tmux passed on N bytes of the picture's M` that tmux skipped it; either way
+GrADS sends it again. `not on screen` means the picture waits for its pane
+to be shown.
 
 If the log looks right and still nothing shows, try `GA_TERM_PROGRESS=off`,
 which sends a picture in one piece when it fits, the oldest form of the

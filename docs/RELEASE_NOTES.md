@@ -64,6 +64,14 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed in 1.0.10
 
+- **tmux no longer skips pictures on a slow link.** tmux passes nothing on,
+  and says nothing, from a pane whose redraw waits for the terminal to
+  catch up, so on a slow link, and with the tmux 3.7 on a Mac, pictures
+  could go missing. GrADS now sets `allow-passthrough all` on its pane
+  where tmux has it (3.4 and later), checks with every tmux that each
+  picture was passed on (tmux's `client_written`), and sends it again if
+  not. A picture drawn while its pane is in another tmux window, or behind
+  a zoomed pane, now waits and appears when the pane is shown again.
 - **Plug-in names now match whatever the case.** `-d x11` found no `X11`
   display, and `-h cairo` no `Cairo` printer; display and print plug-in
   names are now compared without regard to case. The error for a display
