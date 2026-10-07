@@ -61,9 +61,19 @@ static gaint mbuferror = 0;    /* Indicate an error state; suspends buffering */
 /* Undo support.  The meta buffer is a replayable record of everything drawn
    since the last frame action, so a position in it is all that is needed to
    put the picture back: rewind to the position and redraw.  A position is
-   only meaningful within the frame it was taken in, so every reset of the
-   buffer chain drops the saved positions and bumps a generation counter,
-   which also catches a position taken before a reset and offered after one. */
+   only meaningful within the frame it was taken in, so a reset of the
+   buffer chain drops the saved steps and gives the chain a new generation,
+   which also catches a position taken before a reset and offered after one.
+
+   A clear is the exception.  When the clear command asks for it
+   (gxhundoframe), the chain is not reset but set aside, and the step of the
+   command that cleared keeps it: undoing that step puts the old chain back,
+   generation and all, so the steps taken in it apply again.  A command that
+   clears more than once (a script) sets aside the first frame only.
+
+   Each step also carries the caller's state from before its command, which
+   gxhundo hands back for the caller to put back; a step that is dropped
+   instead hands it to the routine named with gxhundofn. */
 
 struct gxhmark {
   struct gxmbuf *buf;          /* Buffer holding the end of the plot */
@@ -71,14 +81,27 @@ struct gxhmark {
   gaint gen;                   /* Chain generation the position belongs to */
 };
 
+struct gxhstep {
+  struct gxhmark mark;         /* Where to rewind to, for a step that drew */
+  void *state;                 /* The caller's, from before the command */
+  gaint frame;                 /* 1 for a clear: the frame before it follows */
+  struct gxmbuf *anch,*last;   /* Its chain, NULL if it was empty */
+  gaint gen;                   /* and that chain's generation */
+};
+
 #define UNDOSTEPMAX 10000      /* Sanity cap on the number of steps kept */
 
 static gaint undolim = 0;            /* Steps to keep; 0 is off, the default */
 static gaint undocnt = 0;            /* Steps currently available */
-static gaint undogen = 0;            /* Bumped whenever the chain is reset */
-static struct gxhmark *undostk=NULL; /* undolim positions, oldest first */
+static gaint undogen = 0;            /* Generation of the current chain */
+static gaint undoseq = 0;            /* Last generation handed out */
+static struct gxhstep *undostk=NULL; /* undolim steps, oldest first */
 static struct gxhmark undopend;      /* Position before the running command */
 static gaint undopndflg = 0;         /* 1 when undopend holds a position */
+static gaint undoarm = 0;            /* The coming clear sets the frame aside */
+static struct gxhstep undoclr;       /* A frame the running command set aside */
+static gaint undoclrflg = 0;         /* 1 when undoclr holds one */
+static void (*undofree) (void *) = NULL;   /* Frees the caller's state */
 
 /* Initialize any buffering, etc. when GrADS starts up */
 
@@ -340,6 +363,35 @@ char *ucc;
   mbuflast->used++;
 }
 
+/* Free a chain of buffers that a clear set aside */
+
+static void mbufchfree (struct gxmbuf *pmbuf) {
+struct gxmbuf *next;
+  while (pmbuf) {
+    next = pmbuf->fpmbuf;
+    if (pmbuf->buff) gree (pmbuf->buff,"gxmbuf");
+    gree (pmbuf,"mbufbuff");
+    pmbuf = next;
+  }
+}
+
+/* Let a step go: hand its state to the caller's routine, and free the frame
+   it set aside. */
+
+static void gxhundodrop (struct gxhstep *step) {
+  if (step->state && undofree) undofree (step->state);
+  step->state = NULL;
+  if (step->frame) mbufchfree (step->anch);
+  step->anch = NULL;
+  step->last = NULL;
+}
+
+/* Name the routine that frees the state a step carries */
+
+void gxhundofn (void (*fn) (void *)) {
+  undofree = fn;
+}
+
 /* Is a saved position still usable?  It has to belong to the current
    generation, and it must sit at or before the end of the chain: a position
    past the end would make a redraw replay buffer contents that have already
@@ -359,13 +411,19 @@ struct gxmbuf *pmbuf;
   return (0);
 }
 
-/* Forget every saved position.  Called whenever the buffer chain is reset,
-   which is what makes the saved positions meaningless. */
+/* Forget every saved step.  Called whenever the buffer chain is reset other
+   than by a clear that sets the frame aside, which is what makes the saved
+   positions meaningless. */
 
 void gxhundoclr (void) {
+gaint i;
+  for (i=0; i<undocnt; i++) gxhundodrop (undostk+i);
   undocnt = 0;
   undopndflg = 0;
-  undogen++;
+  undoarm = 0;
+  if (undoclrflg) gxhundodrop (&undoclr);
+  undoclrflg = 0;
+  undogen = ++undoseq;
 }
 
 /* Set how many undo steps to keep.  A count below one turns undo off.
@@ -380,7 +438,7 @@ gaint gxhundoset (gaint steps) {
   undolim = 0;
   if (steps<1) return (0);
   if (steps>UNDOSTEPMAX) steps = UNDOSTEPMAX;
-  undostk = (struct gxhmark *)galloc(sizeof(struct gxhmark)*steps,"undostk");
+  undostk = (struct gxhstep *)galloc(sizeof(struct gxhstep)*steps,"undostk");
   if (undostk==NULL) return (1);
   undolim = steps;
   return (0);
@@ -390,6 +448,9 @@ gaint gxhundoset (gaint steps) {
 
 void gxhundomark (void) {
   undopndflg = 0;
+  undoarm = 0;
+  if (undoclrflg) gxhundodrop (&undoclr);
+  undoclrflg = 0;
   if (undolim<1 || mbuferror) return;
   undopend.buf = mbuflast;
   undopend.used = mbuflast ? mbuflast->used : 0;
@@ -397,50 +458,130 @@ void gxhundomark (void) {
   undopndflg = 1;
 }
 
-/* Keep the position noted by gxhundomark, but only if the command that just
-   finished added to the plot and nothing reset the chain while it ran. */
+/* The clear about to happen may be undone: have it set the frame aside
+   instead of resetting the chain.  Only within a command whose position was
+   noted, and not in double buffering, where frames come and go. */
 
-void gxhundokeep (void) {
+void gxhundoframe (void) {
+  undoarm = (undopndflg && undolim>0 && !mbuferror && !dbmode);
+}
+
+/* A clear set up by gxhundoframe: keep the chain as the frame before the
+   clear, and start a new one from the buffers past its end.  A clear of an
+   empty frame changes nothing to keep, and a second clear in the same
+   command only resets the new chain: the frame from before the command is
+   the one to go back to. */
+
+static void gxhundoaside (void) {
+struct gxmbuf *spare;
+
+  undoarm = 0;
+  if (mbufanch==NULL) return;
+  if (undoclrflg || (mbuflast==mbufanch && mbufanch->used==0)) {
+    mbufanch->used = 0;
+    mbuflast = mbufanch;
+    if (undoclrflg) undogen = ++undoseq;
+    return;
+  }
+  spare = mbuflast->fpmbuf;
+  mbuflast->fpmbuf = NULL;
+  undoclr.frame = 1;
+  undoclr.state = NULL;
+  undoclr.anch = mbufanch;
+  undoclr.last = mbuflast;
+  undoclr.gen = undogen;
+  undoclrflg = 1;
+  mbufanch = spare;
+  mbuflast = spare;
+  undogen = ++undoseq;
+  if (spare) spare->used = 0;
+  else if (mbufget()) gxmbuferr();
+}
+
+/* Keep a step for the command that just finished, with the caller's state
+   from before it: the frame a clear in it set aside, or else the position
+   noted by gxhundomark, if the command added to the plot and nothing reset
+   the chain while it ran.  Returns 1 when the step was kept, state with it;
+   0 when there is no step, and state is still the caller's. */
+
+gaint gxhundokeep (void *state) {
+struct gxhstep step;
 struct gxmbuf *end;
-gaint used, i;
+gaint used, i, pnd;
 
-  if (!undopndflg) return;
+  pnd = undopndflg;
   undopndflg = 0;
-  if (undolim<1 || mbuferror) return;
-  if (!gxhundookay(&undopend)) return;
-  end = mbuflast;
-  used = end ? end->used : 0;
-  if (end==undopend.buf && used==undopend.used) return;   /* Nothing drawn */
+  undoarm = 0;
+  if (undoclrflg) {                         /* The command cleared the frame */
+    step = undoclr;
+    undoclrflg = 0;
+    if (!pnd || undolim<1 || mbuferror) {
+      gxhundodrop (&step);
+      return (0);
+    }
+  } else {
+    if (!pnd || undolim<1 || mbuferror) return (0);
+    if (!gxhundookay(&undopend)) return (0);
+    end = mbuflast;
+    used = end ? end->used : 0;
+    if (end==undopend.buf && used==undopend.used) return (0);   /* Nothing drawn */
+    step.mark = undopend;
+    step.frame = 0;
+    step.anch = NULL;
+    step.last = NULL;
+    step.gen = undopend.gen;
+  }
+  step.state = state;
   if (undocnt==undolim) {                   /* Full, so drop the oldest */
+    gxhundodrop (undostk);
     for (i=0; i<undolim-1; i++) undostk[i] = undostk[i+1];
     undocnt--;
   }
-  undostk[undocnt] = undopend;
+  undostk[undocnt] = step;
   undocnt++;
+  return (1);
 }
 
-/* Rewind the plot one step by handing the buffers filled since the newest
-   saved position back to the pool.  The buffers stay allocated; mbufget
-   resets them when it reuses them.  Returns 0 when the buffer was rewound
-   and 1 when there was nothing to undo. */
+/* Rewind the plot one step.  For a step that drew, hand the buffers filled
+   since its position back to the pool: they stay allocated, and mbufget
+   resets them when it reuses them.  For a clear, put the frame from before
+   it back; the chain drawn since becomes its spare buffers.  state, if not
+   NULL, receives the step's state, which is then the caller's.  Returns 0
+   when the buffer was rewound and 1 when there was nothing to undo. */
 
-gaint gxhundo (void) {
-struct gxhmark mark;
+gaint gxhundo (void **state) {
+struct gxhstep step;
 
+  if (state) *state = NULL;
   if (undolim<1 || undocnt<1) return (1);
   undocnt--;
-  mark = undostk[undocnt];
-  if (!gxhundookay(&mark)) {
-    gxhundoclr();
-    return (1);
+  step = undostk[undocnt];
+  if (step.frame) {
+    if (step.anch) {
+      step.last->fpmbuf = mbufanch;
+      mbufanch = step.anch;
+      mbuflast = step.last;
+    } else if (mbufanch) {
+      mbufanch->used = 0;
+      mbuflast = mbufanch;
+    }
+    undogen = step.gen;
+  } else {
+    if (!gxhundookay(&step.mark)) {
+      if (step.state && undofree) undofree (step.state);
+      gxhundoclr();
+      return (1);
+    }
+    if (step.mark.buf==NULL) {              /* Back to an empty plot */
+      if (mbufanch) mbufanch->used = 0;
+      mbuflast = mbufanch;
+    } else {
+      step.mark.buf->used = step.mark.used;
+      mbuflast = step.mark.buf;
+    }
   }
-  if (mark.buf==NULL) {                     /* Back to an empty plot */
-    if (mbufanch) mbufanch->used = 0;
-    mbuflast = mbufanch;
-    return (0);
-  }
-  mark.buf->used = mark.used;
-  mbuflast = mark.buf;
+  if (state) *state = step.state;
+  else if (step.state && undofree) undofree (step.state);
   return (0);
 }
 
@@ -519,8 +660,9 @@ struct gxmbuf *pmbuf, *pmbufl;
     mbuflast2 = pmbufl; 
   } 
   else {
-    /* Not double buffering, so just free buffers */
-    mbufrel(1);
+    /* Not double buffering: set the frame aside for undo, or free buffers */
+    if (undoarm) gxhundoaside();
+    else mbufrel(1);
   }
   if (!dbmode) mbuferror = 0;        /* Reset error state on clear command */
 }

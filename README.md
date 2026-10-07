@@ -67,8 +67,10 @@ libraries are available.
 
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
-  and a whole script counts as a single step. It rewinds the graphics, not
-  settings or open files. See [undo documentation](docs/UNDO.md).
+  a whole script counts as a single step, and `clear` can be undone too. The
+  picture comes back with what GrADS knows about it (axis ranges, scaling,
+  shading levels); settings and open files stay. See
+  [undo documentation](docs/UNDO.md).
 
 - **Modern interactive and release experience.** Optional GNU Readline adds
   command history and Tab completion. Ctrl-C clears a half-typed command, as

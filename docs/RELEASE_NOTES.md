@@ -32,6 +32,14 @@ calculations, and native archives for Linux and macOS.
 
 ### Changed in 1.0.10
 
+- **`clear` can be undone.** With undo on, `clear` (`c`, also `c norset` and
+  `c graphics`) is a step of its own: `undo` brings the cleared picture back,
+  along with the options the clear reset (`set vrange`, `set xlint`, and the
+  like) unless they have been set since, and the steps taken on that picture
+  can then be undone in turn. A script that starts with `c` is undone back to
+  the picture from before it. Before, a clear dropped every stored step.
+  `reset`, `reinit`, and double buffering still do. A clear keeps the
+  picture's buffers, at least 1 MB, until its step is undone or dropped.
 - **Ctrl-C no longer ends GrADS.** At the prompt it now throws away a
   half-typed command and starts a fresh line, as a shell does. Before, the
   next line was appended to the half-typed one (`d ts`, Ctrl-C, `q dims` ran
@@ -40,6 +48,17 @@ calculations, and native archives for Linux and macOS.
 
 ### Fixed in 1.0.10
 
+- **Undo left the undone plot's state behind.** Undo rewound the picture but
+  not what GrADS knew about it, so after undoing a plot the next one was laid
+  out as if it were still there: a line plot kept the undone plot's y-axis
+  range, an overlay counted it, `q gxinfo` and `q xy2w` described it, and
+  `q shades` (read by `cbarn`) gave its colors. Undo now puts these back as
+  the shorter command sequence left them: the overlay count, axis ranges,
+  scaling environment, plot area, shading and contour levels, vector
+  scaling, coordinate transforms, and the contour-label mask. The options a
+  display uses up (`set cint`, `set clevs`, `set ccolor`, ...) come back too,
+  so an undone display can be issued again as it was; a setting made after
+  the step keeps its new value. See [UNDO.md](UNDO.md).
 - **Linux: an old OpenGrADS install next to the archive broke it.** The
   launcher looked beside itself for a legacy `opengrads-2.2.1.oga.1` bundle,
   a convenience meant for a source checkout, and in a packaged archive it

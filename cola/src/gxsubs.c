@@ -475,11 +475,12 @@ void gxfrme (gaint action) {
 /* Rewind the display one undo step and redraw what is left.  The meta buffer
    holds every primitive drawn since the last frame action, so this is the
    same clear-and-replay the backends perform when a window is exposed.
+   state receives what the caller kept with the step, for it to put back.
    Returns 0 when the display was rewound, 1 when there was nothing to undo. */
 
-gaint gxundo (void) {
+gaint gxundo (void **state) {
 
-  if (gxhundo()) return (1);         /* Nothing to undo */
+  if (gxhundo(state)) return (1);    /* Nothing to undo */
   if (intflg) {
     dsubs.gxdfrm (7);                /* Clear graphics, keep the event queue */
     gxhdrw (0,0);                    /* Replay what is left of the buffer */
@@ -930,6 +931,75 @@ gadouble *xy;
   }
 }
 
+/* Copy the coordinate transforms, and put a copy back: the scaling of all
+   levels, the projections' parameters, the clipping region, and the label
+   mask.  Undo uses these to return to the state of an earlier plot.  The
+   hardware clip comes back with the redraw, which replays it from the meta
+   buffer.  The mask is mostly clear, so it is kept as the lengths of its
+   alternating clear and set runs, starting with a clear one.  Only '1'
+   counts as set, as in gxmaskrq: a new mask is not cleared to '0'. */
+
+void gxxfsave (struct gxxform *xf) {
+gaint i,n,c,b;
+
+  xf->xm = xm; xf->xb = xb; xf->ym = ym; xf->yb = yb;
+  xf->fconv = fconv; xf->gconv = gconv; xf->bconv = bconv;
+  xf->clminx = clminx; xf->clmaxx = clmaxx;
+  xf->clminy = clminy; xf->clmaxy = clmaxy;
+  gxmpsave (xf->map, &(xf->mapadj));
+  xf->maskflg = maskflg;
+  xf->maskrun = NULL;
+  xf->maskruns = 0;
+  if (maskflg!=1 || mask==NULL) return;
+  n = 1;
+  c = 0;
+  for (i=0; i<masksize; i++) {
+    b = (mask[i]=='1');
+    if (b!=c) { n++; c = b; }
+  }
+  xf->maskrun = (gaint *)malloc(sizeof(gaint)*n);
+  if (xf->maskrun==NULL) return;        /* the mask then stays as it is */
+  n = 0;
+  c = 0;
+  xf->maskrun[0] = 0;
+  for (i=0; i<masksize; i++) {
+    b = (mask[i]=='1');
+    if (b!=c) {
+      c = b;
+      xf->maskrun[++n] = 0;
+    }
+    xf->maskrun[n]++;
+  }
+  xf->maskruns = n+1;
+}
+
+void gxxfrest (struct gxxform *xf) {
+gaint i,k,pos;
+
+  xm = xf->xm; xb = xf->xb; ym = xf->ym; yb = xf->yb;
+  fconv = xf->fconv; gconv = xf->gconv; bconv = xf->bconv;
+  clminx = xf->clminx; clmaxx = xf->clmaxx;
+  clminy = xf->clminy; clmaxy = xf->clmaxy;
+  gxmprest (xf->map, xf->mapadj);
+  if (mask==NULL || maskflg==-888) return;
+  if (xf->maskflg==1) {
+    if (xf->maskrun==NULL) return;
+    pos = 0;
+    for (k=0; k<xf->maskruns; k++) {
+      for (i=0; i<xf->maskrun[k] && pos<masksize; i++) mask[pos++] = (k%2) ? '1' : '0';
+    }
+    while (pos<masksize) mask[pos++] = '0';
+    maskflg = 1;
+  }
+  else gxmaskclear();
+}
+
+void gxxffree (struct gxxform *xf) {
+  if (xf->maskrun) free(xf->maskrun);
+  xf->maskrun = NULL;
+  xf->maskruns = 0;
+}
+
 /* Delete level 3 or level 2 and level 3 scaling.  
    Level 1 scaling cannot be deleted.  */
 
@@ -1262,7 +1332,7 @@ gaint siz,i,j,pos,ilo,ihi,jlo,jhi,jj;
     }
     masksize = siz;
     maskx = (gaint)(rxsize*100.0);
-    gxmaskclear();
+    for (i=0; i<masksize; i++) *(mask+i) = '0';   /* gxmaskclear only clears a mask in use */
   } 
   maskflg = 1;
   

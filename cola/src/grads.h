@@ -1063,8 +1063,25 @@ void g2clear(void);
     trfill: Fill half a grid square (triangle)
     gagfil: Fill grids with shaded ranges
     gaimap: Output grid with image dump
+    gaxfsave: Copy the grid conversion and map projection of the last plot
+    gaxfrest: Put such a copy back
                                                                       */
+
+/* What gagx.c keeps from the last plot for converting grid coordinates,
+   and its map projection settings (struct mapprj). Undo keeps a copy with
+   each step. */
+
+struct gaxform {
+  gadouble mpj[15];
+  gadouble (*iconv) (gadouble *, gadouble);
+  gadouble (*jconv) (gadouble *, gadouble);
+  gadouble *ivars, *jvars;
+  gadouble ioffset, joffset, idiv, jdiv;
+};
+
 gaint gagx (struct gacmn *);
+void gaxfsave (struct gaxform *);
+void gaxfrest (struct gaxform *);
 void gaplot (struct gacmn *);
 void gas1d (struct gacmn *, gadouble, gadouble, gaint, gaint, struct gagrid *, struct gastn *);
 void gas2d (struct gacmn *, struct gagrid *, gaint);

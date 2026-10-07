@@ -11,7 +11,12 @@ ga-> display ts
 ga-> display ps
 ga-> undo
 Undid 1 step, 1 of 10 still available
+ga-> clear
+ga-> undo
+Undid 1 step, 1 of 10 still available
 ```
+
+The last `undo` brings back the `ts` plot that `clear` removed.
 
 ## Commands
 
@@ -34,10 +39,15 @@ One step is one command you issue that changes the picture. A command that
 draws nothing — `set gxout shaded`, `open`, `q dims` — costs no step, so `undo`
 always reaches the last thing that actually appeared.
 
+`clear` (`c`) is a step too, and so are `clear norset` and `clear graphics`:
+undoing it brings the cleared picture back, and the steps taken on that
+picture can then be undone in turn.
+
 A script counts as a single step, however much it draws: running
 `run plot.gs` and then `undo` removes everything that script drew, not just its
-last line. Commands issued through the Python interface are counted
-individually, like typed commands.
+last line. A script that starts with `c`, as many do, is undone back to the
+picture from before it. Commands issued through the Python interface are
+counted individually, like typed commands.
 
 ## What undo restores, and what it does not
 
@@ -59,37 +69,72 @@ global field, an undo redraw and a resize redraw of the same plot were
 identical to each other, and both differed from the first render only in that
 sub-pixel edge shading, invisible at normal viewing.
 
-Undo is a **graphics** operation. It does not revert settings or state:
+Along with the picture, undo puts back what GrADS knows about it, as the
+shorter command sequence would have left it, so that queries and the next
+plot see the picture that is on screen:
 
-- Settings keep their current values. `set gxout shaded`, `set lev 500`, and
-  `set ccolor 2` are not rolled back, and neither is the dimension
-  environment. After an `undo`, re-issuing a `display` draws with the settings
-  in force now.
+- what a plot drawn over it builds on: the overlay count, the fixed y-axis
+  range of a line plot (a second line plot over a first one shares its axis),
+  vector scaling, and the contour-label mask that keeps labels apart;
+- what the queries report: `q gxinfo` (last graphic, plot area, axes),
+  `q xy2w`, `q w2xy`, `q gr2xy` and the like, `q shades` (which color-bar
+  scripts such as `cbarn` read), and `q contours`;
+- the coordinate transforms, map projection included.
+
+For example, after `display ts` (a line plot), `display ts*10` and `undo`, the
+next line plot gets the axis range it would get on a cleared page, not the
+range of the undone plot.
+
+Settings are not rolled back, with two exceptions, both of which make undo
+reverse what the command did:
+
+- A display uses up the options that apply to one display only (`set cint`,
+  `set clevs`, `set ccols`, `set ccolor`, `set cstyle`, `set cmin`/`cmax`,
+  `set rbrange`, `set arrscl` and the like); undoing it gives them back, so
+  the display can be issued again as it was.
+- A clear resets options such as `set vrange`, `set xlint`, `set xlabs`, and
+  `set grads off`; undoing it gives them back.
+
+Either way, an option you have set since keeps your new value. Everything
+else keeps its current value:
+
+- `set gxout shaded`, `set lev 500`, and the rest of the dimension
+  environment are not rolled back. After an `undo`, re-issuing a `display`
+  draws with the settings in force now.
 - Open files, defined variables, and `sdfwrite` or shapefile output are
   untouched. `undo` cannot reverse `open`, `close`, `define`, `undefine`, or
-  anything written to disk.
+  anything written to disk. When a plot's file has been closed or its
+  defined variable released since, undo cannot bring back that plot's
+  scaling, and `q xy2w` answers `No scaling environment` until the next plot.
 - Widgets created by scripts (`draw button`, `draw dropmenu`) are drawn through
   the widget list rather than the graphics buffer, so a rewind does not remove
-  them.
+  them, and undoing a clear does not bring them back.
 
 ## When stored steps are dropped
 
-Stored steps describe the current frame, so anything that resets the frame
-drops them. After that, `undo` reports `Nothing to undo` until new drawing
-happens. This covers:
+A clear keeps the picture it removes, but other ways of resetting the frame
+drop the stored steps. After that, `undo` reports `Nothing to undo` until new
+drawing happens. This covers:
 
-- `clear` (and `c`), including the implicit clears of `reinit`.
+- `reset` and `reinit`.
 - `swap`, `set dbuff on`, and `set dbuff off`. Undo and double buffering do not
-  mix: in double-buffering mode every frame resets the stack.
+  mix: in double-buffering mode every frame resets the stack, and a clear
+  there is not a step.
+- `clear hbuff`.
 - A graphics-buffer allocation failure, which disables buffering for the
   current plot.
 
-`set undo` itself is a session setting: `clear` and `reinit` drop the stored
-steps but leave undo on.
+When the stack is full, the oldest step goes, and with it the picture a clear
+kept, if that was the step.
+
+`set undo` itself is a session setting: `reinit` drops the stored steps but
+leaves undo on.
 
 ## Cost
 
-A stored step is a position in a buffer GrADS maintains anyway, so keeping
-steps costs a few bytes each and no extra graphics memory. Rewinding hands the
-buffers filled since that position back to GrADS for reuse; nothing is copied.
-A large step count is therefore cheap, and the practical limit is 10000.
+A step that drew is a position in a buffer GrADS maintains anyway, plus what
+GrADS knows about the picture from before and after the command: a few KB, a
+little more for a page with masked contour labels. Rewinding hands the buffers
+filled since that position back to GrADS for reuse; nothing is copied. A clear
+keeps the buffers of the picture it removed (at least 1 MB) until its step is
+undone or dropped. The practical limit is 10000 steps.

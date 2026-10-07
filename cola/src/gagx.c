@@ -67,6 +67,33 @@ static gadouble *ivars, *jvars;
 static gadouble ioffset, joffset;
 static gadouble idiv, jdiv;
 
+/* Copy the grid conversion and the map projection settings of the last
+   plot, and put a copy back, for undo. */
+
+void gaxfsave (struct gaxform *xf) {
+gadouble *v = xf->mpj;
+  v[0] = mpj.lnmn; v[1] = mpj.lnmx; v[2] = mpj.ltmn; v[3] = mpj.ltmx;
+  v[4] = mpj.lnref; v[5] = mpj.ltref1; v[6] = mpj.ltref2;
+  v[7] = mpj.xmn; v[8] = mpj.xmx; v[9] = mpj.ymn; v[10] = mpj.ymx;
+  v[11] = mpj.axmn; v[12] = mpj.axmx; v[13] = mpj.aymn; v[14] = mpj.aymx;
+  xf->iconv = iconv; xf->jconv = jconv;
+  xf->ivars = ivars; xf->jvars = jvars;
+  xf->ioffset = ioffset; xf->joffset = joffset;
+  xf->idiv = idiv; xf->jdiv = jdiv;
+}
+
+void gaxfrest (struct gaxform *xf) {
+gadouble *v = xf->mpj;
+  mpj.lnmn = v[0]; mpj.lnmx = v[1]; mpj.ltmn = v[2]; mpj.ltmx = v[3];
+  mpj.lnref = v[4]; mpj.ltref1 = v[5]; mpj.ltref2 = v[6];
+  mpj.xmn = v[7]; mpj.xmx = v[8]; mpj.ymn = v[9]; mpj.ymx = v[10];
+  mpj.axmn = v[11]; mpj.axmx = v[12]; mpj.aymn = v[13]; mpj.aymx = v[14];
+  iconv = xf->iconv; jconv = xf->jconv;
+  ivars = xf->ivars; jvars = xf->jvars;
+  ioffset = xf->ioffset; joffset = xf->joffset;
+  idiv = xf->idiv; jdiv = xf->jdiv;
+}
+
 gaint gagx (struct gacmn *pcm) {
 gaint rc=0;
   rc = gxstrt (pcm->xsiz,pcm->ysiz,pcm->batflg,pcm->hbufsz,pcm->gxdopt,pcm->gxpopt,pcm->xgeom);
