@@ -15,7 +15,7 @@ build_root="$work_root/opengrads-build"
 jobs="${OPENGRADS_BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
 
 for formula in adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 libomp \
-               libtool netcdf pkgconf readline udunits; do
+               libtool libx11 libxext libxmu netcdf pkgconf readline udunits; do
   if ! brew list --versions "$formula" >/dev/null 2>&1; then
     printf 'Required Homebrew formula is not installed: %s\n' "$formula" >&2
     exit 1
@@ -57,7 +57,10 @@ cd "$build_root"
   --with-opengrads \
   --without-gadap \
   --with-adios2="$(brew --prefix adios2)"
-make -C src --jobs "$jobs" grads libgxdummy.la libgxpCairo.la
+# The X displays need Homebrew's X libraries (Cairo already depends on them)
+# and, for the X11 display, the Xmu headers. They are loaded only when asked
+# for, so the archive still runs without XQuartz.
+make -C src --jobs "$jobs" grads libgxdummy.la libgxpCairo.la libgxdCairo.la libgxdX11.la
 
 runtime_libraries="$(brew --prefix adios2)/lib:$(brew --prefix gcc)/lib/gcc/current:$(brew --prefix libomp)/lib:$(brew --prefix netcdf)/lib"
 export OPENGRADS_BUILD_ROOT="$build_root"

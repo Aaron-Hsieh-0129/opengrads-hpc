@@ -63,20 +63,24 @@ start with `./opengrads`.
 
 ### Graphics drivers per platform
 
-Only Linux ships an interactive display driver. GrADS graphics plug-ins are
-loaded with `dlopen()` and call back into symbols defined in the `grads`
-executable, which constrains what each platform can carry:
+GrADS graphics plug-ins are loaded with `dlopen()` and call back into
+symbols defined in the `grads` executable, which constrains what each
+platform can carry:
 
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
-| Linux | `Cairo`, `X11`, `gxdummy` | `Cairo`, `gxdummy` |
-| macOS | `gxdummy` | `Cairo`, `gxdummy` |
+| Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `Cairo`, `X11` (with XQuartz), `gxdummy` | `Cairo`, `gxdummy` |
 
-macOS archives therefore run headless but keep the full Cairo hardcopy path,
-so `printim` and `print` produce PNG, PS, PDF, and SVG output without
-XQuartz. Both launchers pass the drivers their archive actually carries, so
-`./opengrads` and `opengrads.cmd` work without extra flags; anything the
-caller passes still wins.
+On macOS the X displays draw in a window through XQuartz. They are loaded
+only when asked for, with X libraries bundled in the archive, so the archive
+needs XQuartz only for a window: without it, it runs headless and keeps the
+full Cairo hardcopy path, so `printim` and `print` produce PNG, PS, PDF, and
+SVG output. The macOS launcher opens a window when `DISPLAY` is set, which
+XQuartz does for the login session, and runs headless otherwise. Both
+launchers pass the drivers their archive actually carries, so `./opengrads`
+and `opengrads.cmd` work without extra flags; anything the caller passes
+still wins.
 
 ### Windows status
 
@@ -148,7 +152,8 @@ The macOS builder uses Homebrew dependencies and must run on a Mac:
 
 ```bash
 brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
-  libomp libtool netcdf pkgconf readline udunits
+  libomp libtool libx11 libxext libxmu netcdf pkgconf readline udunits
+brew install --cask xquartz      # optional: lets the packager draw with the X displays
 ./release/build-release-macos.sh
 ```
 
@@ -166,7 +171,9 @@ The macOS packager rewrites every bundled Mach-O install name to `@rpath` and
 re-signs the result, because editing a Mach-O header invalidates the ad-hoc
 signature that arm64 macOS requires. Its smoke test runs the archive under
 `env -i` and asserts that Cairo wrote a real PNG, which proves the bundle does
-not reach back into the Homebrew prefix it was built from.
+not reach back into the Homebrew prefix it was built from. It also starts
+both X displays with no X server, which they must reach before failing, and,
+where XQuartz is installed, draws with them on its `Xvfb`.
 
 ## GitHub Actions and publication gate
 

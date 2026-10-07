@@ -18,12 +18,23 @@ if [[ -z "${TERMINFO:-}" && -z "${TERMINFO_DIRS:-}" ]]; then
   export TERMINFO_DIRS="/usr/share/terminfo:/lib/terminfo:/etc/terminfo:"
 fi
 
-# This archive ships no interactive display driver, so the GrADS default of
-# "Cairo" for the display would fail to load. Fill in the drivers the archive
-# actually carries unless the caller named them.
+# The default display, Cairo, draws in an X window, which needs an X server:
+# XQuartz provides one and sets DISPLAY for the login session (it starts on
+# demand). Without it, the archive runs headless on gxdummy, and pictures go
+# to files with printim and print. Fill in the drivers unless the caller
+# named them.
+have_x=0
+if [[ -n "${DISPLAY:-}" && -r "$GA_ROOT/libgxdCairo.dylib" ]]; then
+  have_x=1
+fi
+
 args=("$@")
 if [[ "$#" -eq 0 ]]; then
-  args=(-bl)
+  if (( have_x )); then
+    args=(-l)
+  else
+    args=(-bl)
+  fi
 fi
 
 have_display=0
@@ -34,7 +45,7 @@ for arg in "$@"; do
     -h) have_print=1 ;;
   esac
 done
-(( have_display )) || args+=(-d gxdummy)
+(( have_display || have_x )) || args+=(-d gxdummy)
 (( have_print )) || args+=(-h Cairo)
 
 exec "$bundle_root/bin/grads" "${args[@]}"

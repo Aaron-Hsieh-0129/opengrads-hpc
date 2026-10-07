@@ -30,6 +30,15 @@ calculations, and native archives for Linux and macOS.
   bar. It is updated between the parts of the picture, so it follows what
   has actually arrived rather than what has left the server.
 
+- **macOS: an X window with XQuartz.** The macOS archive now carries the
+  `Cairo` and `X11` displays, so with XQuartz installed `./opengrads` opens
+  a GrADS window as on Linux, and `-d X11` picks the classic one. They are
+  plug-ins, loaded only when asked for: without XQuartz (no `DISPLAY`) the
+  archive runs headless as before, and `printim` and `print` still need
+  nothing. Before, `-d X11` stopped at start-up with `Could not find a
+  record for the display plug-in`. The packager checks that both load from
+  the archive, and draws with them on XQuartz's virtual X server.
+
 ### Changed in 1.0.10
 
 - **`clear` can be undone.** With undo on, `clear` (`c`, also `c norset` and
@@ -47,6 +56,12 @@ calculations, and native archives for Linux and macOS.
   runs, Ctrl-C interrupts it, as before. To force GrADS to stop, use Ctrl-\\.
 
 ### Fixed in 1.0.10
+
+- **Plug-in names now match whatever the case.** `-d x11` found no `X11`
+  display, and `-h cairo` no `Cairo` printer; display and print plug-in
+  names are now compared without regard to case. The error for a display
+  that cannot be found also named the print plug-in (`Cairo`) instead of
+  the display asked for.
 
 - **Undo left the undone plot's state behind.** Undo rewound the picture but
   not what GrADS knew about it, so after undoing a plot the next one was laid
@@ -385,10 +400,11 @@ which constrains what each platform can carry:
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
 | Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
-| macOS | `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `Cairo`, `X11` (with XQuartz), `gxdummy` | `Cairo`, `gxdummy` |
 
-macOS runs headless but keeps the full Cairo hardcopy path, so `printim` and
-`print` produce PNG, PS, PDF, and SVG without XQuartz.
+On macOS the `Cairo` and `X11` displays draw in a window through XQuartz.
+Without XQuartz the archive runs headless but keeps the full Cairo hardcopy
+path, so `printim` and `print` produce PNG, PS, PDF, and SVG.
 
 A native Windows build is not published yet; see `docs/RELEASES.md` for its
 status.
@@ -402,8 +418,9 @@ cd opengrads-hpc-1.0.10-linux-x86_64
 ./opengrads
 ```
 
-On macOS start `./opengrads`. The launcher selects the drivers its archive
-actually ships, so no extra flags are needed.
+On macOS start `./opengrads`. The launcher opens a GrADS window when
+XQuartz is installed (it sets `DISPLAY`) and runs headless otherwise, so no
+extra flags are needed.
 
 ### Known limitations
 

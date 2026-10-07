@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include <signal.h>
 #include "grads.h"
 #include "gaomp.h"
@@ -907,12 +908,25 @@ memerr:
 
 
 /* Search the contents of the chain of upb structures
-   If the name and type match, return the pointer to the fname */
+   If the name and type match, return the pointer to the fname.
+   Display and print plug-ins (types 3 and 4) match whatever the case,
+   so that -d x11 finds X11. */
 char * gaqupb (char *name, gaint type) {
 struct gaupb *upb;
+char *a,*b;
   upb = upba;
   while (upb) {
-    if (cmpwrd(upb->name,name) && upb->type==type) return (upb->fname);
+    if (upb->type==type) {
+      if (type<3) {
+        if (cmpwrd(upb->name,name)) return (upb->fname);
+      } else {
+        a = upb->name;
+        b = name;
+        while (*a && *a!=' ' && *b && *b!=' ' &&
+               tolower((unsigned char)*a)==tolower((unsigned char)*b)) { a++; b++; }
+        if ((*a=='\0' || *a==' ') && (*b=='\0' || *b==' ')) return (upb->fname);
+      }
+    }
     upb = upb->upb;
   }
   return (NULL);

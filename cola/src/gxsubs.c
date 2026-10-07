@@ -159,7 +159,7 @@ gaint gxload(char *gxdopt, char *gxpopt) {
   /* Display */
   dname=(const char *)gaqupb(gxdopt,3);
   if (dname==NULL) {
-    printf("GX Package Error: Could not find a record for the display plug-in named \"%s\" \n",gxpopt);
+    printf("GX Package Error: Could not find a record for the display plug-in named \"%s\" \n",gxdopt);
     /* Tell user where we looked based on $GAUDPT */
     cname = getenv("GAUDPT");
     if (cname==NULL) {
