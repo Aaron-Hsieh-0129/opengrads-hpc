@@ -563,7 +563,8 @@ launcher, ctl, root, viewer, build, tmux, how = sys.argv[1:8]
 control = how == 'control'
 sock = root + '/tmux-' + how + '.sock'
 env = dict(os.environ, TERM='xterm-256color', OPENGRADS_COLOR='0',
-           OPENGRADS_BUILD_ROOT=build, GA_TERM_VIEWER=viewer)
+           OPENGRADS_BUILD_ROOT=build, GA_TERM_VIEWER=viewer,
+           GA_TERM_LOG=root + '/term-' + how + '.log')
 if os.sep in tmux:
     env['PATH'] = os.path.dirname(os.path.abspath(tmux)) + os.pathsep + env['PATH']
 for k in ('TMUX', 'TMUX_PANE', 'LC_TERMINAL', 'GA_TERM_TMUX_STEP'):
@@ -582,6 +583,7 @@ client = subprocess.Popen(tm + (['-CC'] if control else []) + ['attach', '-t', '
 if control:
     os.write(master, b'refresh-client -C %d,%d\n' % (COLS, ROWS))
 out = bytearray()
+marks = []                                  # (bytes read before, when)
 def pump(most, idle=1.5):
     # read at about 1 MB/s until nothing has come for idle seconds
     end = time.time() + most
@@ -590,17 +592,32 @@ def pump(most, idle=1.5):
         r, _, _ = select.select([master], [], [], 0.05)
         if r:
             chunk = os.read(master, 4096)
+            marks.append((len(out), time.time()))
             out.extend(chunk)
             last = time.time()
             time.sleep(len(chunk) / 1e6)
+def when(i):
+    t = None
+    for n, at in marks:
+        if n > i:
+            break
+        t = at
+    return '%.2f' % (t - t0) if t else '?'
+def fmt(f):
+    return subprocess.run(tm + ['display-message', '-p', '-t', 't:0.0', f], capture_output=True,
+                          text=True, env=env).stdout.strip()
 def keys(*k):
     subprocess.run(tm + ['send-keys', '-t', 't:0.0'] + list(k), check=True, env=env)
 pump(3, 3)
 panes = subprocess.run(tm + ['list-panes', '-t', 't', '-F', '#{pane_id} #{pane_left} #{pane_top}'],
                        capture_output=True, text=True, env=env).stdout.split()
 keys('open ' + ctl, 'Enter'); pump(2, 1)
+t0 = time.time()
 keys('run ' + root + '/dbuffloop.gs', 'Enter'); pump(30)
+print('pumped %.2f' % (time.time() - t0))
+discarded = fmt('#{client_discarded}')
 keys('quit', 'Enter'); pump(3, 1)
+version = subprocess.run([tmux, '-V'], capture_output=True, text=True, env=env).stdout.strip()
 after = subprocess.run(tm + ['list-panes', '-t', 't'], capture_output=True, text=True,
                        env=env).stdout
 client.terminate()
@@ -622,8 +639,11 @@ if control:
 else:
     at = rb'\x1b7\x1b\[%d;%dH' % (int(panes[5]) + 1, int(panes[4]) + 1)
 pics = whole = placed = 0
+arrived = []
 for m in re.finditer(rb'\x1b\]1337;(File=|MultipartFile=)([^:\x07]*)', d):
     pics += 1
+    if not control:
+        arrived.append(when(m.start()))
     size = int(re.search(rb'size=(\d+)', m.group(2)).group(1))
     if m.group(1) == b'File=':
         e = re.match(rb'[^:]*:([A-Za-z0-9+/=]*)\x07', d[m.end():])
@@ -649,10 +669,13 @@ print('whole', whole)
 print('placed', placed)
 print('wrapped', d.count(b'Ptmux;'))
 print('panes-after', len([l for l in after.splitlines() if l.strip()]))
+print('tmux', version, 'discarded', discarded, 'arrived', ' '.join(arrived))
 PYTHON
 for how in plain steps control; do
   result="$(python3 "$test_root/intmux.py" "$launcher" "$model_ctl" "$test_root" \
     "$viewer" "$build_root" "$tmux_bin" "$how" 2>&1)"
+  # what GrADS saw, for a failure
+  result="$result"$'\n'"$(cat "$test_root/term-$how.log" 2>/dev/null || true)"
   grep -qx 'panes 2' <<< "$result" ||
     fail "GrADS did not split a pane in tmux ($how)" "$result"
   grep -qx 'waiting 1' <<< "$result" ||
@@ -667,6 +690,7 @@ for how in plain steps control; do
     fail "passthrough wrapping reached the terminal ($how)" "$result"
   grep -qx 'panes-after 0' <<< "$result" || grep -qx 'panes-after 1' <<< "$result" ||
     fail "the viewer pane outlived GrADS ($how)" "$result"
+  printf '  in tmux (%s): %s\n' "$how" "$(grep '^tmux ' <<< "$result")"
 done
 
 printf 'Terminal display checks passed\n'
