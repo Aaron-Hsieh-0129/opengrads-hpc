@@ -243,11 +243,22 @@ state_fail()
   exit 1
 }
 
-mapfile -t gxinfo < <(answers 'q gxinfo')
-mapfile -t xy < <(answers 'q xy2w 5 4')
-mapfile -t shades < <(answers 'q shades')
-mapfile -t contours < <(answers 'q contours')
-mapfile -t plotted < <(answers 'd ts+0')
+# Gather the answers to a query into an array; the bash 3.2 of macOS has no
+# mapfile.
+collect()
+{
+  local line
+  eval "$1=()"
+  while IFS= read -r line; do
+    eval "$1+=(\"\$line\")"
+  done < <(answers "$2")
+}
+
+collect gxinfo 'q gxinfo'
+collect xy 'q xy2w 5 4'
+collect shades 'q shades'
+collect contours 'q contours'
+collect plotted 'd ts+0'
 (( ${#gxinfo[@]} == 4 && ${#xy[@]} == 9 && ${#shades[@]} == 2 && ${#contours[@]} == 1 &&
    ${#plotted[@]} == 2 )) || state_fail 'a query went unanswered'
 
