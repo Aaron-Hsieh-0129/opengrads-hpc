@@ -26,6 +26,7 @@
 
 #define EPSILON 1e5
 #define FUZZ_SCALE 1e-5
+#define GA_NOLIM 1.0e300       /* set cmin/cmax not given: beyond any data, as 9.99e33 was not */
 
 /* RPTNUM: Number of garpt blocks to allocate per memory block
    BLKNUM: Max number of memory requests

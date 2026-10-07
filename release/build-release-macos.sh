@@ -76,6 +76,7 @@ export OPENGRADS_RUNTIME_LIBRARY_PATH="$runtime_libraries"
 "$repo_root/pytests/TestUndo.sh"
 "$repo_root/pytests/TestProgress.sh"
 "$repo_root/pytests/TestAxisScale.sh"
+"$repo_root/pytests/TestExtremeValues.sh"
 # Its tmux checks run when tmux is installed (the release workflow installs it).
 "$repo_root/pytests/TestTermDisplay.sh"
 

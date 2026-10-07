@@ -73,6 +73,7 @@ OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestOpenMP.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestUndo.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestProgress.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestAxisScale.sh"
+OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestExtremeValues.sh"
 OPENGRADS_BUILD_ROOT="$build_root" "$repo_root/pytests/TestTermDisplay.sh"
 
 "$repo_root/release/package-linux.sh" \

@@ -1104,22 +1104,22 @@ char *rmask;
 
   size = pgr->isiz * pgr->jsiz;
   if (size==1) return;
-  pgr->rmin=  9.99E35;
-  pgr->rmax= -9.99E35;
+  /* from the first defined value: a field beyond the old starting values,
+     +-9.99e35, read as all undefined */
+  pgr->rmin = 0.0;
+  pgr->rmax = 0.0;
   r     = pgr->grid;
   rmask = pgr->umask; 
   cnt=0;
   for (i=0;i<size;i++) {
     if (*rmask == 1) {
+      if (cnt==0 || pgr->rmin>*r) pgr->rmin = *r;
+      if (cnt==0 || pgr->rmax<*r) pgr->rmax = *r;
       cnt++;
-      if (pgr->rmin>*r) {
-	pgr->rmin = *r;
-      }
-      if (pgr->rmax<*r) pgr->rmax = *r;
     }
     r++; rmask++;
   }
-  if (cnt==0 || pgr->rmin==9.99e35 || pgr->rmax==-9.99e35) {
+  if (cnt==0) {
     pgr->rmin = pgr->undef;
     pgr->rmax = pgr->undef;
     pgr->umin = pgr->umax = 0;

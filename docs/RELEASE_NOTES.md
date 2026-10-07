@@ -104,6 +104,40 @@ calculations, and native archives for Linux and macOS.
   used for axes, contours, and shading, was likewise fixed at 1e-16 and now
   goes with the data's size, so shading of values around 1e-25, which drew
   nothing, finds its levels. The fault is in GrADS 2.2.1.
+- **Very small and very large values crashed, hung, or drew nothing.**
+  More places in GrADS 2.2.1 took the size of the data for granted, with
+  tolerances and starting values fixed in its units. Each is now checked
+  against the same field at its own size, at scales from 1e-30 to 1e35:
+  - Contours of values below 1e-15 crashed GrADS: every level was rounded
+    to 0, so the level loop never ended and overran its table.
+  - Wind barbs of very large values hung GrADS: a barb counts off its
+    speed 50 at a time, and 50 taken from 1e20 leaves 1e20. A barb now
+    shows 20 pennants at most.
+  - Lines and bars of values around 1e-14 were drawn up to a fifth of
+    their range out of place, and of values below about 1e-16 not at all:
+    placing each value took 1 from it and added 1 back, which loses
+    everything below 2e-16.
+  - Streamlines of a flow below 0.1 (1e-12, or currents in m/s) drew
+    nothing. A streamline now stops below 0.1 or a hundredth of the
+    field's strongest component, whichever is less, so a flow looks the
+    same in any units; flows whose strongest component is 10 or more draw
+    as before.
+  - A field beyond 9.99e35 read as all undefined, and contours and shading
+    of values beyond 1e33 drew none, against the defaults of `set cmin` and
+    `set cmax`. With `set csmooth on`, values beyond 9.99e8 already read as
+    all undefined.
+  - A constant series of a large value (1e20) stopped with `gaaxis internal
+    logic check 24`, since 1e20 plus or minus 5 is 1e20.
+  - `gxout stat` called a field whose interval came under 1e-12 a constant
+    and gave `Cmin, cmax, cint = -5 5 1`.
+  - `fndlvl` returned the lower level instead of interpolating wherever the
+    field changed by less than 1e-5 across a layer, as trace gas mixing
+    ratios do.
+  - `gxout grid` and station values printed a field of 1e-12, or specific
+    humidity in kg/kg with the default `set dignum 0`, as all zeros, and
+    values of 1e20 cut short. Such a field now shows every value in two
+    or three significant digits (`2.7e-12`, `0.0012`, `2.59e+22`); fields
+    of ordinary size print as before.
 
 - **Plug-in names now match whatever the case.** `-d x11` found no `X11`
   display, and `-h cairo` no `Cairo` printer; display and print plug-in

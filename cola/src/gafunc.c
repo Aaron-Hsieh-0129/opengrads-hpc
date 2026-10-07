@@ -2091,8 +2091,8 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
       x = (gadouble)(i+pgr->dimmin[0]);
       if (*gru == 1) {
 	cnt++;
-	if (min>*gr) { min = *gr; minx = x; miny = y; }
-	if (max<*gr) { max = *gr; maxx = x; maxy = y; }
+	if (cnt==1 || min>*gr) { min = *gr; minx = x; miny = y; }   /* any size */
+	if (cnt==1 || max<*gr) { max = *gr; maxx = x; maxy = y; }
       }
       gr++; gru++;
     }
@@ -7313,7 +7313,8 @@ size_t sz;
       if (*gr1u != 0 && *gr2u != 0) {                        /* and data is available... */
        if ((*gr1 <  *gr2 && *grv >= *gr1 && *grv <= *gr2) ||
            (*gr1 >= *gr2 && *grv <= *gr1 && *grv >= *gr2)) { /* and the level falls in this layer... */
-         if (fabs(*gr2 - *gr1) < 1e-5) {
+         if (*gr2 == *gr1) {      /* a flat layer: any test wider than equal
+                                     would miss small values (1e-5 apart) */
 	   *grr = lev1;
 	   *grru = 1;
 	 }
