@@ -31,6 +31,18 @@ calculations, and native archives for Linux and macOS.
   pictures up, and Ctrl-C stops the animation and sends nothing more.
   `GA_TERM_ANIM=gif` also leaves a looping GIF, which iTerm2 plays on its
   own.
+- **How long a calculation will take.** A calculation that runs for more
+  than a second shows a progress line on the terminal: what runs, how far
+  along it is, the time taken and about how long is left, as in
+  `ave [██████░░░░]  35%  1022/2920  0:41, about 1:16 left`. It follows
+  `ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc`, `tloop`,
+  `eloop`, `gint`, and `define`; one inside another counts as part of its
+  step (`define > ave`). The line goes away before any other output and when
+  the command ends, and never appears in a file, a pipe, or a script's
+  `result`. iTerm2 also shows it in its own progress bar. `GA_PROGRESS=off`
+  turns it off; a number sets the delay in seconds. Ctrl-C now also stops a
+  BP5 time average between the batches of times it reads at once. See
+  [PERFORMANCE.md](PERFORMANCE.md).
 - **A progress bar for slow pictures.** With iTerm2, a picture over 1 MiB,
   or every picture once the link has proved slow, shows iTerm2's progress
   bar. It is updated between the parts of the picture, so it follows what

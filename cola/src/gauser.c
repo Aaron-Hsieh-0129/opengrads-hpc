@@ -1330,6 +1330,7 @@ FILE *pdefid=NULL;
 retrn:
   gacmdlvl--;
   if (gacmdlvl==0) gaundokeep(pcm);  /* Keep an undo step if we drew or cleared */
+  if (gacmdlvl==0) gaprogreset();    /* and take any progress line away */
   if (ccc) {
     gree(ccc,"f196");
   }
@@ -2714,7 +2715,18 @@ char name[20];
 
 /* Handle define command */
 
+static gaint gadef_run (char *, struct gacmn *, gaint);
+
+/* define, with its progress shown while it runs */
 gaint gadef (char *cmd, struct gacmn *pcm, gaint impf) {
+gaint lv, rc;
+  lv = gaprogbeg("define", 0);
+  rc = gadef_run(cmd, pcm, impf);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint gadef_run (char *cmd, struct gacmn *pcm, gaint impf) {
 struct gagrid *pgr,*pgr1;
 struct gastat *pst;
 struct gafile *pfi,*pfiv,*pfic;
@@ -2724,7 +2736,7 @@ struct dt tmin,tmax;
 gadouble (*conv) (gadouble *, gadouble);
 gadouble vmin,vmax,zmin,zmax,emin,emax,*res,*gr;
 gaint itmin,itmax,it,izmin,izmax,iz,iemin,iemax,ie;
-gaint i,rc,gsiz,vdz,vdt,vde;
+gaint i,rc,gsiz,vdz,vdt,vde,ndone;
 size_t sz,siz;
 char *resu,*gru;
 char name[20];
@@ -2825,6 +2837,9 @@ char name[20];
   pcm->vdim[2] = 0;
   pcm->vdim[3] = 0;
   pcm->vdim[4] = 0;
+
+  gaprogtotal((iemax-iemin+1)*(itmax-itmin+1)*(izmax-izmin+1));
+  ndone = 0;
 
   /* Get the first grid */
   pst = getpst(pcm);
@@ -3091,6 +3106,7 @@ char name[20];
 	  else {
 	    gafree (pst);
 	  }
+	  gaprogstep(++ndone);
 	}
       }
     }
@@ -8293,6 +8309,7 @@ gaint len;
     msgcurr = msgnew;
   }
   if (!msgflg || level<2) {
+    gaprogpause();                        /* take a progress line away first */
     printf ("%s",gatxtl(msg,level));
   }
 }

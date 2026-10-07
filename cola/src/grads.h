@@ -902,6 +902,15 @@ void mygreta(char *);
 struct gastat *getpst (struct gacmn *);
 void gaprnt (gaint, char *);
 gaint prntgaattr (struct gafile *, char *, gaint, gaint);
+
+/* Functions in GAUTIL.C: progress of long calculations */
+
+gaint gaprogbeg (const char *, gaint);
+void gaprogtotal (gaint);
+void gaprogstep (gaint);
+void gaprogend (gaint);
+void gaprogpause (void);
+void gaprogreset (void);
 #if READLINE == 1
 gaint gahistory(char*, char *, struct gacmn *);
 #endif /* READLINE == 1 */

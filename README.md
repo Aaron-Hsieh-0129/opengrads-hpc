@@ -43,7 +43,9 @@ libraries are available.
 - **OpenMP calculation engine.** Common grid arithmetic, functions, and
   reductions can use multiple CPU cores. The default is four calculation
   threads; control it with `set threads N`, `./opengrads -j N`, or
-  `GA_NUM_THREADS=N`. See [performance notes](docs/PERFORMANCE.md).
+  `GA_NUM_THREADS=N`. A long `ave`, `sum`, `tloop`, `define` and the like
+  shows a progress line with the time left. See
+  [performance notes](docs/PERFORMANCE.md).
 
 - **Restored self-describing-file access.** Release builds require NetCDF and
   UDUNITS support, so `sdfopen` and `xdfopen` remain available for compatible
