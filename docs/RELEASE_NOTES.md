@@ -67,6 +67,19 @@ calculations, and native archives for Linux and macOS.
 
 ### Changed in 1.0.10
 
+- **Axes of very small or large values carry one power of ten.** As in
+  matplotlib, a plain numeric axis whose labels would have gone to
+  e-notation (below 1e-4, or from 1e6) now shows them as plain numbers with
+  the power of ten once at its end: `2.741` to `2.747` and `1e-10` rather
+  than `2.741e-10` on every label. On a Y axis it stands above the top label,
+  over the label column; on an X axis under the labels at the right end, above
+  where `draw xlab` writes, so it stays clear of `draw title`, `draw xlab`,
+  and `draw ylab`. Labels also get as many digits as it takes to tell them
+  apart, so a small range on a large value (1.0000000000002 to
+  1.0000000000006) no longer labels every tick `1`. Ordinary values are
+  labeled as before; a label format (`set ylab %g`, `set xlab %.2e`) turns
+  the power of ten off, as do log axes and map longitudes and latitudes.
+
 - **`clear` can be undone.** With undo on, `clear` (`c`, also `c norset` and
   `c graphics`) is a step of its own: `undo` brings the cleared picture back,
   along with the options the clear reset (`set vrange`, `set xlint`, and the
@@ -82,6 +95,15 @@ calculations, and native archives for Linux and macOS.
   runs, Ctrl-C interrupts it, as before. To force GrADS to stop, use Ctrl-\\.
 
 ### Fixed in 1.0.10
+
+- **Line graphs of very small values stopped with `gaaxis internal logic
+  check 25`.** A time series of values around 1e-10 drew no axis: the label
+  interval, about 1e-11, was taken for zero because it was compared with zero
+  to within 1e-8, whatever the size of the data. Any interval above zero now
+  counts. The test for an interval too small for the data's precision,
+  used for axes, contours, and shading, was likewise fixed at 1e-16 and now
+  goes with the data's size, so shading of values around 1e-25, which drew
+  nothing, finds its levels. The fault is in GrADS 2.2.1.
 
 - **Plug-in names now match whatever the case.** `-d x11` found no `X11`
   display, and `-h cairo` no `Cairo` printer; display and print plug-in

@@ -168,8 +168,8 @@ UDUNITS-2 ships that API and its `udunits.h` compatibility header, so every
 platform uses UDUNITS-2 — `libudunits2-dev` on Linux, the `udunits` formula on
 macOS. An earlier attempt to build UDUNITS 1.12.11 from source was dropped: it
 fails against modern bison on Linux and on the Fortran probe on macOS, and it
-was never necessary. The builders run the BP5, SDF, OpenMP, undo, and
-progress-line regressions before packaging their archive, and the terminal display's
+was never necessary. The builders run the BP5, SDF, OpenMP, undo,
+progress-line, and axis-scale regressions before packaging their archive, and the terminal display's
 checks where it is built (Linux and macOS).
 
 The macOS packager rewrites every bundled Mach-O install name to `@rpath` and

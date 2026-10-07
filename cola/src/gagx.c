@@ -5627,7 +5627,8 @@ struct dt tstrt,tincr,addmo,twrk;
 gadouble vmin,vmax,*tvals=0,x,y,tt;
 gadouble v,vincr,vstrt,vend;
 gadouble m,b,cs,xx,cwid,pos;
-gaint ii,len,tinc=0,colr,thck,flg,i,cnt;
+gaint ii,len,tinc=0,colr,thck,flg,i,cnt,prec=6,sexp=0,shown=0;
+gadouble big,scale=1.0;
 char lab[30],olab[30],*chlb=NULL;
  
   if (axis && pcm->xlab==0) return;
@@ -5753,7 +5754,9 @@ char lab[30],olab[30],*chlb=NULL;
       vend = vend+(vincr*0.5);
     } else {
       gacsel (vmin,vmax,&vincr,&vstrt,&vend);
-      if (dequal(vincr, 0.0, 1e-08)==0) {
+      /* gacsel gives 0 when it finds no interval. Any other interval is
+         good, however small: data of 1e-10 have one of about 1e-11. */
+      if (!(vincr>0.0)) {
         gaprnt (0,"gaaxis internal logic check 25\n");
         return;
       }
@@ -5791,6 +5794,34 @@ char lab[30],olab[30],*chlb=NULL;
         else *(pcm->ylevs+i) = v;
       }
     }
+
+    /* Plain numeric labels of very small or large values are shown as
+       multiples of one power of ten, given once at the end of the axis,
+       as matplotlib does: 2.741 ... 2.747 and "1e-10", not 2.741e-10 and
+       so on. That is where %g would have gone to e-notation: below 1e-4,
+       or from 1e6. Labels then get 6 significant digits, or as many as it
+       takes to tell one from the next (1.0000000000002 to 1.0000000000006
+       by 1e-13 takes 14). Formats set by the user, map longitudes and
+       latitudes, and log axes are left as they were. */
+    big = 0.0;
+    for (i=0; i<cnt; i++) {
+      v = fabs(axis ? *(pcm->xlevs+i) : *(pcm->ylevs+i));
+      if (v>big) big = v;
+    }
+    if (big>0.0 && !(axis==1 && (pcm->xlstr || pcm->xlabs)) &&
+        !(axis==0 && (pcm->ylstr || pcm->ylabs)) &&
+        !((dim==0 || dim==1) && pcm->mproj>0)) {
+      if (vincr>0.0) {
+        i = (gaint)(floor(log10(big)) - floor(log10(vincr))) + 1;
+        if (i>prec) prec = (i>15) ? 15 : i;
+      }
+      i = (gaint)floor(log10(big));
+      if ((i<-4 || i>=6) && !pcm->log1d && !(dim==2 && pcm->zlog) &&
+          !(dim==1 && pcm->coslat)) {
+        sexp = i;
+        scale = pow(10.0,(gadouble)sexp);
+      }
+    }
     i = 0;
     if (axis==1 && pcm->xlabs) chlb = pcm->xlabs;
     if (axis==0 && pcm->ylabs) chlb = pcm->ylabs;
@@ -5810,7 +5841,7 @@ char lab[30],olab[30],*chlb=NULL;
       else {
         if (dim==0 && pcm->mproj>0) len = galnch(v,lab);
         else if (dim==1 && pcm->mproj>0) len = galtch(v,lab);
-        else snprintf(lab,29,"%g",v);
+        else snprintf(lab,29,"%.*g",prec,v/scale);
       }
       len=0;
       while (lab[len]) len++;
@@ -5877,7 +5908,29 @@ char lab[30],olab[30],*chlb=NULL;
       }
       gxchpl(lab,len,x,y,cs,cs*0.8,0.0);
       lab[9] = '\0';
+      shown++;
       i++;
+    }
+
+    /* The power of ten, once: for the Y axis above its top label, right
+       against the axis like the labels (outside the plot's width, so clear
+       of a title); for the X axis below its labels at the right end (above
+       where "draw xlab" goes). */
+    if (sexp && shown) {
+      snprintf(lab,29,"1e%d",sexp);
+      len = (gaint)strlen(lab);
+      cwid = (gadouble)len*cs;
+      gxchln (lab,len,cs,&cwid);
+      if (axis) {
+        x = pcm->xsiz2 - cwid*0.8;
+        if (pcm->xlside) y = pos + cs*2.0;
+        else y = pos - cs*3.0;
+      } else {
+        if (pcm->ylside) x = pos + cs*0.8;
+        else x = pos - (cwid+cs)*0.8;
+        y = pcm->ysiz2 + cs*1.1;
+      }
+      gxchpl(lab,len,x,y,cs,cs*0.8,0.0);
     }
   } else {
 
@@ -6166,11 +6219,13 @@ void gacsel (gadouble rmin, gadouble rmax, gadouble *cint, gadouble *cmin, gadou
   *cmin = *cint * ceil(rmin/(*cint));  
   *cmax = *cint * floor(rmax/(*cint));
 
-  /* Check for interval being below machine epsilon for these values */
+  /* Check for interval being below machine epsilon for these values: it
+     must still change them. The tolerance goes with their size, so that
+     data of 1e-20 and of 1e10 are judged alike. */
   t1 = rmin + *cint;
   t2 = rmax - *cint;
-  if ((dequal(rmin, t1, 1.0e-16)==0) ||
-      (dequal(rmax, t2, 1.0e-16)==0)) {
+  if ((dequal(rmin, t1, 1.0e-16*absmax)==0) ||
+      (dequal(rmax, t2, 1.0e-16*absmax)==0)) {
     *cint=0.0;
     *cmin=0.0;
     *cmax=0.0;
@@ -7259,11 +7314,12 @@ void gaselc (struct gacmn *pcm, gadouble rmin, gadouble rmax) {
     cmin = cint * ceil(rmin/cint);
     cmax = cint * floor(rmax/cint);
 
-    /* Check for interval being below machine epsilon for these values */
+    /* Check for interval being below machine epsilon for these values,
+       relative to their size, as gacsel does */
     t1 = rmin + cint;
     t2 = rmax - cint;
-    if ((dequal(rmin, t1, 1.0e-16)==0) ||
-	(dequal(rmax, t2, 1.0e-16)==0)) {
+    if ((dequal(rmin, t1, 1.0e-16*absmax)==0) ||
+	(dequal(rmax, t2, 1.0e-16*absmax)==0)) {
       pcm->shdcnt = 0;
       return;
     }
