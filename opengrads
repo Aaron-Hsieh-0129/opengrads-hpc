@@ -28,7 +28,12 @@ bundle_root_explicit=0
 if [[ -n "${OPENGRADS_BUNDLE_ROOT:-}" ]]; then
   bundle_root_explicit=1
 fi
-if [[ -z "$bundle_root" ]]; then
+# Looking beside the launcher for a legacy OpenGrADS bundle is a convenience
+# for a source checkout only. A packaged archive carries its own plug-ins, and
+# one unpacked next to an old OpenGrADS install would otherwise load that
+# install's plug-ins and extensions, built against other libraries, and fail
+# with "libpng15.so.15: cannot open shared object file".
+if [[ -z "$bundle_root" && ! -r "$repo_root/glibc-required.txt" ]]; then
   for candidate in "$repo_root/opengrads/Contents" \
                    "$repo_root/../opengrads-2.2.1.oga.1/Contents"; do
     if [[ -d "$candidate" ]]; then
@@ -85,6 +90,11 @@ if [[ ! -r "$plugin_table" ]]; then
 fi
 
 export GAUDPT="$plugin_table"
+
+# The terminal display (-d Term) starts this viewer in a tmux pane.
+if [[ -z "${GA_TERM_VIEWER:-}" && -x "$repo_root/libexec/grads-termview" ]]; then
+  export GA_TERM_VIEWER="$repo_root/libexec/grads-termview"
+fi
 
 # UDUNITS-2 looks for its unit database at a path compiled into the library,
 # which will not exist on a machine that has no udunits2 installed. Use the
@@ -225,9 +235,37 @@ else
   fi
 fi
 
+# Does the terminal show iTerm2 inline images? iTerm2 sets LC_TERMINAL, which
+# ssh forwards with the other LC_* variables, so this also holds on a remote
+# host and inside tmux there. OPENGRADS_TERM=1 or 0 overrides the guess.
+terminal_shows_images()
+{
+  case "${OPENGRADS_TERM:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  [[ -t 1 ]] || return 1
+  case "${LC_TERMINAL:-}:${TERM_PROGRAM:-}" in
+    iTerm2:*|*:iTerm.app|WezTerm:*|*:WezTerm) return 0 ;;
+  esac
+  return 1
+}
+
+use_terminal_display=0
+if [[ -r "$plugin_dir/libgxdTerm.so" ]]; then
+  # An X server wins unless the terminal display was asked for by name.
+  if [[ "${OPENGRADS_TERM:-}" == 1 ]] ||
+     { [[ -z "${DISPLAY:-}" ]] && terminal_shows_images; }; then
+    use_terminal_display=1
+  fi
+fi
+
 if [[ "$#" -eq 0 ]]; then
   if [[ "$runtime_kind" == local ]]; then
-    if [[ -z "${DISPLAY:-}" ]]; then
+    if (( use_terminal_display )); then
+      # The terminal shows the picture itself; no X server is needed.
+      set -- -l -d Term
+    elif [[ -z "${DISPLAY:-}" ]]; then
       set -- -bl -d gxdummy -h gxdummy
     elif [[ -r "$plugin_dir/libgxdCairo.so" &&
             -r "$plugin_dir/libgxpCairo.so" ]]; then

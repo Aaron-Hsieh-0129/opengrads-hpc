@@ -1,5 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
-/* Modified in 2026 for optional ADIOS2 BP5 and CLI support; see COPYING. */
+/* Modified in 2026 for optional ADIOS2 BP5, CLI support, and Ctrl-C handling; see COPYING. */
 
 /* Main program for GrADS (Grid Analysis and Display System).
    This program loops on commands from the user, and calls the
@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include <signal.h>
 #include "grads.h"
 #include "gaomp.h"
@@ -423,8 +424,8 @@ gaint i;
   gcmn.cint = 0;
   gcmn.cflag = 0;
   gcmn.ccflg = 0;
-  gcmn.cmin = -9.99e33;
-  gcmn.cmax = 9.99e33;
+  gcmn.cmin = -GA_NOLIM;
+  gcmn.cmax = GA_NOLIM;
   gcmn.arrflg = 0;
   gcmn.arlflg = 1;
   gcmn.ahdsiz = 0.05;
@@ -596,9 +597,21 @@ gaint i;
   gcmn.gxpopt[0] = '\0';
 }
 
+/* Ctrl-C. While a command line is being typed, it starts a fresh line. While
+   a command or script runs, it interrupts it, and the display stops sending
+   its pictures. It never ends GrADS; type quit, or Ctrl-\ to force it. */
+
+extern volatile sig_atomic_t ga_at_prompt;
+void ga_prompt_sigint (void);
+void gxintr (void);
+
 void gasig(gaint i) {
-  if (gcmn.sig) exit(0);
+  if (ga_at_prompt) {
+    ga_prompt_sigint();
+    return;
+  }
   gcmn.sig = 1;
+  gxintr();
 }
 
 gaint gaqsig (void) {
@@ -895,12 +908,25 @@ memerr:
 
 
 /* Search the contents of the chain of upb structures
-   If the name and type match, return the pointer to the fname */
+   If the name and type match, return the pointer to the fname.
+   Display and print plug-ins (types 3 and 4) match whatever the case,
+   so that -d x11 finds X11. */
 char * gaqupb (char *name, gaint type) {
 struct gaupb *upb;
+char *a,*b;
   upb = upba;
   while (upb) {
-    if (cmpwrd(upb->name,name) && upb->type==type) return (upb->fname);
+    if (upb->type==type) {
+      if (type<3) {
+        if (cmpwrd(upb->name,name)) return (upb->fname);
+      } else {
+        a = upb->name;
+        b = name;
+        while (*a && *a!=' ' && *b && *b!=' ' &&
+               tolower((unsigned char)*a)==tolower((unsigned char)*b)) { a++; b++; }
+        if ((*a=='\0' || *a==' ') && (*b=='\0' || *b==' ')) return (upb->fname);
+      }
+    }
     upb = upb->upb;
   }
   return (NULL);

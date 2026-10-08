@@ -115,7 +115,7 @@ grads main loop (grads.c)
 | `cola/src/gxcntr.c` | Contour construction | Contour performance or curvilinear-cell contour behavior. |
 | `cola/src/gxshad.c`, `gxshad2.c` | Shaded polygon construction | Shading performance/topology changes. `gxshad2b` intentionally makes smaller polygons and is slower. |
 | `cola/src/gxsubs.c` | Coordinate pipeline and dynamic graphics devices | Device loading or low-level coordinate transformation. |
-| `cola/src/gxC.c`, `gxX.c`, `gxX11.c`, `gxprint.c`, `gxGD.c` | Cairo/X11/print/GD backends | Output-device changes, not data-format work. |
+| `cola/src/gxC.c`, `gxX.c`, `gxT.c`, `gxX11.c`, `gxprint.c`, `gxGD.c` | Cairo/X11/terminal/print/GD backends | Output-device changes, not data-format work. |
 | `cola/src/galloc.c` | Allocation wrappers | Instrumentation for memory profiling; avoid bypassing without reason. |
 | `cola/configure.ac`, `cola/m4/` | Optional dependency detection and feature macros | Contains optional serial ADIOS2 detection; use it for further dependency behavior changes. |
 | `cola/src/Makefile.am` | Canonical core sources and link flags | Registers `gaadios.c` and ADIOS2 flags conditionally. Regenerate Autotools outputs deliberately. |
@@ -238,6 +238,50 @@ Extend the result model rather than pretending the grid is separable X/Y:
 `gxgrid(gaconv)` already provides a grid-coordinate transformation hook, but `gaconv` currently applies independent I and J conversions stored in global variables. It can inspire the call site, not serve as the complete curvilinear implementation.
 
 Acceptance: all six faces render without false seam connections or holes, scalar values agree at shared boundaries, vector direction is correct, and a reference regridded plot is available for comparison.
+
+### Terminal display: work parked until it can be tested on a Mac
+
+The terminal display (`cola/src/gxT.c`, [TERMINAL.md](TERMINAL.md)) renders
+pixels on the remote host and ships them over ssh. Two follow-ups need a real
+iTerm2 to develop, so they wait for a session on the user's Mac.
+
+**Local rendering in iTerm2.** Send vector drawing instead of pixels and let
+the Mac draw it:
+
+1. Remote: draw to a Cairo recording surface, replay it into an SVG surface
+   and an image surface, gzip the SVG, and send whichever is smaller. Pick
+   per picture: dense pictures are smaller as PNG.
+2. Send it in iTerm2's custom control sequence,
+   `ESC ] 1337 ; Custom=id=<secret>:<payload> BEL`, wrapped for tmux like the
+   images are. The secret can travel from the Mac as an `LC_*` variable,
+   which ssh forwards like `LC_TERMINAL`. Large payloads may need chunking;
+   iTerm2 caps one sequence at 1 MiB.
+3. Mac: an iTerm2 AutoLaunch Python script receives it with
+   `iterm2.CustomControlSequenceMonitor`, serves it on localhost (aiohttp),
+   and shows it in a toolbelt panel registered with
+   `iterm2.tool.async_register_web_view_tool`. WebKit draws the SVG. The
+   panel can keep a history of recent plots, like Spyder's Plots pane.
+
+Measured with `pytests/data/model.ctl`, `d ts`, against a 2x PNG from
+Cairo's encoder (the display's own encoder now makes these 18–24% smaller):
+
+| Picture | PNG 2x | SVG, gzip -9 |
+|---|---|---|
+| contour | 655 KB | 95 KB |
+| shaded | 379 KB | 68 KB |
+| shaded with `set mpdset hires` | 533 KB | 1,473 KB |
+
+Costs: an install step on the Mac (enable the Python API, AutoLaunch script,
+`aiohttp`), iTerm2 only, and the toolbelt is per window rather than per pane.
+Keep the tmux and inline modes as the fallback.
+
+**Render at the pane's pixel size.** The picture is a fixed 1000 points
+(2000 pixels at the default scale) wide whatever the pane size. If tmux
+passes the client's pixel size on to the pane (`ws_xpixel` from
+`TIOCGWINSZ` on `#{pane_tty}`), the scale could be chosen to match the
+pane, shrinking the transfer for small panes. Whether iTerm2 reports that
+size in points or in Retina pixels decides the right factor and needs
+checking on a real Mac; guessing wrong makes every picture blurry.
 
 ## Suggested feature branch sequence
 

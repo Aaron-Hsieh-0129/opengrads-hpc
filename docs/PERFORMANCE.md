@@ -31,6 +31,32 @@ Do not automatically select every logical CPU on a shared node. Start with 4,
 then benchmark 2, 4, 8, and so on against the real command script. Memory
 bandwidth often limits grid arithmetic before all cores are useful.
 
+## How long it will take
+
+A calculation that runs for more than a second shows a progress line on the
+terminal while it works: what is running, how far along it is, the
+calculation threads at work (`set threads`), how long it has taken, and about
+how long is left.
+
+```text
+ga-> d ave(t,t=1,t=2920)
+Averaging.  dim = 3, start = 1, end = 2920
+ave [██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░]  35%  1022/2920  4 threads  0:41, about 1:16 left
+```
+
+It follows `ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc`,
+`tloop`, `eloop`, `gint`, and `define`. A calculation inside another counts
+as part of its step, so `define x = ave(t,t-30,t+30)` over a year of days
+shows one line, `define > ave`, that moves as each average does. The line is
+taken away before anything else is printed and when the command ends, so the
+output reads as before, and it never appears when the output goes to a file
+or a pipe, or inside a script's `result`. In iTerm2 (outside tmux) the
+progress also shows in iTerm2's own progress bar. Ctrl-C stops the
+calculation as usual.
+
+`GA_PROGRESS=off` turns the line off; a number sets how many seconds a
+calculation runs before it appears (default 1).
+
 ## Accelerated calculations
 
 The implementation parallelizes independent cells in the hot, thread-safe

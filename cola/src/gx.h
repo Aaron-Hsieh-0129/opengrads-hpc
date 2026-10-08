@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display; see COPYING. */
 
 #include <stdlib.h>
 
@@ -38,6 +39,25 @@
 
 /* Structure for setting up map projections.  Used to call
    map projection routines.                                          */
+
+/* The coordinate transforms the most recent plot set up: linear page
+   scaling, the projection, grid and back-transform routines, the
+   projections' own parameters, and the clipping region; and the mask that
+   keeps contour labels apart. Undo keeps a copy with each step, so that
+   the plot it returns to also gets these back, for overlays and for
+   q xy2w and the like. gxxffree frees what a copy holds. */
+
+struct gxxform {
+  gadouble xm,xb,ym,yb;                /* Linear (level 1) scaling        */
+  void (*fconv) (gadouble, gadouble, gadouble *, gadouble *);
+  void (*gconv) (gadouble, gadouble, gadouble *, gadouble *);
+  void (*bconv) (gadouble, gadouble, gadouble *, gadouble *);
+  gadouble clminx,clmaxx,clminy,clmaxy; /* Software clipping region       */
+  gadouble map[10];                    /* Projection parameters (gxwmap.c) */
+  gaint mapadj;                        /* and the projection's adjustment */
+  gaint maskflg;                       /* State of the label mask        */
+  gaint *maskrun, maskruns;            /* and its runs of clear and set  */
+};
 
 struct mapprj {
   gadouble lnmn,lnmx,ltmn,ltmx;        /* Lat,lon limits for projections */
@@ -237,6 +257,8 @@ struct gxdsubs {
   void (*gxrs1wd) (int,int);
   void (*gxsetpatt) (gaint);
   gaint (*win_data) (struct xinfo*);
+  void (*gxdidle) (void);   /* optional; NULL when the plug-in has none */
+  void (*gxdintr) (void);   /* optional; called from the SIGINT handler */
 };
 
 /* Function prototypes for GX library routines  */
@@ -332,6 +354,9 @@ void gxmaskclear (void);
    gxptrn: Set fill pattern
    gxqchl: Query the width of a character 
    gxundo: Rewind the display one undo step and redraw what is left
+   gxxfsave: Copy the coordinate transforms the last plot set up
+   gxxfrest: Put such a copy back
+   gxxffree: Free what such a copy holds
    gxload: Loads the display/printing graphics routines
    getpsubs: Passes the pointer containing printing function pointers
    getdsubs: Passes the pointer containing printing function pointers
@@ -340,7 +365,10 @@ void gxmaskclear (void);
 gaint gxstrt (gadouble, gadouble, gaint, gaint, char *, char *, char *);
 void gxend (void);
 void gxfrme (gaint);
-gaint gxundo (void);
+gaint gxundo (void **);
+void gxxfsave (struct gxxform *);
+void gxxfrest (struct gxxform *);
+void gxxffree (struct gxxform *);
 void gxcolr (gaint);
 gaint gxacol (gaint, gaint, gaint, gaint, gaint);
 void gxwide (gaint);
@@ -379,6 +407,8 @@ char *gxgnam(char *);
 gadouble gxdrawch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 gadouble gxqchl (char, gaint, gadouble);
 void gxsignal (gaint);
+void gxidle (void);
+void gxintr (void);
 gaint gxload(char *, char *);
 struct gxpsubs *getpsubs(void);
 struct gxdsubs *getdsubs(void);
@@ -401,9 +431,11 @@ struct gxdsubs *getdsubs(void);
    gxhfrm: Handle new frame action
    gxhdrw: Handle redraw operation
    gxhundoset:  Set how many undo steps to keep; below one turns undo off
-   gxhundoclr:  Forget the saved undo positions
+   gxhundoclr:  Forget the saved undo steps
+   gxhundofn:   Name the routine that frees the state a step carries
    gxhundomark: Note where the plot ends before a command runs
-   gxhundokeep: Keep that position if the command added to the plot
+   gxhundoframe: Let the coming clear set the frame aside, so it can be undone
+   gxhundokeep: Keep the step if the command added to the plot or cleared it
    gxhundo:     Rewind the plot one step
    gxhundoq:    Report undo settings and meta buffer usage
                                            */
@@ -423,9 +455,11 @@ void gxhfrm (int);
 void gxhdrw (gaint,gaint);
 gaint gxhundoset (gaint);
 void gxhundoclr (void);
+void gxhundofn (void (*) (void *));
 void gxhundomark (void);
-void gxhundokeep (void);
-gaint gxhundo (void);
+void gxhundoframe (void);
+gaint gxhundokeep (void *);
+gaint gxhundo (void **);
 void gxhundoq (gaint *, gaint *, gaint *);
 void gxddbl (void);
 gaint mbufget (void);
@@ -542,9 +576,13 @@ gaint gxshdc (gadouble *, gaint *, gaint, gadouble);
    gxgmap: Medium and hi res map drawer
    gxhqpt: Plot quadrant of medium or hi res map
    gxmpoly: Interpolate polygon sides for drawing in non-linear map space
+   gxmpsave: Copy the projection parameters, for undo
+   gxmprest: Put them back
                                                                   */
 
 void gxrsmapt(void);
+void gxmpsave (gadouble *, gaint *);
+void gxmprest (gadouble *, gaint);
 void gxdmap (struct mapopt *);
 void gxwmap (gadouble, gadouble, gadouble, gadouble);
 void gxnmap (gadouble, gadouble, gadouble, gadouble);

@@ -33,9 +33,22 @@ gadouble xx1,yy1,xx2,yy2,adj,dacum,tacum;
 gaint i,ii,jj,ii1,ij1,i2,j2,ipt,acnt,icol,scol,dis;
 gaint *it,siz,iacc,iisav,iscl,imn,imx,jmn,jmx,iz,jz,iss,jss,bflg;
 char *upmask,*vpmask,*cpmask;
+gadouble slow;
 
   scol = -9;
   icol = 1;
+
+  /* A streamline ends where the flow is too slow to follow: below 0.1
+     (m/s, say), or for a field of small values, below a hundredth of its
+     fastest component, so that a flow of 1e-12 draws as one of 1e-2 or
+     10 would. */
+  slow = 0.0;
+  for (i=0; i<is*js; i++) {
+    if (*(umask+i)!=0 && fabs(*(u+i))>slow) slow = fabs(*(u+i));
+    if (*(vmask+i)!=0 && fabs(*(v+i))>slow) slow = fabs(*(v+i));
+  }
+  slow = slow*0.01;
+  if (slow>0.1) slow = 0.1;
 
   /* Figure out the interval for the flag grid */
 
@@ -148,7 +161,7 @@ char *upmask,*vpmask,*cpmask;
         vv2 = *(vp+is) + (*(vp+is+1)-*(vp+is))*xx;
         vv = vv1 + (vv2-vv1)*yy;
         auv = fabs(uv); avv=fabs(vv);
-        if (auv<0.1 && avv<0.1) break;
+        if ((auv<slow && avv<slow) || (auv==0.0 && avv==0.0)) break;
         if (auv>avv) {
           vv = vv*fact/auv;
           uv = uv*fact/auv;
@@ -240,7 +253,7 @@ char *upmask,*vpmask,*cpmask;
         vv2 = *(vp+is) + (*(vp+is+1)-*(vp+is))*xx;
         vv = vv1 + (vv2-vv1)*yy;
         auv = fabs(uv); avv=fabs(vv);
-        if (auv<0.1 && avv<0.1) break;
+        if ((auv<slow && avv<slow) || (auv==0.0 && avv==0.0)) break;
         if (auv>avv) {
           vv = vv*fact/auv;
           uv = uv*fact/auv;

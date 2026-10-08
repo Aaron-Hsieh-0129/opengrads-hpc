@@ -1,4 +1,5 @@
 /* Copyright (C) 1988-2018 by George Mason University. See file COPYRIGHT for more information. */
+/* Modified in 2026 for the terminal display and calculation progress; see COPYING. */
 
 /* Originally authored by B. Doty */
 
@@ -8,6 +9,8 @@
 #include <limits.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
+#include <unistd.h>
 /* 
  * Include ./configure's header file
  */
@@ -36,6 +39,11 @@ static char pout[1256];   /* Build Error msgs here */
 char *gatxtl(char *str, gaint color);
 char *gatxtlp(char *str);
 
+/* Set while GrADS waits for a command line, so that Ctrl-C starts a fresh
+   line instead of interrupting anything: 1 with readline, 2 without. */
+volatile sig_atomic_t ga_at_prompt = 0;
+static char ga_prompt_text[300];
+
 /* Retrieves the next command from the user.  Leading blanks
    are stripped.  The number of characters entered before the
    CR is returned.                                                    */
@@ -43,15 +51,23 @@ char *gatxtlp(char *str);
 gaint nxtcmd (char *cmd, char *prompt) {
 gaint past,cnt;
 
-  printf ("%s ",gatxtl(prompt,-1));
+#ifndef STNDALN
+  gaprogreset();
+  gxidle();
+#endif
+  snprintf(ga_prompt_text,sizeof(ga_prompt_text),"%s ",gatxtl(prompt,-1));
+  printf ("%s",ga_prompt_text);
+  fflush(stdout);
   past = 0;
   cnt = 0;
+  ga_at_prompt = 2;
   while (1) {
     *cmd = getchar();
-    if (*cmd == EOF) return (-1);
+    if (*cmd == EOF) { ga_at_prompt = 0; return (-1); }
     if (*cmd == '\n') {
       cmd++;
       *cmd = '\0';
+      ga_at_prompt = 0;
       return (cnt);
     }
     if (past || *cmd != ' ') {
@@ -1088,22 +1104,22 @@ char *rmask;
 
   size = pgr->isiz * pgr->jsiz;
   if (size==1) return;
-  pgr->rmin=  9.99E35;
-  pgr->rmax= -9.99E35;
+  /* from the first defined value: a field beyond the old starting values,
+     +-9.99e35, read as all undefined */
+  pgr->rmin = 0.0;
+  pgr->rmax = 0.0;
   r     = pgr->grid;
   rmask = pgr->umask; 
   cnt=0;
   for (i=0;i<size;i++) {
     if (*rmask == 1) {
+      if (cnt==0 || pgr->rmin>*r) pgr->rmin = *r;
+      if (cnt==0 || pgr->rmax<*r) pgr->rmax = *r;
       cnt++;
-      if (pgr->rmin>*r) {
-	pgr->rmin = *r;
-      }
-      if (pgr->rmax<*r) pgr->rmax = *r;
     }
     r++; rmask++;
   }
-  if (cnt==0 || pgr->rmin==9.99e35 || pgr->rmax==-9.99e35) {
+  if (cnt==0) {
     pgr->rmin = pgr->undef;
     pgr->rmax = pgr->undef;
     pgr->umin = pgr->umax = 0;
@@ -2390,6 +2406,228 @@ off_t ftello(FILE *stream) {
 #endif
 
 
+#ifndef STNDALN
+
+/* Progress of a long calculation (ave, sum, tloop, define and the like),
+   shown on the terminal so it is plain how much is left. A loop says how
+   many steps it takes (gaprogbeg), how many it has done (gaprogstep), and
+   when it is through (gaprogend). The line also gives the number of
+   calculation threads (set threads). Loops inside loops narrow it down: a
+   define over 12 times of an ave over 1000 is 1/12000 of the way per step
+   of the ave. Nothing shows for the first second, or when standard output
+   is not a terminal, and the line is taken away before anything else is
+   printed and when the command ends, so output and logs read as before.
+   GA_PROGRESS=off turns it off; a number sets the delay in seconds. iTerm2
+   also shows it in its own progress bar (outside tmux). */
+
+#include <time.h>
+#include <sys/ioctl.h>
+#include "gaomp.h"
+
+#define PROG_LEVELS 8
+
+static struct {
+  char what[16];
+  gaint total, done;
+} prog[PROG_LEVELS];
+static gaint progdepth=0;          /* loops running */
+static gaint progn=0;              /* of them recorded */
+static gadouble progf=0.0;         /* fraction done, never going back */
+static gaint progshown=0;          /* the line is on the terminal */
+static gaint progpct=-1;           /* last percentage given iTerm2 */
+static gaint progon=-1;            /* -1 not decided yet */
+static gaint progiterm=0;
+static gaint progutf8=0;
+static gadouble progdelay=1.0;
+static gadouble progt0,proglast;
+
+static gadouble prognow (void) {
+struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC,&t);
+  return (t.tv_sec + t.tv_nsec*1e-9);
+}
+
+static void progsetup (void) {
+char *v,*lc;
+  progon = isatty(1);
+  v = getenv("GA_PROGRESS");
+  if (v && *v) {
+    if (!strcmp(v,"off") || !strcmp(v,"no") || !strcmp(v,"0")) progon = 0;
+    else if (atof(v)>0.0) progdelay = atof(v);
+  }
+  v = getenv("LC_TERMINAL");
+  lc = getenv("TERM_PROGRAM");
+  progiterm = ((v && !strcmp(v,"iTerm2")) || (lc && !strcmp(lc,"iTerm.app"))) &&
+              (getenv("TMUX")==NULL || *getenv("TMUX")=='\0');
+  lc = getenv("LC_ALL");
+  if (lc==NULL || *lc=='\0') lc = getenv("LC_CTYPE");
+  if (lc==NULL || *lc=='\0') lc = getenv("LANG");
+  progutf8 = lc && (strstr(lc,"UTF-8") || strstr(lc,"utf-8") || strstr(lc,"UTF8") ||
+                    strstr(lc,"utf8"));
+}
+
+static void progtime (char *buf, size_t n, gadouble sec) {
+long t;
+  t = (long)(sec+0.5);
+  if (t<60) snprintf(buf,n,"%ld s",t);
+  else if (t<3600) snprintf(buf,n,"%ld:%02ld",t/60,t%60);
+  else snprintf(buf,n,"%ld:%02ld:%02ld",t/3600,(t/60)%60,t%60);
+}
+
+/* Write it out now; the caller has flushed stdout */
+
+static void progput (const char *s) {
+size_t n;
+ssize_t r;
+  n = strlen(s);
+  while (n) {
+    r = write(1,s,n);
+    if (r<=0) return;
+    s += r;
+    n -= r;
+  }
+}
+
+/* Take the line away, before other output or when the work is done */
+
+void gaprogpause (void) {
+  if (!progshown) return;
+  fflush(stdout);
+  progput("\r\033[K");
+  progshown = 0;
+}
+
+static void progdraw (void) {
+struct winsize ws;
+char line[256],bar[512],el[32],left[32],label[64],count[80];
+gadouble f,t,elapsed;
+gaint i,cols,width,fill,pct,used;
+
+  /* how far along, the steps inside counting as part of a step */
+  f = 0.0;
+  for (i=progn-1; i>=0; i--) {
+    if (prog[i].total<=0) continue;
+    f = (prog[i].done + f) / prog[i].total;
+    if (f>1.0) f = 1.0;
+  }
+  /* a step may hold more than one loop: keep to the furthest so far */
+  if (f<progf) f = progf;
+  progf = f;
+  t = prognow();
+  elapsed = t - progt0;
+  if (elapsed < progdelay) return;
+  if (progshown && t-proglast < 0.2) return;
+  proglast = t;
+
+  cols = 80;
+  if (ioctl(1,TIOCGWINSZ,&ws)==0 && ws.ws_col>0) cols = ws.ws_col;
+  if (cols>200) cols = 200;
+
+  label[0] = '\0';
+  for (i=0; i<progn; i++) {               /* define > ave */
+    if (i) strncat(label," > ",sizeof(label)-strlen(label)-1);
+    strncat(label,prog[i].what,sizeof(label)-strlen(label)-1);
+  }
+  i = ga_omp_get_threads();                /* the calculation threads at work */
+  snprintf(count,sizeof(count),"%d/%d  %d thread%s",prog[0].done,prog[0].total,
+           i,i==1 ? "" : "s");
+  progtime(el,sizeof(el),elapsed);
+  if (f>0.0 && elapsed>=1.0) {
+    progtime(left,sizeof(left),elapsed*(1.0-f)/f);
+    snprintf(line,sizeof(line)," %3d%%  %s  %s, about %s left",
+             (gaint)(f*100.0),count,el,left);
+  } else
+    snprintf(line,sizeof(line)," %3d%%  %s  %s",(gaint)(f*100.0),count,el);
+  used = (gaint)strlen(label) + 4 + (gaint)strlen(line);
+  width = cols - 1 - used;
+  if (width>40) width = 40;
+  if (width<10) {                          /* narrow: no bar */
+    width = 0;
+    snprintf(bar,sizeof(bar),"%s%s",label,line);
+  } else {
+    fill = (gaint)(f*width+0.5);
+    bar[0] = '\0';
+    strncat(bar,label,sizeof(bar)-1);
+    strncat(bar," [",sizeof(bar)-strlen(bar)-1);
+    for (i=0; i<width; i++)
+      strncat(bar,i<fill ? (progutf8 ? "\xe2\x96\x88" : "#") : (progutf8 ? "\xe2\x96\x91" : "."),
+              sizeof(bar)-strlen(bar)-1);
+    strncat(bar,"]",sizeof(bar)-strlen(bar)-1);
+    strncat(bar,line,sizeof(bar)-strlen(bar)-1);
+  }
+  fflush(stdout);
+  progput("\r");
+  progput(bar);
+  progput("\033[K");
+  progshown = 1;
+  pct = (gaint)(f*100.0);
+  if (progiterm && pct!=progpct) {
+    snprintf(line,sizeof(line),"\033]9;4;1;%d\a",pct);
+    progput(line);
+    progpct = pct;
+  }
+}
+
+/* A loop of total steps starts. Returns its level, for gaprogend. */
+
+gaint gaprogbeg (const char *what, gaint total) {
+gaint lv;
+  if (progon<0) progsetup();
+  if (progdepth==0) {
+    progt0 = prognow();
+    proglast = 0.0;
+    progf = 0.0;
+  }
+  lv = progdepth++;
+  if (lv<PROG_LEVELS) {
+    snprintf(prog[lv].what,sizeof(prog[lv].what),"%s",what);
+    prog[lv].total = total;
+    prog[lv].done = 0;
+    progn = lv+1;
+  }
+  return (lv);
+}
+
+/* The innermost loop now knows how many steps it takes */
+
+void gaprogtotal (gaint total) {
+  if (progdepth==0 || progdepth>PROG_LEVELS) return;
+  prog[progdepth-1].total = total;
+}
+
+/* The innermost loop has done this many of its steps */
+
+void gaprogstep (gaint done) {
+  if (progdepth==0 || progdepth>PROG_LEVELS) return;   /* too deep to follow */
+  prog[progdepth-1].done = done;
+  if (progon>0) progdraw();
+}
+
+/* The loop at this level is through, or gave up, with any inside it */
+
+void gaprogend (gaint level) {
+  if (level<0 || level>=progdepth) return;
+  progdepth = level;
+  progn = level<PROG_LEVELS ? level : PROG_LEVELS;
+  if (progdepth==0) gaprogreset();
+}
+
+/* The command is over: whatever was left goes */
+
+void gaprogreset (void) {
+  progdepth = 0;
+  progn = 0;
+  gaprogpause();
+  if (progpct>=0) {
+    fflush(stdout);
+    progput("\033]9;4;0\a");
+    progpct = -1;
+  }
+}
+
+#endif  /* STNDALN */
+
+
 #if READLINE==1
 #include <sys/types.h>
 #include <sys/file.h>
@@ -2405,7 +2643,13 @@ off_t ftello(FILE *stream) {
 gaint nxrdln (char *cmd, char *prompt) {
 char *ch, *ch2;
 
+#ifndef STNDALN
+  gaprogreset();
+  gxidle();
+#endif
+  ga_at_prompt = 1;
   ch=readline(gatxtlp(prompt));
+  ga_at_prompt = 0;
   if ( ch== NULL) {
     return(-1);
   } else {
@@ -2415,6 +2659,34 @@ char *ch, *ch2;
     if (*ch) add_history(ch);   /* Skip blank lines */
   }
   return(strlen(cmd)+1);
+}
+
+/* Ctrl-C while readline waits for a command: readline has already echoed
+   ^C and put the terminal back, and calls the GrADS handler, which calls
+   this. Drop what was typed and start a new line, as a shell does. */
+
+void ga_prompt_sigint (void) {
+  if (ga_at_prompt==1) {
+    rl_crlf();
+    rl_on_new_line();
+    rl_replace_line("",0);
+    rl_redisplay();
+    return;
+  }
+  if (ga_at_prompt==2) {
+    /* the terminal driver has already thrown the typed line away */
+    if (write(1,"\n",1)<0) return;
+    if (write(1,ga_prompt_text,strlen(ga_prompt_text))<0) return;
+  }
+}
+
+#else
+
+void ga_prompt_sigint (void) {
+  if (ga_at_prompt==2) {
+    if (write(1,"\n",1)<0) return;
+    if (write(1,ga_prompt_text,strlen(ga_prompt_text))<0) return;
+  }
 }
 
 #endif  /* matches #if READLINE==1 */

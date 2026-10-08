@@ -26,6 +26,7 @@
 
 #define EPSILON 1e5
 #define FUZZ_SCALE 1e-5
+#define GA_NOLIM 1.0e300       /* set cmin/cmax not given: beyond any data, as 9.99e33 was not */
 
 /* RPTNUM: Number of garpt blocks to allocate per memory block
    BLKNUM: Max number of memory requests
@@ -902,6 +903,15 @@ void mygreta(char *);
 struct gastat *getpst (struct gacmn *);
 void gaprnt (gaint, char *);
 gaint prntgaattr (struct gafile *, char *, gaint, gaint);
+
+/* Functions in GAUTIL.C: progress of long calculations */
+
+gaint gaprogbeg (const char *, gaint);
+void gaprogtotal (gaint);
+void gaprogstep (gaint);
+void gaprogend (gaint);
+void gaprogpause (void);
+void gaprogreset (void);
 #if READLINE == 1
 gaint gahistory(char*, char *, struct gacmn *);
 #endif /* READLINE == 1 */
@@ -1063,8 +1073,25 @@ void g2clear(void);
     trfill: Fill half a grid square (triangle)
     gagfil: Fill grids with shaded ranges
     gaimap: Output grid with image dump
+    gaxfsave: Copy the grid conversion and map projection of the last plot
+    gaxfrest: Put such a copy back
                                                                       */
+
+/* What gagx.c keeps from the last plot for converting grid coordinates,
+   and its map projection settings (struct mapprj). Undo keeps a copy with
+   each step. */
+
+struct gaxform {
+  gadouble mpj[15];
+  gadouble (*iconv) (gadouble *, gadouble);
+  gadouble (*jconv) (gadouble *, gadouble);
+  gadouble *ivars, *jvars;
+  gadouble ioffset, joffset, idiv, jdiv;
+};
+
 gaint gagx (struct gacmn *);
+void gaxfsave (struct gaxform *);
+void gaxfrest (struct gaxform *);
 void gaplot (struct gacmn *);
 void gas1d (struct gacmn *, gadouble, gadouble, gaint, gaint, struct gagrid *, struct gastn *);
 void gas2d (struct gacmn *, struct gagrid *, gaint);

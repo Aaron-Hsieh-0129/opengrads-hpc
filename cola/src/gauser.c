@@ -73,6 +73,58 @@ static struct msgbuf *msgstk, *msgcurr, *msgnew;
    everything a script draws collapsing into a single step. */
 static gaint gacmdlvl = 0;
 
+/* Undo keeps, with each step, what GrADS knows about the picture besides
+   the picture itself, as it was before the step's command and after it:
+   what the plots so far set up for the next one to overlay (the overlay
+   count, axis environment, plot area, the fixed range of 1-D axes, the
+   vector scaling), what the queries report (q gxinfo, q shades,
+   q contours, q xy2w), the user options a clear resets, and the coordinate
+   transforms. Undo puts back each part the user has not changed since
+   the step, so a setting made after it stays. */
+
+struct gaundost {
+  gaint datagen;                       /* gadatagen when taken */
+  /* Scaling environment */
+  gaint xdim,ydim;
+  gadouble (*xgr2ab) (gadouble *, gadouble);
+  gadouble (*ygr2ab) (gadouble *, gadouble);
+  gadouble (*xab2gr) (gadouble *, gadouble);
+  gadouble (*yab2gr) (gadouble *, gadouble);
+  gadouble *xgrval,*ygrval,*xabval,*yabval;
+  /* The frame */
+  gaint pass,gpass[10],lastgx,xexflg,yexflg,aaflg;
+  gadouble xsiz1,xsiz2,ysiz1,ysiz2;
+  gaint shdcnt,cntrcnt;
+  gaint *shdcls,*cntrcols;             /* shdcnt and cntrcnt of each */
+  gadouble *shdlvs,*cntrlevs;
+  gaint aflag,aflag2,axflg,ayflg,arrflg;
+  gadouble rmin,rmax,rint,rmin2,rmax2,rint2;
+  gadouble axmin,axmax,axint,aymin,aymax,ayint;
+  gadouble arrsiz,arrmag;
+  /* Options a clear resets */
+  gaint cstyle,ccolor,cthick,cmark,cflag,ccflg,blkflg,gridln,grdsflg;
+  gaint hemflg,rotate,xflip,yflip,xlflg,ylflg,ylpflg,xlside,ylside;
+  gaint tlsupp,ptflg,marktype;
+  gadouble cint,cmin,cmax,rainmn,rainmx,xlint,ylint,xlpos,ylpos,yllow;
+  gadouble marksize;
+  long cachesf;
+  char *xlstr,*ylstr,*clstr,*xlabs,*ylabs;   /* copies */
+  /* Coordinate transforms */
+  struct gaxform ga;
+  struct gxxform gx;
+};
+
+struct gaundostep {
+  struct gaundost *before,*after;
+};
+
+static struct gaundost *undobefore=NULL;   /* Before the running command */
+
+/* Bumped whenever the grid coordinate arrays of a file or defined variable
+   are freed. A scaling environment kept from before that may point into
+   them, so undo does not bring it back. */
+static gaint gadatagen = 0;
+
 /* GrADS has one calendar for all open files. With none open, none is in
    effect, so the next file sets it whatever an earlier file (or one that
    failed to open) used. */
@@ -80,6 +132,259 @@ static void gacalfree (struct gacmn *pcm) {
   if (pcm->fnum == 0) mfcmn.cal365 = -999;
 }
 
+
+/* Copy a string for an undo state; NULL stays NULL */
+
+static char *gaundostr (char *str) {
+char *copy;
+size_t len;
+  if (str==NULL) return (NULL);
+  len = strlen(str)+1;
+  copy = (char *)galloc(len,"undostr");
+  if (copy) memcpy(copy,str,len);
+  return (copy);
+}
+
+static gaint gaundosteq (char *s1, char *s2) {
+  if (s1==NULL || s2==NULL) return (s1==s2);
+  return (strcmp(s1,s2)==0);
+}
+
+static void gaundostfree (struct gaundost *st) {
+  if (st==NULL) return;
+  if (st->shdcls) gree(st->shdcls,"undoshd");
+  if (st->shdlvs) gree(st->shdlvs,"undoshd");
+  if (st->cntrcols) gree(st->cntrcols,"undocntr");
+  if (st->cntrlevs) gree(st->cntrlevs,"undocntr");
+  if (st->xlstr) gree(st->xlstr,"undostr");
+  if (st->ylstr) gree(st->ylstr,"undostr");
+  if (st->clstr) gree(st->clstr,"undostr");
+  if (st->xlabs) gree(st->xlabs,"undostr");
+  if (st->ylabs) gree(st->ylabs,"undostr");
+  gxxffree(&(st->gx));
+  gree(st,"undost");
+}
+
+/* Free what an undo step carries; the gx layer calls this for a step it
+   drops */
+
+static void gaundofree (void *p) {
+struct gaundostep *step = (struct gaundostep *)p;
+  if (step==NULL) return;
+  gaundostfree(step->before);
+  gaundostfree(step->after);
+  gree(step,"undostep");
+}
+
+/* Take the state described above. Returns NULL if memory runs out, and
+   the step then simply puts nothing back. */
+
+static struct gaundost *gaundosave (struct gacmn *pcm) {
+struct gaundost *st;
+gaint i,n;
+
+  st = (struct gaundost *)galloc(sizeof(struct gaundost),"undost");
+  if (st==NULL) return (NULL);
+  memset(st,0,sizeof(struct gaundost));
+  st->datagen = gadatagen;
+  st->xdim = pcm->xdim; st->ydim = pcm->ydim;
+  st->xgr2ab = pcm->xgr2ab; st->ygr2ab = pcm->ygr2ab;
+  st->xab2gr = pcm->xab2gr; st->yab2gr = pcm->yab2gr;
+  st->xgrval = pcm->xgrval; st->ygrval = pcm->ygrval;
+  st->xabval = pcm->xabval; st->yabval = pcm->yabval;
+  st->pass = pcm->pass;
+  for (i=0; i<10; i++) st->gpass[i] = pcm->gpass[i];
+  st->lastgx = pcm->lastgx; st->xexflg = pcm->xexflg; st->yexflg = pcm->yexflg;
+  st->aaflg = pcm->aaflg;
+  st->xsiz1 = pcm->xsiz1; st->xsiz2 = pcm->xsiz2;
+  st->ysiz1 = pcm->ysiz1; st->ysiz2 = pcm->ysiz2;
+  n = pcm->shdcnt;
+  if (n<0) n = 0;
+  if (n>256) n = 256;
+  st->shdcnt = n;
+  if (n) {
+    st->shdcls = (gaint *)galloc(sizeof(gaint)*n,"undoshd");
+    st->shdlvs = (gadouble *)galloc(sizeof(gadouble)*n,"undoshd");
+    if (st->shdcls==NULL || st->shdlvs==NULL) goto nomem;
+    for (i=0; i<n; i++) { st->shdcls[i] = pcm->shdcls[i]; st->shdlvs[i] = pcm->shdlvs[i]; }
+  }
+  n = pcm->cntrcnt;
+  if (n<0) n = 0;
+  if (n>256) n = 256;
+  st->cntrcnt = n;
+  if (n) {
+    st->cntrcols = (gaint *)galloc(sizeof(gaint)*n,"undocntr");
+    st->cntrlevs = (gadouble *)galloc(sizeof(gadouble)*n,"undocntr");
+    if (st->cntrcols==NULL || st->cntrlevs==NULL) goto nomem;
+    for (i=0; i<n; i++) { st->cntrcols[i] = pcm->cntrcols[i]; st->cntrlevs[i] = pcm->cntrlevs[i]; }
+  }
+  st->aflag = pcm->aflag; st->rmin = pcm->rmin; st->rmax = pcm->rmax; st->rint = pcm->rint;
+  st->aflag2 = pcm->aflag2; st->rmin2 = pcm->rmin2; st->rmax2 = pcm->rmax2; st->rint2 = pcm->rint2;
+  st->axflg = pcm->axflg; st->axmin = pcm->axmin; st->axmax = pcm->axmax; st->axint = pcm->axint;
+  st->ayflg = pcm->ayflg; st->aymin = pcm->aymin; st->aymax = pcm->aymax; st->ayint = pcm->ayint;
+  st->arrflg = pcm->arrflg; st->arrsiz = pcm->arrsiz; st->arrmag = pcm->arrmag;
+  st->cstyle = pcm->cstyle; st->ccolor = pcm->ccolor; st->cthick = pcm->cthick;
+  st->cmark = pcm->cmark; st->cflag = pcm->cflag; st->ccflg = pcm->ccflg;
+  st->blkflg = pcm->blkflg; st->gridln = pcm->gridln; st->grdsflg = pcm->grdsflg;
+  st->hemflg = pcm->hemflg; st->rotate = pcm->rotate;
+  st->xflip = pcm->xflip; st->yflip = pcm->yflip;
+  st->xlflg = pcm->xlflg; st->ylflg = pcm->ylflg; st->ylpflg = pcm->ylpflg;
+  st->xlside = pcm->xlside; st->ylside = pcm->ylside;
+  st->tlsupp = pcm->tlsupp; st->ptflg = pcm->ptflg; st->marktype = pcm->marktype;
+  st->cint = pcm->cint; st->cmin = pcm->cmin; st->cmax = pcm->cmax;
+  st->rainmn = pcm->rainmn; st->rainmx = pcm->rainmx;
+  st->xlint = pcm->xlint; st->ylint = pcm->ylint;
+  st->xlpos = pcm->xlpos; st->ylpos = pcm->ylpos; st->yllow = pcm->yllow;
+  st->marksize = pcm->marksize; st->cachesf = pcm->cachesf;
+  st->xlstr = gaundostr(pcm->xlstr); st->ylstr = gaundostr(pcm->ylstr);
+  st->clstr = gaundostr(pcm->clstr);
+  st->xlabs = gaundostr(pcm->xlabs); st->ylabs = gaundostr(pcm->ylabs);
+  if ((pcm->xlstr && st->xlstr==NULL) || (pcm->ylstr && st->ylstr==NULL) ||
+      (pcm->clstr && st->clstr==NULL) || (pcm->xlabs && st->xlabs==NULL) ||
+      (pcm->ylabs && st->ylabs==NULL)) goto nomem;
+  gaxfsave(&(st->ga));
+  gxxfsave(&(st->gx));
+  return (st);
+
+nomem:
+  gaundostfree(st);
+  return (NULL);
+}
+
+/* Put back what an undone step changed. A part comes back only if it is
+   as the step's command left it (after): one the user has set since keeps
+   the new setting. The transforms always come back, since nothing but
+   drawing sets them. */
+
+#define UNDO1(f) if (pcm->f==a->f) pcm->f = b->f
+#define UNDOSTR(f) if (gaundosteq(pcm->f,a->f)) { \
+    if (pcm->f) gree(pcm->f,"f197"); \
+    pcm->f = gaundostr(b->f); }
+
+static void gaundorest (struct gacmn *pcm, struct gaundostep *step) {
+struct gaundost *b,*a;
+gaint i,same;
+
+  b = step->before;
+  a = step->after;
+  if (a==NULL || b==NULL) return;
+
+  /* The scaling environment points into the grid coordinates of a file or
+     defined variable, which may be gone */
+  same = (pcm->xdim==a->xdim && pcm->ydim==a->ydim &&
+          pcm->xgr2ab==a->xgr2ab && pcm->ygr2ab==a->ygr2ab &&
+          pcm->xab2gr==a->xab2gr && pcm->yab2gr==a->yab2gr &&
+          pcm->xgrval==a->xgrval && pcm->ygrval==a->ygrval &&
+          pcm->xabval==a->xabval && pcm->yabval==a->yabval);
+  if (same) {
+    if (b->datagen==gadatagen) {
+      pcm->xdim = b->xdim; pcm->ydim = b->ydim;
+      pcm->xgr2ab = b->xgr2ab; pcm->ygr2ab = b->ygr2ab;
+      pcm->xab2gr = b->xab2gr; pcm->yab2gr = b->yab2gr;
+      pcm->xgrval = b->xgrval; pcm->ygrval = b->ygrval;
+      pcm->xabval = b->xabval; pcm->yabval = b->yabval;
+    } else {
+      pcm->xdim = -1; pcm->ydim = -1;
+      pcm->xgr2ab = NULL; pcm->ygr2ab = NULL;
+      pcm->xab2gr = NULL; pcm->yab2gr = NULL;
+    }
+  }
+
+  UNDO1(pass);
+  for (i=0; i<10; i++) UNDO1(gpass[i]);
+  UNDO1(lastgx); UNDO1(xexflg); UNDO1(yexflg);
+  if (pcm->aaflg==a->aaflg && pcm->aaflg!=b->aaflg) {
+    pcm->aaflg = b->aaflg;
+    gxsignal(pcm->aaflg ? 3 : 2);        /* anti-aliasing on or off */
+  }
+  if (pcm->xsiz1==a->xsiz1 && pcm->xsiz2==a->xsiz2 &&
+      pcm->ysiz1==a->ysiz1 && pcm->ysiz2==a->ysiz2) {
+    pcm->xsiz1 = b->xsiz1; pcm->xsiz2 = b->xsiz2;
+    pcm->ysiz1 = b->ysiz1; pcm->ysiz2 = b->ysiz2;
+  }
+
+  /* Shading and contour levels, for q shades and q contours */
+  same = (pcm->shdcnt==a->shdcnt);
+  for (i=0; same && i<a->shdcnt; i++)
+    same = (pcm->shdcls[i]==a->shdcls[i] && pcm->shdlvs[i]==a->shdlvs[i]);
+  if (same) {
+    pcm->shdcnt = b->shdcnt;
+    for (i=0; i<b->shdcnt; i++) { pcm->shdcls[i] = b->shdcls[i]; pcm->shdlvs[i] = b->shdlvs[i]; }
+  }
+  same = (pcm->cntrcnt==a->cntrcnt);
+  for (i=0; same && i<a->cntrcnt; i++)
+    same = (pcm->cntrcols[i]==a->cntrcols[i] && pcm->cntrlevs[i]==a->cntrlevs[i]);
+  if (same) {
+    pcm->cntrcnt = b->cntrcnt;
+    for (i=0; i<b->cntrcnt; i++) { pcm->cntrcols[i] = b->cntrcols[i]; pcm->cntrlevs[i] = b->cntrlevs[i]; }
+  }
+
+  /* Axis ranges, which also come from set vrange, set xaxis and the like */
+  if (pcm->aflag==a->aflag && pcm->rmin==a->rmin && pcm->rmax==a->rmax && pcm->rint==a->rint) {
+    pcm->aflag = b->aflag; pcm->rmin = b->rmin; pcm->rmax = b->rmax; pcm->rint = b->rint;
+  }
+  if (pcm->aflag2==a->aflag2 && pcm->rmin2==a->rmin2 && pcm->rmax2==a->rmax2 && pcm->rint2==a->rint2) {
+    pcm->aflag2 = b->aflag2; pcm->rmin2 = b->rmin2; pcm->rmax2 = b->rmax2; pcm->rint2 = b->rint2;
+  }
+  if (pcm->axflg==a->axflg && pcm->axmin==a->axmin && pcm->axmax==a->axmax && pcm->axint==a->axint) {
+    pcm->axflg = b->axflg; pcm->axmin = b->axmin; pcm->axmax = b->axmax; pcm->axint = b->axint;
+  }
+  if (pcm->ayflg==a->ayflg && pcm->aymin==a->aymin && pcm->aymax==a->aymax && pcm->ayint==a->ayint) {
+    pcm->ayflg = b->ayflg; pcm->aymin = b->aymin; pcm->aymax = b->aymax; pcm->ayint = b->ayint;
+  }
+  if (pcm->arrflg==a->arrflg && pcm->arrsiz==a->arrsiz && pcm->arrmag==a->arrmag) {
+    pcm->arrflg = b->arrflg; pcm->arrsiz = b->arrsiz; pcm->arrmag = b->arrmag;
+  }
+
+  /* Options a clear resets */
+  UNDO1(cstyle); UNDO1(ccolor); UNDO1(cthick); UNDO1(cmark);
+  UNDO1(cflag); UNDO1(ccflg); UNDO1(blkflg); UNDO1(gridln); UNDO1(grdsflg);
+  UNDO1(hemflg); UNDO1(rotate); UNDO1(xflip); UNDO1(yflip);
+  UNDO1(xlflg); UNDO1(ylflg); UNDO1(ylpflg); UNDO1(xlside); UNDO1(ylside);
+  UNDO1(tlsupp); UNDO1(ptflg); UNDO1(marktype);
+  UNDO1(cint); UNDO1(cmin); UNDO1(cmax); UNDO1(rainmn); UNDO1(rainmx);
+  UNDO1(xlint); UNDO1(ylint); UNDO1(xlpos); UNDO1(ylpos); UNDO1(yllow);
+  UNDO1(marksize);
+  if (pcm->cachesf==a->cachesf && pcm->cachesf!=b->cachesf) {
+    pcm->cachesf = b->cachesf;
+    setcachesf(pcm->cachesf);
+  }
+  UNDOSTR(xlstr); UNDOSTR(ylstr); UNDOSTR(clstr); UNDOSTR(xlabs); UNDOSTR(ylabs);
+
+  /* Coordinate transforms. Grid conversion that may point into freed grid
+     coordinates is dropped, as with the scaling environment. */
+  gaxfrest(&(b->ga));
+  gxxfrest(&(b->gx));
+  if (b->datagen!=gadatagen) {
+    gxrset(3);
+  }
+}
+
+#undef UNDO1
+#undef UNDOSTR
+
+/* A command the user issued has finished: keep an undo step for it if it
+   drew or cleared, with the state from before it and after it. */
+
+static void gaundokeep (struct gacmn *pcm) {
+struct gaundostep *step=NULL;
+
+  if (undobefore) {
+    step = (struct gaundostep *)galloc(sizeof(struct gaundostep),"undostep");
+    if (step) {
+      step->before = undobefore;
+      step->after = gaundosave(pcm);
+      if (step->after==NULL) {             /* Out of memory: a bare step */
+        gaundostfree(step->before);
+        gree(step,"undostep");
+        step = NULL;
+      }
+    } else gaundostfree(undobefore);
+    undobefore = NULL;
+  }
+  gxhundofn (gaundofree);
+  if (!gxhundokeep(step)) gaundofree(step);
+}
 
 /* Handle all user commands */
 gaint gacmd (char *com, struct gacmn *pcm, gaint exflg) {
@@ -92,6 +397,7 @@ gafloat *rvals=NULL,*ivals=NULL,*jvals=NULL,*ival,*jval;
 char cc[260], bgImage[256], fgImage[256], pdefname[256];
 char *cmd,*rslt,*ccc,*ch,ext[10];
 size_t sz;
+void *ustep;
 char *formats[7] = {"EPS","PS","PDF","SVG","PNG","GIF","JPG"};
 FILE *pdefid=NULL;
 
@@ -118,7 +424,13 @@ FILE *pdefid=NULL;
 
   retcod = 0;
   gacmdlvl++;
-  if (gacmdlvl==1 && !cmpwrd("undo",cmd)) gxhundomark();   /* For undo */
+  if (gacmdlvl==1 && !cmpwrd("undo",cmd)) {                /* For undo */
+    gxhundomark();
+    if (undobefore) gaundostfree(undobefore);
+    undobefore = NULL;
+    gxhundoq (&i,NULL,NULL);
+    if (i>0) undobefore = gaundosave(pcm);
+  }
 
   /* Check for implied define */
   flag = 0;
@@ -225,6 +537,7 @@ FILE *pdefid=NULL;
     gacln (pcm,3);
     gacln (pcm,4);
     reinit = 0;
+    gadatagen++;            /* defined variables, and with reinit files, go */
     if (cmpwrd("reinit",cmd)) {
       reinit = 1;
       mfcmn.cal365=-999;
@@ -417,6 +730,7 @@ FILE *pdefid=NULL;
     if (pfi->dhandle > -999) dapclo(pfi);  /* opendap station data */
 #endif
     frepfi(pfi,0);
+    gadatagen++;                           /* its grid coordinates are gone */
     pcm->fnum--;                           /* decrease number of open files */
     if (pcm->dfnum==fnum) {                /* if closed file was default ... */
       pcm->dfnum = 1;                      /* ...reset default file number to 1  */
@@ -455,7 +769,9 @@ FILE *pdefid=NULL;
       gaprnt (0,"Invalid option on clear command\n");
       goto retrn;
     }
-    /* clear the frame and X-related other options */
+    /* clear the frame and X-related other options; outside double
+       buffering, undo can bring the frame back */
+    if ((rc<2 || rc==3) && !pcm->dbflg) gxhundoframe();
     if (rc<2) {
       if (exflg) gxfrme (0);
       else gxfrme (1);
@@ -510,7 +826,11 @@ FILE *pdefid=NULL;
     }
     rc = 0;
     while (i>0) {
-      if (gxundo()) break;                     /* Nothing left to rewind */
+      if (gxundo(&ustep)) break;               /* Nothing left to rewind */
+      if (ustep) {                             /* What GrADS knew about the picture */
+        gaundorest (pcm, (struct gaundostep *)ustep);
+        gaundofree (ustep);
+      }
       rc++;
       i--;
     }
@@ -1009,7 +1329,8 @@ FILE *pdefid=NULL;
 
 retrn:
   gacmdlvl--;
-  if (gacmdlvl==0) gxhundokeep();   /* Keep the undo position if we drew */
+  if (gacmdlvl==0) gaundokeep(pcm);  /* Keep an undo step if we drew or cleared */
+  if (gacmdlvl==0) gaprogreset();    /* and take any progress line away */
   if (ccc) {
     gree(ccc,"f196");
   }
@@ -1152,8 +1473,8 @@ struct dbfld *fld,*nextfld;
     pcm->cint = 0;
     pcm->cflag = 0;
     pcm->ccflg = 0;
-    pcm->cmin = -9.99e33;
-    pcm->cmax = 9.99e33;
+    pcm->cmin = -GA_NOLIM;
+    pcm->cmax = GA_NOLIM;
     pcm->blkflg = 0;
     pcm->aflag = 0;
     pcm->aflag2 = 0;
@@ -2197,6 +2518,7 @@ gaint i;
       gree(pfi->abvals[i],"f162");
     }
     gree(pfi,"f163");
+    gadatagen++;
     gree(pdf,"f164");
     snprintf(pout,1255,"%s UNDEFINEd and storage released\n",name);
     gaprnt (2,pout);
@@ -2393,7 +2715,18 @@ char name[20];
 
 /* Handle define command */
 
+static gaint gadef_run (char *, struct gacmn *, gaint);
+
+/* define, with its progress shown while it runs */
 gaint gadef (char *cmd, struct gacmn *pcm, gaint impf) {
+gaint lv, rc;
+  lv = gaprogbeg("define", 0);
+  rc = gadef_run(cmd, pcm, impf);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint gadef_run (char *cmd, struct gacmn *pcm, gaint impf) {
 struct gagrid *pgr,*pgr1;
 struct gastat *pst;
 struct gafile *pfi,*pfiv,*pfic;
@@ -2403,7 +2736,7 @@ struct dt tmin,tmax;
 gadouble (*conv) (gadouble *, gadouble);
 gadouble vmin,vmax,zmin,zmax,emin,emax,*res,*gr;
 gaint itmin,itmax,it,izmin,izmax,iz,iemin,iemax,ie;
-gaint i,rc,gsiz,vdz,vdt,vde;
+gaint i,rc,gsiz,vdz,vdt,vde,ndone;
 size_t sz,siz;
 char *resu,*gru;
 char name[20];
@@ -2504,6 +2837,9 @@ char name[20];
   pcm->vdim[2] = 0;
   pcm->vdim[3] = 0;
   pcm->vdim[4] = 0;
+
+  gaprogtotal((iemax-iemin+1)*(itmax-itmin+1)*(izmax-izmin+1));
+  ndone = 0;
 
   /* Get the first grid */
   pst = getpst(pcm);
@@ -2770,6 +3106,7 @@ char name[20];
 	  else {
 	    gafree (pst);
 	  }
+	  gaprogstep(++ndone);
 	}
       }
     }
@@ -2797,6 +3134,7 @@ char name[20];
 	gree(pfic->abvals[i],"f93c");
       }
       gree(pfic,"f94");
+      gadatagen++;
       *prev = pcurr->pforw;
       psave = pcurr;
       pcurr = pcurr->pforw;
@@ -4920,8 +5258,8 @@ static gaint dcolor[10] = {-1, 1, 3, 7, 2, 6, 9, 10, 11, 12 };
     pcm->cint = 0.0;
     pcm->cflag = 0;
     pcm->ccflg = 0;
-    pcm->cmin = -9.99e33;
-    pcm->cmax = 9.99e33;
+    pcm->cmin = -GA_NOLIM;
+    pcm->cmax = GA_NOLIM;
     pcm->blkflg = 0;
     pcm->rainmn = 0.0;
     pcm->rainmx = 0.0;
@@ -5007,8 +5345,8 @@ static gaint dcolor[10] = {-1, 1, 3, 7, 2, 6, 9, 10, 11, 12 };
     pcm->cint = 0.0;
     pcm->cflag = 0;
     pcm->ccflg = 0;
-    pcm->cmin = -9.99e33;
-    pcm->cmax = 9.99e33;
+    pcm->cmin = -GA_NOLIM;
+    pcm->cmax = GA_NOLIM;
     pcm->blkflg = 0;
     pcm->rainmn = pcm->rainmx = 0.0;
     pcm->aflag = 0;
@@ -7971,6 +8309,7 @@ gaint len;
     msgcurr = msgnew;
   }
   if (!msgflg || level<2) {
+    gaprogpause();                        /* take a progress line away first */
     printf ("%s",gatxtl(msg,level));
   }
 }

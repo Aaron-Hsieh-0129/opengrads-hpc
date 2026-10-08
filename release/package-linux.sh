@@ -38,6 +38,8 @@ mkdir -p "$bundle_root/build/src" "$plugin_root" "$runtime_lib_root" \
 
 install -m 0755 "$build_root/src/grads" "$bundle_root/build/src/grads"
 install -m 0755 "$repo_root/opengrads" "$bundle_root/opengrads"
+install -D -m 0755 "$repo_root/libexec/grads-termview" \
+  "$bundle_root/libexec/grads-termview"
 install -m 0644 "$repo_root/etc/udpt-local" "$bundle_root/etc/udpt-local"
 cp -a "$repo_root/cola/data/." "$bundle_root/cola/data/"
 cp -a "$repo_root/lib/scripts/." "$bundle_root/lib/scripts/"
@@ -71,7 +73,8 @@ VERSIONFILE
 "$repo_root/release/write-source-offer.sh" "$bundle_root" "$dist_version" \
   "$grads_version"
 
-for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxpCairo.so; do
+for plugin in libgxdummy.so libgxdX11.so libgxdCairo.so libgxdTerm.so \
+              libgxpCairo.so; do
   if [[ ! -r "$build_root/src/.libs/$plugin" ]]; then
     printf 'Required release plug-in is missing: %s\n' "$plugin" >&2
     exit 1
@@ -100,6 +103,7 @@ copy_notice "$work_root/sources/ncurses-$NCURSES_VERSION/COPYING" \
 library_path="$adios2_root/lib:$adios2_root/lib64:$deps_root/lib:$deps_root/lib64"
 queue=("$bundle_root/build/src/grads" "$plugin_root/libgxdummy.so" \
        "$plugin_root/libgxdX11.so" "$plugin_root/libgxdCairo.so" \
+       "$plugin_root/libgxdTerm.so" \
        "$plugin_root/libgxpCairo.so")
 declare -A seen=()
 : > "$bundle_root/runtime-libraries.txt"
@@ -305,6 +309,36 @@ grep -Fq 'adios2-bp5' <<< "$smoke_output"
 grep -Fq 'openmp' <<< "$smoke_output"
 grep -Fq 'netcdf' <<< "$smoke_output"
 grep -Fq 'Calculation threads = 4' <<< "$smoke_output"
+
+# Nor may an old OpenGrADS install unpacked beside the archive. The launcher
+# used to adopt a sibling opengrads-2.2.1.oga.1 bundle and load its plug-ins
+# (built for libpng15 and the like) in place of ours. The decoy here has a
+# plug-in table whose every entry points at a file that is not a library.
+neighbour="$output_root/opengrads-2.2.1.oga.1"
+if [[ ! -e "$neighbour" ]]; then
+  neighbour_gex="$neighbour/Contents/$(uname -s)/Versions/2.2.1.oga.1/$(uname -m)/gex"
+  mkdir -p "$neighbour_gex"
+  printf '2.2.1.oga.1\n' > "$neighbour/Contents/$(uname -s)/Versions/Current@"
+  printf 'not a library\n' > "$neighbour_gex/libgxdummy.so"
+  printf 'gxdisplay gxdummy %s\n*\ngxprint gxdummy %s\n' \
+    "$neighbour_gex/libgxdummy.so" "$neighbour_gex/libgxdummy.so" \
+    > "$neighbour_gex/udpt"
+  : > "$neighbour_gex/udxt"
+  neighbour_output="$(env -i HOME="${HOME:-/tmp}" PATH=/usr/bin:/bin \
+    OPENGRADS_COLOR=0 "$bundle_root/opengrads" \
+    -bl -d gxdummy -h gxdummy 2>&1 <<'GRADS' || true
+q config
+quit
+GRADS
+)"
+  rm -rf -- "$neighbour"
+  if ! grep -Fq 'adios2-bp5' <<< "$neighbour_output" ||
+     grep -Fq 'GX Package Error' <<< "$neighbour_output"; then
+    printf 'An OpenGrADS bundle beside the archive replaces its plug-ins:\n%s\n' \
+      "$neighbour_output" >&2
+    exit 1
+  fi
+fi
 
 # A locale the machine does not have must not stop GrADS. Readline 8.2 before
 # its official patch 001 crashed on the first prompt when LC_ALL, LC_CTYPE or

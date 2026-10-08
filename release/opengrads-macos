@@ -18,12 +18,54 @@ if [[ -z "${TERMINFO:-}" && -z "${TERMINFO_DIRS:-}" ]]; then
   export TERMINFO_DIRS="/usr/share/terminfo:/lib/terminfo:/etc/terminfo:"
 fi
 
-# This archive ships no interactive display driver, so the GrADS default of
-# "Cairo" for the display would fail to load. Fill in the drivers the archive
-# actually carries unless the caller named them.
+# The terminal display (-d Term) starts this in the tmux pane it draws into.
+if [[ -z "${GA_TERM_VIEWER:-}" && -x "$bundle_root/libexec/grads-termview" ]]; then
+  export GA_TERM_VIEWER="$bundle_root/libexec/grads-termview"
+fi
+
+# The default display, Cairo, draws in an X window, which needs an X server:
+# XQuartz provides one and sets DISPLAY for the login session (it starts on
+# demand). Without one, in iTerm2 or WezTerm, the terminal display (Term)
+# shows the pictures in the terminal itself, here or over ssh; elsewhere the
+# archive runs headless on gxdummy, and pictures go to files with printim
+# and print. Fill in the drivers unless the caller named them.
+have_x=0
+if [[ -n "${DISPLAY:-}" && -r "$GA_ROOT/libgxdCairo.dylib" ]]; then
+  have_x=1
+fi
+
+# Does the terminal show iTerm2 inline images? iTerm2 sets LC_TERMINAL, which
+# ssh forwards with the other LC_* variables. OPENGRADS_TERM=1 or 0 overrides
+# the guess.
+terminal_shows_images()
+{
+  case "${OPENGRADS_TERM:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  [[ -t 1 ]] || return 1
+  case "${LC_TERMINAL:-}:${TERM_PROGRAM:-}" in
+    iTerm2:*|*:iTerm.app|WezTerm:*|*:WezTerm) return 0 ;;
+  esac
+  return 1
+}
+
+# An X server wins unless the terminal display was asked for by name.
+use_term=0
+if [[ -r "$GA_ROOT/libgxdTerm.dylib" ]]; then
+  if [[ "${OPENGRADS_TERM:-}" == 1 ]] ||
+     { (( ! have_x )) && terminal_shows_images; }; then
+    use_term=1
+  fi
+fi
+
 args=("$@")
 if [[ "$#" -eq 0 ]]; then
-  args=(-bl)
+  if (( have_x || use_term )); then
+    args=(-l)
+  else
+    args=(-bl)
+  fi
 fi
 
 have_display=0
@@ -34,7 +76,13 @@ for arg in "$@"; do
     -h) have_print=1 ;;
   esac
 done
-(( have_display )) || args+=(-d gxdummy)
+if (( ! have_display )); then
+  if (( use_term )); then
+    args+=(-d Term)
+  elif (( ! have_x )); then
+    args+=(-d gxdummy)
+  fi
+fi
 (( have_print )) || args+=(-h Cairo)
 
 exec "$bundle_root/bin/grads" "${args[@]}"

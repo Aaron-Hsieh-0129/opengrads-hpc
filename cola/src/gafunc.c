@@ -2091,8 +2091,8 @@ gaint mnmx (struct gafunc *pfc, struct gastat *pst, int sel) {
       x = (gadouble)(i+pgr->dimmin[0]);
       if (*gru == 1) {
 	cnt++;
-	if (min>*gr) { min = *gr; minx = x; miny = y; }
-	if (max<*gr) { max = *gr; maxx = x; maxy = y; }
+	if (cnt==1 || min>*gr) { min = *gr; minx = x; miny = y; }   /* any size */
+	if (cnt==1 || max<*gr) { max = *gr; maxx = x; maxy = y; }
       }
       gr++; gru++;
     }
@@ -2885,6 +2885,7 @@ err3:
 
 
 char *avenam[8] = {"AVE","MEAN","SUM","SUMG","MIN","MAX","MINLOC","MAXLOC"};
+static char *avelow[8] = {"ave","mean","sum","sumg","min","max","minloc","maxloc"};
 
 gaint ffave (struct gafunc *pfc, struct gastat *pst) {
 gaint rc;
@@ -3029,7 +3030,18 @@ static struct gavar *ave_plain_var (char *expr, struct gastat *pst,
   return pvar;
 }
 
+static gaint ave_run (struct gafunc *, struct gastat *, gaint);
+
+/* ave and its kin, with their progress shown while they run */
 gaint ave (struct gafunc *pfc, struct gastat *pst, gaint sel) {
+gaint lv, rc;
+  lv = gaprogbeg(avelow[sel-1], 0);
+  rc = ave_run(pfc, pst, sel);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint ave_run (struct gafunc *pfc, struct gastat *pst, gaint sel) {
 struct gagrid *pgr1, *pgr2, *pgr;
 struct gafile *pfi;
 struct dt tinc;
@@ -3039,7 +3051,7 @@ gadouble alo, ahi, alen, wlo=0, whi=0;
 gadouble d2r, wt, wt1, abs;
 gaint mos, mns, wflag=0;
 gaint i, rc, siz, dim, d, d1, d2, dim2, ilin, incr, bndflg, normerr;
-gaint k, nstep, chunk, ib, ie;
+gaint k, nstep, chunk, ib, ie, ndone;
 char *ch,*fnam,*sumu,*cntu,*valu;
 struct gavar *direct;
 gadouble *steps=NULL, *wts=NULL;
@@ -3166,6 +3178,8 @@ char *stepsu=NULL;
     gaprnt (2,pout);
   }
 
+  gaprogtotal((d2-d1)/incr + 1);
+
   /* Figure out weights for 1st grid */
   wt1 = 1.0;
 
@@ -3241,6 +3255,7 @@ char *stepsu=NULL;
     return(-1);
   }
   pgr1 = pst->result.pgr;
+  gaprogstep(1);
 
   d = d1 + incr;                       /* If only grid, just return */
   if (d>d2)  {
@@ -3334,6 +3349,8 @@ char *stepsu=NULL;
     return (-1);
   }
   pgr2 = pst->result.pgr;
+  gaprogstep(2);
+  ndone = 2;
 
 
   /* We will sum into the first grid, and keep the
@@ -3431,6 +3448,10 @@ char *stepsu=NULL;
   for (d=d; d<=d2 && !rc; d+=incr) {
     /* times outside the file go the usual way, which warns about them */
     if (direct && d>=1 && d<=pfi->dnum[3]) {
+      if (gaqsig()) {                  /* Ctrl-C; gaexpr notices it itself */
+        rc = 1;
+        break;
+      }
       nstep = (d2-d)/incr + 1;
       if (nstep>(pfi->dnum[3]-d)/incr+1) nstep = (pfi->dnum[3]-d)/incr+1;
       if (nstep>chunk) nstep = chunk;
@@ -3462,6 +3483,8 @@ char *stepsu=NULL;
         d += (nstep-1)*incr;
         gr2t (pfi->grvals[3],d,&(pst->tmin));
         pst->tmax = pst->tmin;
+        ndone += nstep;
+        gaprogstep(ndone);
         continue;
       }
       if (rc>0) break;
@@ -3552,6 +3575,7 @@ char *stepsu=NULL;
         ave_accumulate(sel, d, wt, &sum[i], &sumu[i], &cnt[i], &cntu[i], val[i], valu[i]);
       }
       gagfre(pgr);
+      gaprogstep(++ndone);
     }
   }
 
@@ -3612,7 +3636,18 @@ err3:
 }
 
 
+static gaint ffgint_run (struct gafunc *, struct gastat *);
+
+/* gint, with its progress shown while it runs */
 gaint ffgint (struct gafunc *pfc, struct gastat *pst) {
+gaint lv, rc;
+  lv = gaprogbeg("gint", 0);
+  rc = ffgint_run(pfc, pst);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint ffgint_run (struct gafunc *pfc, struct gastat *pst) {
 struct gagrid *pgr1, *pgr;
 struct gafile *pfi;
 gadouble (*conv) (gadouble *, gadouble);
@@ -3674,6 +3709,7 @@ char *ch,*sumu,*valu;
     snprintf(pout,1255,"Integrating.  dim = %i, start = %i, end = %i\n", dim, d1, d2);
     gaprnt (2,pout);
   }
+  gaprogtotal(d2-d1+1);
 
   wt = 1.0;                     /* Figure out weight for 1st grid */
   if (dim==3) {
@@ -3766,6 +3802,7 @@ char *ch,*sumu,*valu;
         }
       }
       gagfre(pgr);
+      gaprogstep(d-d1+1);
     }
   }
 
@@ -4530,10 +4567,21 @@ erret:
   return (rc);
 }
 
+static gaint fftlp_run (struct gafunc *, struct gastat *);
+
+/* tloop, with its progress shown while it runs */
 gaint fftlp (struct gafunc *pfc, struct gastat *pst) {
+gaint lv, rc;
+  lv = gaprogbeg("tloop", 0);
+  rc = fftlp_run(pfc, pst);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint fftlp_run (struct gafunc *pfc, struct gastat *pst) {
 struct gafile *pfi;
 struct gagrid *pgr, *res;
-gaint size, rc, t1, t2, i, cont;
+gaint size, rc, t1, t2, tfirst, i, cont;
 gadouble gr1, gr2,*in, *out;
 char *inu, *outu;
 size_t sz;
@@ -4563,6 +4611,8 @@ size_t sz;
   t1 = (gaint)gr1;
   t2 = (gaint)gr2;
   if (t2<t1) t2 = t1;
+  tfirst = t1;
+  gaprogtotal(t2-t1+1);
 
   /* Get 1st grid. */
 
@@ -4685,6 +4735,7 @@ size_t sz;
       in++; inu++; out++; outu++;
     }
     gagfre(pgr);
+    gaprogstep(t1-tfirst+1);
     t1++;
     if (t1<=t2) {
       gr2t(pfi->abvals[3], (gadouble)t1, &pst->tmin);
@@ -4706,10 +4757,21 @@ err2:
   return(1);
 }
 
+static gaint ffelp_run (struct gafunc *, struct gastat *);
+
+/* eloop, with its progress shown while it runs */
 gaint ffelp (struct gafunc *pfc, struct gastat *pst) {
+gaint lv, rc;
+  lv = gaprogbeg("eloop", 0);
+  rc = ffelp_run(pfc, pst);
+  gaprogend(lv);
+  return (rc);
+}
+
+static gaint ffelp_run (struct gafunc *pfc, struct gastat *pst) {
 struct gafile *pfi;
 struct gagrid *pgr, *res;
-gaint size, rc, e1, e2, i, cont;
+gaint size, rc, e1, e2, efirst, i, cont;
 gadouble gr1, gr2,*in, *out;
 char *inu, *outu;
 size_t sz;
@@ -4736,6 +4798,8 @@ size_t sz;
   e1 = (gaint)gr1;
   e2 = (gaint)gr2;
   if (e2<e1) e2 = e1;
+  efirst = e1;
+  gaprogtotal(e2-e1+1);
 
   /* Get 1st grid. */
   pst->dmin[4] = e1;
@@ -4854,6 +4918,7 @@ size_t sz;
       in++; inu++; out++; outu++;
     }
     gagfre(pgr);
+    gaprogstep(e1-efirst+1);
     e1++;
     if (e1<=e2) {
       pst->dmin[4] = e1;
@@ -7248,7 +7313,8 @@ size_t sz;
       if (*gr1u != 0 && *gr2u != 0) {                        /* and data is available... */
        if ((*gr1 <  *gr2 && *grv >= *gr1 && *grv <= *gr2) ||
            (*gr1 >= *gr2 && *grv <= *gr1 && *grv >= *gr2)) { /* and the level falls in this layer... */
-         if (fabs(*gr2 - *gr1) < 1e-5) {
+         if (*gr2 == *gr1) {      /* a flat layer: any test wider than equal
+                                     would miss small values (1e-5 apart) */
 	   *grr = lev1;
 	   *grru = 1;
 	 }

@@ -25,12 +25,18 @@ plugin_root="$bundle_root/plugins"
 
 rm -rf -- "$bundle_root"
 mkdir -p "$bundle_root/bin" "$lib_root" "$plugin_root" "$bundle_root/etc" \
-  "$bundle_root/cola/data" "$bundle_root/lib/scripts" "$bundle_root/docs"
+  "$bundle_root/cola/data" "$bundle_root/lib/scripts" "$bundle_root/docs" \
+  "$bundle_root/libexec"
 
 install -m 0755 "$build_root/src/grads" "$bundle_root/bin/grads"
+# The terminal display starts this in the tmux pane it draws into.
+install -m 0755 "$repo_root/libexec/grads-termview" "$bundle_root/libexec/grads-termview"
 
-# The display side is headless: macOS release archives do not depend on
-# XQuartz. Cairo still provides the full hardcopy path (printim, print).
+# The X displays (Cairo, the default, and X11) open a window through
+# XQuartz. They are plug-ins, loaded only when asked for, so the archive does
+# not depend on XQuartz: without it, it runs headless, and Cairo still
+# provides the full hardcopy path (printim, print). The terminal display
+# (Term) needs no X server: it shows the picture in iTerm2 or WezTerm.
 plugin_sources=()
 plugin_stems=()
 
@@ -51,10 +57,16 @@ install_plugin()
 
 install_plugin libgxdummy
 install_plugin libgxpCairo
+install_plugin libgxdCairo
+install_plugin libgxdX11
+install_plugin libgxdTerm
 
 cat > "$bundle_root/etc/udpt" <<'UDPT'
 # opengrads-hpc macOS release plug-in table.
 # GA_ROOT is set by the bundled launcher.
+gxdisplay  Cairo    $GA_ROOT/libgxdCairo.dylib
+gxdisplay  X11      $GA_ROOT/libgxdX11.dylib
+gxdisplay  Term     $GA_ROOT/libgxdTerm.dylib
 gxdisplay  gxdummy  $GA_ROOT/libgxdummy.dylib
 *
 gxprint    Cairo    $GA_ROOT/libgxpCairo.dylib
@@ -97,7 +109,8 @@ copy_formula_notice()
     -type f 2>/dev/null)
 }
 
-for formula in adios2 cairo libgeotiff hdf5 libomp netcdf gcc; do
+for formula in adios2 cairo libgeotiff hdf5 libomp netcdf gcc \
+               libx11 libxcb libxau libxdmcp libxext libxrender; do
   copy_formula_notice "$formula"
 done
 install -m 0755 "$repo_root/release/opengrads-macos" "$bundle_root/opengrads"
@@ -248,6 +261,81 @@ if [[ ! -s "$smoke_root/smoke.png" ]]; then
   printf 'Cairo hardcopy output was not produced by the macOS bundle.\n' >&2
   printf '%s\n' "$smoke_output" >&2
   exit 1
+fi
+
+# The X displays load with the bundled X libraries alone: with no X server
+# they get as far as connecting to it.
+for display in Cairo X11; do
+  smoke_output="$(env -i HOME="$smoke_root" PATH=/usr/bin:/bin \
+    OPENGRADS_COLOR=0 "$bundle_root/opengrads" -l -d "$display" 2>&1 <<< quit || true)"
+  if ! grep -Fq 'Unable to connect to X server' <<< "$smoke_output"; then
+    printf 'The %s display plug-in did not load from the macOS bundle.\n' "$display" >&2
+    printf '%s\n' "$smoke_output" >&2
+    exit 1
+  fi
+done
+
+# The terminal display draws without an X server: it writes the picture to a
+# directory, or prints it as an iTerm2 image sequence. With OPENGRADS_TERM=1,
+# as inside iTerm2 or WezTerm with no X server, the launcher picks it.
+for how in file inline picked; do
+  case "$how" in
+    file) term_args=(-l -d Term -g 400x300); term_env=(GA_TERM_MODE=file) ;;
+    inline) term_args=(-l -d Term -g 400x300); term_env=(GA_TERM_MODE=inline) ;;
+    picked) term_args=(); term_env=(GA_TERM_MODE=file OPENGRADS_TERM=1) ;;
+  esac
+  smoke_output="$(env -i HOME="$smoke_root" PATH=/usr/bin:/bin TMPDIR="$smoke_root" \
+    OPENGRADS_COLOR=0 GA_TERM_DIR="$smoke_root/term-$how" GA_TERM_SYNC=1 "${term_env[@]}" \
+    "$bundle_root/opengrads" ${term_args[@]+"${term_args[@]}"} 2>&1 <<GRADS || true
+draw recf 1 1 6 5
+q pos
+quit
+GRADS
+)"
+  if [[ "$how" == inline ]]; then
+    grep -aFq $'\033]1337;File=inline=1;size=' <<< "$smoke_output" &&
+      grep -aFq ':iVBORw0KGgo' <<< "$smoke_output" && continue
+  elif [[ -s "$smoke_root/term-$how/plot.png" &&
+          "$(head -c 4 "$smoke_root/term-$how/plot.png" | od -An -c | tr -d ' ')" == '211PNG' ]]; then
+    continue
+  fi
+  printf 'The Term display did not draw from the macOS bundle (%s).\n' "$how" >&2
+  printf '%s\n' "$smoke_output" | head -c 4000 >&2
+  exit 1
+done
+printf 'The Term display drew from the macOS bundle.\n'
+
+# Where XQuartz is installed, draw in a window on its virtual X server and
+# print from that session.
+xvfb=/opt/X11/bin/Xvfb
+if [[ -x "$xvfb" ]]; then
+  "$xvfb" :73 -nolisten tcp -screen 0 1280x1024x24 > "$smoke_root/xvfb.log" 2>&1 &
+  xvfb_pid=$!
+  trap 'kill "$xvfb_pid" 2>/dev/null || true; rm -rf -- "$smoke_root"' EXIT
+  for i in $(seq 1 50); do
+    [[ -S /tmp/.X11-unix/X73 ]] && break
+    sleep 0.2
+  done
+  for display in Cairo X11; do
+    smoke_output="$(env -i HOME="$smoke_root" PATH=/usr/bin:/bin DISPLAY=:73 \
+      OPENGRADS_COLOR=0 "$bundle_root/opengrads" -l -d "$display" 2>&1 <<GRADS || true
+draw recf 1 1 6 5
+draw string 2 6 $display window
+printim $smoke_root/window-$display.png x800 y600
+quit
+GRADS
+)"
+    if grep -Fq 'Error' <<< "$smoke_output" ||
+       [[ ! -s "$smoke_root/window-$display.png" ]]; then
+      printf 'The %s display did not draw in an X window from the macOS bundle.\n' "$display" >&2
+      printf '%s\n' "$smoke_output" >&2
+      exit 1
+    fi
+  done
+  kill "$xvfb_pid" 2>/dev/null || true
+  printf 'X displays drew on XQuartz'"'"'s Xvfb.\n'
+else
+  printf 'XQuartz is not installed here; the X displays were only loaded, not drawn with.\n'
 fi
 
 mkdir -p "$output_root"

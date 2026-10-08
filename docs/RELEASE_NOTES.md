@@ -1,7 +1,187 @@
-## opengrads-hpc 1.0.9
+## opengrads-hpc 1.0.10
 
 GrADS for modern simulation output: an ADIOS2/BP5 reader, OpenMP-threaded
 calculations, and native archives for Linux and macOS.
+
+### Added in 1.0.10
+
+- **Plots in the terminal, without X.** A new display, `-d Term`, draws GrADS
+  pictures inside the terminal with the iTerm2 inline image protocol (iTerm2,
+  WezTerm), so a session on a cluster needs no X server and no `ssh -X`.
+  Inside tmux, GrADS splits a pane off beside the prompt and draws each
+  picture there, sized to the pane; outside tmux it prints the picture below
+  the command. Pictures are encoded in a background thread, so the prompt
+  comes back at once. The launcher picks this display when there is no
+  `DISPLAY` and the terminal is iTerm2 or WezTerm, which it learns from
+  `LC_TERMINAL` (ssh forwards it); `OPENGRADS_TERM=1` or `0` overrides the
+  choice. Both ordinary tmux and iTerm2's tmux integration (`tmux -CC`)
+  work, tmux before 3.3 (3.2a, as on RHEL 9 and many clusters) included:
+  there, since such a tmux throws away output a slow terminal cannot take,
+  each picture goes in small parts. tmux may also skip a picture without a
+  word while it waits to redraw; GrADS sets `allow-passthrough all` on its
+  pane where tmux has it (3.4 and later), checks with any tmux that each
+  picture was passed on, and sends it again if not. A picture drawn while
+  its pane is in another tmux window waits until the pane is shown.
+  `GA_TERM_LOG=file` records which kind of tmux GrADS found and how each
+  picture was sent, for tracking down a picture that does not appear.
+  Linux and macOS archives. See [TERMINAL.md](TERMINAL.md).
+- **Animations play frame by frame in the terminal.** `set looping on`, or a
+  `set dbuff on` loop, shows every frame in order as it is drawn, as an X
+  window does. On a slow link the drawing waits for it rather than piling
+  pictures up, and Ctrl-C stops the animation and sends nothing more.
+  `GA_TERM_ANIM=gif` also leaves a looping GIF, which iTerm2 plays on its
+  own.
+- **How long a calculation will take.** A calculation that runs for more
+  than a second shows a progress line on the terminal: what runs, how far
+  along it is, the calculation threads at work, the time taken and about
+  how long is left, as in
+  `ave [██████░░░░]  35%  1022/2920  4 threads  0:41, about 1:16 left`. It follows
+  `ave`, `mean`, `sum`, `sumg`, `min`, `max`, `minloc`, `maxloc`, `tloop`,
+  `eloop`, `gint`, and `define`; one inside another counts as part of its
+  step (`define > ave`). The line goes away before any other output and when
+  the command ends, and never appears in a file, a pipe, or a script's
+  `result`. iTerm2 also shows it in its own progress bar. `GA_PROGRESS=off`
+  turns it off; a number sets the delay in seconds. Ctrl-C now also stops a
+  BP5 time average between the batches of times it reads at once. See
+  [PERFORMANCE.md](PERFORMANCE.md).
+- **A progress bar for slow pictures.** With iTerm2, a picture over 1 MiB,
+  or every picture once the link has proved slow, shows iTerm2's progress
+  bar. It is updated between the parts of the picture, so it follows what
+  has actually arrived rather than what has left the server.
+
+- **macOS: an X window with XQuartz.** The macOS archive now carries the
+  `Cairo` and `X11` displays, so with XQuartz installed `./opengrads` opens
+  a GrADS window as on Linux, and `-d X11` picks the classic one. They are
+  plug-ins, loaded only when asked for: without XQuartz (no `DISPLAY`) the
+  archive runs headless as before, and `printim` and `print` still need
+  nothing. Before, `-d X11` stopped at start-up with `Could not find a
+  record for the display plug-in`. The packager checks that both load from
+  the archive, and draws with them on XQuartz's virtual X server.
+- **macOS: plots in the terminal.** The macOS archive also carries the
+  terminal display, `-d Term`, so in iTerm2 or WezTerm on a Mac pictures
+  appear in the terminal, inside tmux too, without XQuartz. The launcher
+  picks it when there is no `DISPLAY` and the terminal is iTerm2 or WezTerm;
+  with XQuartz installed the X window wins, and `-d Term` or
+  `OPENGRADS_TERM=1` asks for the terminal instead. The terminal display's
+  tests, tmux included, now run on macOS too.
+
+### Changed in 1.0.10
+
+- **Axes of very small or large values carry one power of ten.** As in
+  matplotlib, a plain numeric axis whose labels would have gone to
+  e-notation (below 1e-4, or from 1e6) now shows them as plain numbers with
+  the power of ten once at its end: `2.741` to `2.747` and `1e-10` rather
+  than `2.741e-10` on every label. On a Y axis it stands above the top label,
+  over the label column; on an X axis under the labels at the right end, above
+  where `draw xlab` writes, so it stays clear of `draw title`, `draw xlab`,
+  and `draw ylab`. Labels also get as many digits as it takes to tell them
+  apart, so a small range on a large value (1.0000000000002 to
+  1.0000000000006) no longer labels every tick `1`. Ordinary values are
+  labeled as before; a label format (`set ylab %g`, `set xlab %.2e`) turns
+  the power of ten off, as do log axes and map longitudes and latitudes.
+
+- **`clear` can be undone.** With undo on, `clear` (`c`, also `c norset` and
+  `c graphics`) is a step of its own: `undo` brings the cleared picture back,
+  along with the options the clear reset (`set vrange`, `set xlint`, and the
+  like) unless they have been set since, and the steps taken on that picture
+  can then be undone in turn. A script that starts with `c` is undone back to
+  the picture from before it. Before, a clear dropped every stored step.
+  `reset`, `reinit`, and double buffering still do. A clear keeps the
+  picture's buffers, at least 1 MB, until its step is undone or dropped.
+- **Ctrl-C no longer ends GrADS.** At the prompt it now throws away a
+  half-typed command and starts a fresh line, as a shell does. Before, the
+  next line was appended to the half-typed one (`d ts`, Ctrl-C, `q dims` ran
+  `d tsqdims`), and a second Ctrl-C ended GrADS. While a command or script
+  runs, Ctrl-C interrupts it, as before. To force GrADS to stop, use Ctrl-\\.
+
+### Fixed in 1.0.10
+
+- **Line graphs of very small values stopped with `gaaxis internal logic
+  check 25`.** A time series of values around 1e-10 drew no axis: the label
+  interval, about 1e-11, was taken for zero because it was compared with zero
+  to within 1e-8, whatever the size of the data. Any interval above zero now
+  counts. The test for an interval too small for the data's precision,
+  used for axes, contours, and shading, was likewise fixed at 1e-16 and now
+  goes with the data's size, so shading of values around 1e-25, which drew
+  nothing, finds its levels. The fault is in GrADS 2.2.1.
+- **Very small and very large values crashed, hung, or drew nothing.**
+  More places in GrADS 2.2.1 took the size of the data for granted, with
+  tolerances and starting values fixed in its units. Each is now checked
+  against the same field at its own size, at scales from 1e-30 to 1e35:
+  - Contours of values below 1e-15 crashed GrADS: every level was rounded
+    to 0, so the level loop never ended and overran its table.
+  - Wind barbs of very large values hung GrADS: a barb counts off its
+    speed 50 at a time, and 50 taken from 1e20 leaves 1e20. A barb now
+    shows 20 pennants at most.
+  - Lines and bars of values around 1e-14 were drawn up to a fifth of
+    their range out of place, and of values below about 1e-16 not at all:
+    placing each value took 1 from it and added 1 back, which loses
+    everything below 2e-16.
+  - Streamlines of a flow below 0.1 (1e-12, or currents in m/s) drew
+    nothing. A streamline now stops below 0.1 or a hundredth of the
+    field's strongest component, whichever is less, so a flow looks the
+    same in any units; flows whose strongest component is 10 or more draw
+    as before.
+  - A field beyond 9.99e35 read as all undefined, and contours and shading
+    of values beyond 1e33 drew none, against the defaults of `set cmin` and
+    `set cmax`. With `set csmooth on`, values beyond 9.99e8 already read as
+    all undefined.
+  - A constant series of a large value (1e20) stopped with `gaaxis internal
+    logic check 24`, since 1e20 plus or minus 5 is 1e20.
+  - `gxout stat` called a field whose interval came under 1e-12 a constant
+    and gave `Cmin, cmax, cint = -5 5 1`.
+  - `fndlvl` returned the lower level instead of interpolating wherever the
+    field changed by less than 1e-5 across a layer, as trace gas mixing
+    ratios do.
+  - `gxout grid` and station values printed a field of 1e-12, or specific
+    humidity in kg/kg with the default `set dignum 0`, as all zeros, and
+    values of 1e20 cut short. Such a field now shows every value in two
+    or three significant digits (`2.7e-12`, `0.0012`, `2.59e+22`); fields
+    of ordinary size print as before.
+
+- **Plug-in names now match whatever the case.** `-d x11` found no `X11`
+  display, and `-h cairo` no `Cairo` printer; display and print plug-in
+  names are now compared without regard to case. The error for a display
+  that cannot be found also named the print plug-in (`Cairo`) instead of
+  the display asked for.
+
+- **Undo left the undone plot's state behind.** Undo rewound the picture but
+  not what GrADS knew about it, so after undoing a plot the next one was laid
+  out as if it were still there: a line plot kept the undone plot's y-axis
+  range, an overlay counted it, `q gxinfo` and `q xy2w` described it, and
+  `q shades` (read by `cbarn`) gave its colors. Undo now puts these back as
+  the shorter command sequence left them: the overlay count, axis ranges,
+  scaling environment, plot area, shading and contour levels, vector
+  scaling, coordinate transforms, and the contour-label mask. The options a
+  display uses up (`set cint`, `set clevs`, `set ccolor`, ...) come back too,
+  so an undone display can be issued again as it was; a setting made after
+  the step keeps its new value. See [UNDO.md](UNDO.md).
+- **Linux: an old OpenGrADS install next to the archive broke it.** The
+  launcher looked beside itself for a legacy `opengrads-2.2.1.oga.1` bundle,
+  a convenience meant for a source checkout, and in a packaged archive it
+  adopted that install's plug-ins and extensions in place of its own. Those
+  were built for other libraries, so GrADS stopped at start-up with
+  `dlopen failed to get a handle on gxprint plug-in named "Cairo"` and
+  `libpng15.so.15: cannot open shared object file`. A packaged archive now
+  uses only its own plug-ins; `OPENGRADS_BUNDLE_ROOT` still selects a bundle
+  explicitly. The packager checks this by starting the archive beside a
+  decoy install. With 1.0.9, move the archive (or the old install) so the two
+  are not in the same directory.
+- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
+  and `sum` with the boundary flag are meant to count each time by how much
+  of its cell lies between the two bounds: times inside fully, the first and
+  last in part, as they already did over longitude, latitude, and level. Over
+  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
+  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
+  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
+  out two and a half times too large and `ave` leaned toward the early
+  times. Each time now counts by its overlap with the bounds, in the
+  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
+  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
+  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
+  2.2.3, so results from those versions with `-b` over time differ from these.
+  This fix was listed under 1.0.9, but it came after that release was
+  built; the 1.0.9 archives still have the old weights.
 
 ### Added in 1.0.9
 
@@ -109,19 +289,6 @@ calculations, and native archives for Linux and macOS.
   the binaries, so shell escapes still see the user's own `LD_LIBRARY_PATH`.
   The packager now refuses an archive that a decoy `LD_LIBRARY_PATH` can
   override. With 1.0.8, start GrADS as `env -u LD_LIBRARY_PATH ./opengrads`.
-- **`-b` over time weighted every time but the last wrongly.** `ave`, `mean`,
-  and `sum` with the boundary flag are meant to count each time by how much
-  of its cell lies between the two bounds: times inside fully, the first and
-  last in part, as they already did over longitude, latitude, and level. Over
-  time, every time instead got the weight `gr2 + 0.5 - t`, larger the further
-  it lay from the end. On six times, `sum(var,t=1.5,t=5.5,-b)` weighted times
-  2 to 5 by 4, 3, 2, 1 instead of 1, 1, 1, 1, so the sum of a constant came
-  out two and a half times too large and `ave` leaned toward the early
-  times. Each time now counts by its overlap with the bounds, in the
-  step-by-step path and in the many-steps-at-once path for BP5 alike. Without
-  `-b`, and for `sumg`, `min`, `max`, `minloc`, and `maxloc`, which do not
-  weight, nothing changes. The fault is in GrADS 2.2.1 and is still there in
-  2.2.3, so results from those versions with `-b` over time differ from these.
 
 ### Added in 1.0.8
 
@@ -271,6 +438,8 @@ built with `ADIOS2_USE_MPI=OFF`.
 - **OpenMP-threaded calculations.** Defaults to 4 threads; `-j N` or
   `GA_NUM_THREADS` override it, and `q threads` reports the active count.
 - **`sdfopen` / `xdfopen`** against NetCDF-4 and HDF5.
+- **Plots in the terminal** over plain ssh, from iTerm2 or WezTerm, in a
+  tmux pane beside the prompt; no X server needed (Linux and macOS).
 - **Three native archives**, each self-contained: Linux x86_64 and aarch64,
   and macOS arm64. No dependency installation and no library paths to set.
 
@@ -281,11 +450,13 @@ which constrains what each platform can carry:
 
 | Platform | Display (`-d`) | Hardcopy (`-h`) |
 | --- | --- | --- |
-| Linux | `Cairo`, `X11`, `gxdummy` | `Cairo`, `gxdummy` |
-| macOS | `gxdummy` | `Cairo`, `gxdummy` |
+| Linux | `Cairo`, `X11`, `Term`, `gxdummy` | `Cairo`, `gxdummy` |
+| macOS | `Cairo`, `X11` (with XQuartz), `Term`, `gxdummy` | `Cairo`, `gxdummy` |
 
-macOS runs headless but keeps the full Cairo hardcopy path, so `printim` and
-`print` produce PNG, PS, PDF, and SVG without XQuartz.
+On macOS the `Cairo` and `X11` displays draw in a window through XQuartz,
+and `Term` draws in iTerm2 or WezTerm. Without either the archive runs
+headless but keeps the full Cairo hardcopy path, so `printim` and `print`
+produce PNG, PS, PDF, and SVG.
 
 A native Windows build is not published yet; see `docs/RELEASES.md` for its
 status.
@@ -293,14 +464,16 @@ status.
 ### Verifying and running
 
 ```bash
-sha256sum -c opengrads-hpc-1.0.9-linux-x86_64.tar.gz.sha256
-tar -xzf opengrads-hpc-1.0.9-linux-x86_64.tar.gz
-cd opengrads-hpc-1.0.9-linux-x86_64
+sha256sum -c opengrads-hpc-1.0.10-linux-x86_64.tar.gz.sha256
+tar -xzf opengrads-hpc-1.0.10-linux-x86_64.tar.gz
+cd opengrads-hpc-1.0.10-linux-x86_64
 ./opengrads
 ```
 
-On macOS start `./opengrads`. The launcher selects the drivers its archive
-actually ships, so no extra flags are needed.
+On macOS start `./opengrads`. The launcher opens a GrADS window when
+XQuartz is installed (it sets `DISPLAY`), draws in the terminal in iTerm2 or
+WezTerm otherwise, and runs headless elsewhere, so no extra flags are needed.
+`./opengrads -l -d Term` draws in the terminal even with XQuartz.
 
 ### Known limitations
 
@@ -309,3 +482,9 @@ actually ships, so no extra flags are needed.
   glibc when it is 2.28 or newer and their bundled glibc and loader otherwise.
 - Reading BP5 written by a multi-rank MPI job is supported by ADIOS2's format
   but is not yet covered by the regression suite.
+- The terminal display is tested through tmux 3.2a, 3.4, and 3.7c, plain and
+  `-CC`, with a terminal emulator standing in for iTerm2, not yet on iTerm2
+  itself. If no picture appears, `GA_TERM_LOG=/tmp/grads-term.log` records
+  what happened; `GA_TERM_PROGRESS=off` sends each picture in the oldest form
+  of the protocol. Pictures in parts, which tmux before 3.3 and `tmux -CC`
+  always use, need iTerm2 3.5 or newer.

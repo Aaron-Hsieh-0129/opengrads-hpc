@@ -67,6 +67,33 @@ static gadouble *ivars, *jvars;
 static gadouble ioffset, joffset;
 static gadouble idiv, jdiv;
 
+/* Copy the grid conversion and the map projection settings of the last
+   plot, and put a copy back, for undo. */
+
+void gaxfsave (struct gaxform *xf) {
+gadouble *v = xf->mpj;
+  v[0] = mpj.lnmn; v[1] = mpj.lnmx; v[2] = mpj.ltmn; v[3] = mpj.ltmx;
+  v[4] = mpj.lnref; v[5] = mpj.ltref1; v[6] = mpj.ltref2;
+  v[7] = mpj.xmn; v[8] = mpj.xmx; v[9] = mpj.ymn; v[10] = mpj.ymx;
+  v[11] = mpj.axmn; v[12] = mpj.axmx; v[13] = mpj.aymn; v[14] = mpj.aymx;
+  xf->iconv = iconv; xf->jconv = jconv;
+  xf->ivars = ivars; xf->jvars = jvars;
+  xf->ioffset = ioffset; xf->joffset = joffset;
+  xf->idiv = idiv; xf->jdiv = jdiv;
+}
+
+void gaxfrest (struct gaxform *xf) {
+gadouble *v = xf->mpj;
+  mpj.lnmn = v[0]; mpj.lnmx = v[1]; mpj.ltmn = v[2]; mpj.ltmx = v[3];
+  mpj.lnref = v[4]; mpj.ltref1 = v[5]; mpj.ltref2 = v[6];
+  mpj.xmn = v[7]; mpj.xmx = v[8]; mpj.ymn = v[9]; mpj.ymx = v[10];
+  mpj.axmn = v[11]; mpj.axmx = v[12]; mpj.aymn = v[13]; mpj.aymx = v[14];
+  iconv = xf->iconv; jconv = xf->jconv;
+  ivars = xf->ivars; jvars = xf->jvars;
+  ioffset = xf->ioffset; joffset = xf->joffset;
+  idiv = xf->idiv; jdiv = xf->jdiv;
+}
+
 gaint gagx (struct gacmn *pcm) {
 gaint rc=0;
   rc = gxstrt (pcm->xsiz,pcm->ysiz,pcm->batflg,pcm->hbufsz,pcm->gxdopt,pcm->gxpopt,pcm->xgeom);
@@ -89,6 +116,31 @@ gaint rc=0;
 }
 
 gaint rcols[13] = {9,14,4,11,5,13,3,10,7,12,8,2,6};
+
+/* Grid and station values as labels: with the decimals "set dignum" asks
+   for, unless the whole field would read 0 that way (values of 1e-12, or
+   specific humidity with no decimals), or is too large for it (1e20):
+   then every value in two or three significant digits, 2.7e-12. big is
+   the field's largest magnitude; lab holds 20 characters. */
+
+/* Half the range shown for a field that is one value throughout: 5, as
+   always, or for a value so large that 5 is lost in it (1e20 + 5 is
+   1e20), a hundredth of it. */
+
+static gadouble gaconstw (gadouble v) {
+gadouble w;
+  w = fabs(v)*0.01;
+  return (w>5.0 ? w : 5.0);
+}
+
+static gaint gadigsig (gaint dignum, gadouble big) {
+  return ((big>0.0 && big<0.5*pow(10.0,-(gadouble)dignum)) || big>=1e10);
+}
+
+static void gadignum (char *lab, gaint dignum, gadouble v, gaint sig) {
+  if (sig) snprintf(lab,19,fabs(v)>=1e10 ? "%.3g" : "%.2g",v);
+  else snprintf(lab,19,"%.*f",dignum,(gafloat)v);
+}
 
 /* Figure out which graphics routine to call.  Use the first
    grid hung off gacmn to determine whether we are doing
@@ -636,10 +688,12 @@ char lab[20];
         cmin = cmin - cint*2.0;
         cmax = cmax + cint*2.0;
       }
-      if (dequal(cint,0.0,1e-12)==0 || dequal(cint,pgr->undef,1e-12)==0) {
-        cmin = pgr->rmin-5.0;
-        cmax = pgr->rmax+5.0;
-        cint = 1.0;
+      /* gacsel gives 0 for a constant field; an interval of 1e-13 for
+         data of 1e-12 is no constant */
+      if (!(cint>0.0) || dequal(cint,pgr->undef,1e-12)==0) {
+        cmin = pgr->rmin-gaconstw(pgr->rmin);
+        cmax = pgr->rmax+gaconstw(pgr->rmax);
+        cint = gaconstw(pgr->rmin)/5.0;
       }
       snprintf(pout,1255,"Cmin, cmax, cint = %g %g %g\n",cmin,cmax,cint);
       gaprnt(2,pout);
@@ -741,10 +795,10 @@ char lab[20];
       cmin = cmin - cint*2.0;
       cmax = cmax + cint*2.0;
     }
-    if (dequal(cint,0.0,1e-12)==0 || dequal(cint,stn->undef,1e-12)==0) {
-      cmin = rmin-5.0;
-      cmax = rmax+5.0;
-      cint = 1.0;
+    if (!(cint>0.0) || dequal(cint,stn->undef,1e-12)==0) {
+      cmin = rmin-gaconstw(rmin);
+      cmax = rmax+gaconstw(rmax);
+      cint = gaconstw(rmin)/5.0;
     }
     snprintf(pout,1255,"Cmin, cmax, cint = %g %g %g\n",cmin,cmax,cint);
     gaprnt(2,pout);
@@ -992,8 +1046,8 @@ void gapstn (struct gacmn *pcm) {
 struct gastn *stn, *stn2;
 struct garpt *rpt, *rpt2;
 gadouble x,y,rlon;
-gadouble dir,spd,umax,vmax,vscal=0.0,cwid;
-gaint len,flag,hemflg,bcol;
+gadouble dir,spd,umax,vmax,vscal=0.0,cwid,big;
+gaint len,flag,hemflg,bcol,sig;
 char lab[20];
 
   gamscl (pcm);       /* Do map level scaling */
@@ -1090,6 +1144,10 @@ char lab[20];
   } else {
     gxwide (pcm->cthick);
     stn = pcm->result[0].stn;
+    big = 0.0;
+    for (rpt=stn->rpt; rpt!=NULL; rpt=rpt->rpt)
+      if (rpt->umask!=0 && fabs(rpt->val)>big) big = fabs(rpt->val);
+    sig = gadigsig(pcm->dignum,big);
     rpt = stn->rpt;
     flag=0;
     if (pcm->numgrd>1 || pcm->stidflg) flag = 1;
@@ -1102,7 +1160,7 @@ char lab[20];
             rpt->lat>pcm->dmin[1] && rpt->lat<pcm->dmax[1]) {
           gxconv (rlon,rpt->lat,&x,&y,2);
           if (flag) gxmark (1,x,y,pcm->digsiz*0.5);
-          snprintf(lab,19,"%.*f",pcm->dignum,(gafloat)rpt->val);
+          gadignum(lab,pcm->dignum,rpt->val,sig);
           len = strlen(lab);
           cwid = 0.1;
           gxchln (lab,len,pcm->digsiz,&cwid);
@@ -1127,7 +1185,13 @@ char lab[20];
       rpt=rpt->rpt;
     }
     if ( (flag && pcm->type[1]==0) || pcm->stidflg) {
-      if (!pcm->stidflg) stn = pcm->result[1].stn;
+      if (!pcm->stidflg) {
+        stn = pcm->result[1].stn;
+        big = 0.0;                        /* the second field's own format */
+        for (rpt=stn->rpt; rpt!=NULL; rpt=rpt->rpt)
+          if (rpt->umask!=0 && fabs(rpt->val)>big) big = fabs(rpt->val);
+        sig = gadigsig(pcm->dignum,big);
+      }
       rpt = stn->rpt;
       while (rpt!=NULL) {
 	if (rpt->umask != 0) {
@@ -1141,7 +1205,7 @@ char lab[20];
 	    if (pcm->stidflg) {
 	      getwrd (lab,rpt->stid,8);
 	    } else {
-	      snprintf(lab,19,"%.*f",pcm->dignum,(gafloat)rpt->val); 
+	      gadignum(lab,pcm->dignum,rpt->val,sig);
 	    }
 	    len = strlen(lab);
 	    cwid = 0.1;
@@ -1192,6 +1256,9 @@ gaint flag,flg2;
 
   bgap = blen*0.3;
   padd = 0.0;
+  /* Speed is counted off 50 at a time, and taking 50 from 1e20 leaves
+     1e20: a barb shows 20 pennants (1000) at most */
+  if (spd>1000.0) spd = 1000.0;
   var = spd;
   if (var<0.01) {
     rad*=2.0;
@@ -2024,9 +2091,9 @@ gaint axmov;
   cint = 0.0;
   gacsel (cmin,cmax,&cint,&cmn,&cmx);
   if (cint==0.0) {
-    cmn = cmin-5.0;
-    cmx = cmin+5.0;
-    cint = 2.0;
+    cmn = cmin-gaconstw(cmin);
+    cmx = cmin+gaconstw(cmin);
+    cint = gaconstw(cmin)*0.4;
   } else {
     cmn = cmn - 2.0*cint;
     cmx = cmx + 2.0*cint;
@@ -3349,9 +3416,9 @@ char *r1mask, *r2mask, *cmask=NULL;
     cint1 = 0.0;
     gacsel (pgr1->rmin,pgr1->rmax,&cint1,&cmin1,&cmax1);
     if (cint1==0.0) {
-      cmin1 = pgr1->rmin-5.0;
-      cmax1 = cmin1+10.0;
-      cint1 = 2.0;
+      cmin1 = pgr1->rmin-gaconstw(pgr1->rmin);
+      cmax1 = pgr1->rmin+gaconstw(pgr1->rmin);
+      cint1 = gaconstw(pgr1->rmin)*0.4;
     } else {
       cmin1 = cmin1 - 2.0*cint1;
       cmax1 = cmax1 + 2.0*cint1;
@@ -3364,9 +3431,9 @@ char *r1mask, *r2mask, *cmask=NULL;
     cint2 = 0.0;
     gacsel (pgr2->rmin,pgr2->rmax,&cint2,&cmin2,&cmax2);
     if (cint2==0.0) {
-      cmin2 = pgr2->rmin-5.0;
-      cmax2 = cmin2+10.0;
-      cint2 = 2.0;
+      cmin2 = pgr2->rmin-gaconstw(pgr2->rmin);
+      cmax2 = pgr2->rmin+gaconstw(pgr2->rmin);
+      cint2 = gaconstw(pgr2->rmin)*0.4;
     } else {
       cmin2 = cmin2 - 2.0*cint2;
       cmax2 = cmax2 + 2.0*cint2;
@@ -3484,8 +3551,8 @@ gadouble xx,yy;
 
 void gaplvl (struct gacmn *pcm) {
 struct gagrid *pgr,*pgrm=NULL;
-gadouble xlo,ylo,xhi,yhi,*r,*m=0,cwid;
-gaint i,j,len,lcol,flag;
+gadouble xlo,ylo,xhi,yhi,*r,*m=0,cwid,big;
+gaint i,j,len,lcol,flag,sig;
 char *rmask,*mmask=NULL,lab[20];
 
   pgr = pcm->result[0].pgr;
@@ -3513,6 +3580,10 @@ char *rmask,*mmask=NULL,lab[20];
 
   gafram (pcm);
   gxwide (pcm->cthick);
+  big = 0.0;
+  for (i=0; i<pgr->isiz*pgr->jsiz; i++)
+    if (pgr->umask[i]!=0 && fabs(pgr->grid[i])>big) big = fabs(pgr->grid[i]);
+  sig = gadigsig(pcm->dignum,big);
   idiv = 1.0; jdiv = 1.0;
   if (pcm->ccolor>=0) lcol = pcm->ccolor;
   else lcol=1;
@@ -3560,7 +3631,7 @@ char *rmask,*mmask=NULL,lab[20];
         gxcolr (lcol);
       }
       gxconv ((gadouble)i,(gadouble)j,&xlo,&ylo,3);
-      snprintf(lab,19,"%.*f",pcm->dignum,(gafloat)*r);
+      gadignum(lab,pcm->dignum,*r,sig);
       len = strlen(lab);
       cwid = pcm->digsiz*(gadouble)len;
       gxchln (lab,len,pcm->digsiz,&cwid);
@@ -5302,23 +5373,22 @@ size_t sz;
 
     /* We may have created new contour levels.  Adjust cmin and cmax appropriately */
     if (!pcm->cflag) {
-      rmin = 9.99e8;
-      rmax = -9.99e8;
+      /* from the first defined value: data beyond 9.99e8, which the
+         starting values used to be, read as all undefined */
+      rmin = 0.0;
+      rmax = 0.0;
       r = rrr;
       rmask = rrrmask;
       cnt=0;
       for (i=0;i<isz*jsz;i++) {
         if (*rmask != 0) {
+          if (cnt==0 || rmin>*r) rmin = *r;
+          if (cnt==0 || rmax<*r) rmax = *r;
           cnt++;
-          if (rmin>*r) rmin = *r; 
-          if (rmax<*r) rmax = *r;
         }
         r++; rmask++;
       }
-      if (cnt==0 || dequal(rmin,9.99e8,1e-8)==0 || dequal(rmax,-9.99e8,1e-8)==0) 
-	umin = 0;
-      else 
-	umin = 1;
+      umin = cnt>0;
 
       if (umin==0) {
         gaprnt (1,"Cannot contour grid - all undefined values \n");
@@ -5455,7 +5525,11 @@ size_t sz;
       clopt = 0;  /* normalize clskip only when well-behaved */
       if (fabs(cmin/cint)<1e6 || fabs(cmax/cint)<1e6) clopt=1; 
       for (rl=cmin;rl<=cmax+(cint/2.0);rl+=cint) {
-	if (dequal(rl,0.0,1e-15)==0) rl=0.0; /* a quick patch */
+	/* rounding near zero gives -1.4e-17 for 0: call that 0. It must go
+	   with the interval: an absolute 1e-15 made every level of data of
+	   1e-30 zero, rl among them, and the loop never ended. */
+	if (fabs(rl)<fabs(cint)*1e-6) rl=0.0;
+        if (cntrcnt>=256) break;              /* as many as are kept */
         if (rl<pcm->cmin || rl>pcm->cmax) continue;
         if (pcm->blkflg && rl>=pcm->blkmin && rl<=pcm->blkmax) continue;
         rr = rl;
@@ -5584,8 +5658,12 @@ size_t sz;
    routine is passed to gxgrid.  */
 
 void gaconv (gadouble s, gadouble t, gadouble *x, gadouble *y) {
-  s = ((s-1.0)/idiv)+1.0;
-  t = ((t-1.0)/jdiv)+1.0;
+  /* Only with a grid expansion factor: s or t is a data value on a 1-D
+     plot, and taking 1 from it and adding it back loses all below 2e-16,
+     so that values of 1e-16 drew a fifth of their range out and values
+     of 1e-18 all at 0. */
+  if (idiv!=1.0) s = ((s-1.0)/idiv)+1.0;
+  if (jdiv!=1.0) t = ((t-1.0)/jdiv)+1.0;
   if (iconv==NULL) *x = s+ioffset;
   else *x = iconv(ivars, (s+ioffset));
   if (jconv==NULL) *y = t+joffset;
@@ -5600,7 +5678,8 @@ struct dt tstrt,tincr,addmo,twrk;
 gadouble vmin,vmax,*tvals=0,x,y,tt;
 gadouble v,vincr,vstrt,vend;
 gadouble m,b,cs,xx,cwid,pos;
-gaint ii,len,tinc=0,colr,thck,flg,i,cnt;
+gaint ii,len,tinc=0,colr,thck,flg,i,cnt,prec=6,sexp=0,shown=0;
+gadouble big,scale=1.0;
 char lab[30],olab[30],*chlb=NULL;
  
   if (axis && pcm->xlab==0) return;
@@ -5726,7 +5805,9 @@ char lab[30],olab[30],*chlb=NULL;
       vend = vend+(vincr*0.5);
     } else {
       gacsel (vmin,vmax,&vincr,&vstrt,&vend);
-      if (dequal(vincr, 0.0, 1e-08)==0) {
+      /* gacsel gives 0 when it finds no interval. Any other interval is
+         good, however small: data of 1e-10 have one of about 1e-11. */
+      if (!(vincr>0.0)) {
         gaprnt (0,"gaaxis internal logic check 25\n");
         return;
       }
@@ -5764,6 +5845,34 @@ char lab[30],olab[30],*chlb=NULL;
         else *(pcm->ylevs+i) = v;
       }
     }
+
+    /* Plain numeric labels of very small or large values are shown as
+       multiples of one power of ten, given once at the end of the axis,
+       as matplotlib does: 2.741 ... 2.747 and "1e-10", not 2.741e-10 and
+       so on. That is where %g would have gone to e-notation: below 1e-4,
+       or from 1e6. Labels then get 6 significant digits, or as many as it
+       takes to tell one from the next (1.0000000000002 to 1.0000000000006
+       by 1e-13 takes 14). Formats set by the user, map longitudes and
+       latitudes, and log axes are left as they were. */
+    big = 0.0;
+    for (i=0; i<cnt; i++) {
+      v = fabs(axis ? *(pcm->xlevs+i) : *(pcm->ylevs+i));
+      if (v>big) big = v;
+    }
+    if (big>0.0 && !(axis==1 && (pcm->xlstr || pcm->xlabs)) &&
+        !(axis==0 && (pcm->ylstr || pcm->ylabs)) &&
+        !((dim==0 || dim==1) && pcm->mproj>0)) {
+      if (vincr>0.0) {
+        i = (gaint)(floor(log10(big)) - floor(log10(vincr))) + 1;
+        if (i>prec) prec = (i>15) ? 15 : i;
+      }
+      i = (gaint)floor(log10(big));
+      if ((i<-4 || i>=6) && !pcm->log1d && !(dim==2 && pcm->zlog) &&
+          !(dim==1 && pcm->coslat)) {
+        sexp = i;
+        scale = pow(10.0,(gadouble)sexp);
+      }
+    }
     i = 0;
     if (axis==1 && pcm->xlabs) chlb = pcm->xlabs;
     if (axis==0 && pcm->ylabs) chlb = pcm->ylabs;
@@ -5783,7 +5892,7 @@ char lab[30],olab[30],*chlb=NULL;
       else {
         if (dim==0 && pcm->mproj>0) len = galnch(v,lab);
         else if (dim==1 && pcm->mproj>0) len = galtch(v,lab);
-        else snprintf(lab,29,"%g",v);
+        else snprintf(lab,29,"%.*g",prec,v/scale);
       }
       len=0;
       while (lab[len]) len++;
@@ -5850,7 +5959,29 @@ char lab[30],olab[30],*chlb=NULL;
       }
       gxchpl(lab,len,x,y,cs,cs*0.8,0.0);
       lab[9] = '\0';
+      shown++;
       i++;
+    }
+
+    /* The power of ten, once: for the Y axis above its top label, right
+       against the axis like the labels (outside the plot's width, so clear
+       of a title); for the X axis below its labels at the right end (above
+       where "draw xlab" goes). */
+    if (sexp && shown) {
+      snprintf(lab,29,"1e%d",sexp);
+      len = (gaint)strlen(lab);
+      cwid = (gadouble)len*cs;
+      gxchln (lab,len,cs,&cwid);
+      if (axis) {
+        x = pcm->xsiz2 - cwid*0.8;
+        if (pcm->xlside) y = pos + cs*2.0;
+        else y = pos - cs*3.0;
+      } else {
+        if (pcm->ylside) x = pos + cs*0.8;
+        else x = pos - (cwid+cs)*0.8;
+        y = pcm->ysiz2 + cs*1.1;
+      }
+      gxchpl(lab,len,x,y,cs,cs*0.8,0.0);
     }
   } else {
 
@@ -6139,11 +6270,13 @@ void gacsel (gadouble rmin, gadouble rmax, gadouble *cint, gadouble *cmin, gadou
   *cmin = *cint * ceil(rmin/(*cint));  
   *cmax = *cint * floor(rmax/(*cint));
 
-  /* Check for interval being below machine epsilon for these values */
+  /* Check for interval being below machine epsilon for these values: it
+     must still change them. The tolerance goes with their size, so that
+     data of 1e-20 and of 1e10 are judged alike. */
   t1 = rmin + *cint;
   t2 = rmax - *cint;
-  if ((dequal(rmin, t1, 1.0e-16)==0) ||
-      (dequal(rmax, t2, 1.0e-16)==0)) {
+  if ((dequal(rmin, t1, 1.0e-16*absmax)==0) ||
+      (dequal(rmax, t2, 1.0e-16*absmax)==0)) {
     *cint=0.0;
     *cmin=0.0;
     *cmax=0.0;
@@ -7232,11 +7365,12 @@ void gaselc (struct gacmn *pcm, gadouble rmin, gadouble rmax) {
     cmin = cint * ceil(rmin/cint);
     cmax = cint * floor(rmax/cint);
 
-    /* Check for interval being below machine epsilon for these values */
+    /* Check for interval being below machine epsilon for these values,
+       relative to their size, as gacsel does */
     t1 = rmin + cint;
     t2 = rmax - cint;
-    if ((dequal(rmin, t1, 1.0e-16)==0) ||
-	(dequal(rmax, t2, 1.0e-16)==0)) {
+    if ((dequal(rmin, t1, 1.0e-16*absmax)==0) ||
+	(dequal(rmax, t2, 1.0e-16*absmax)==0)) {
       pcm->shdcnt = 0;
       return;
     }

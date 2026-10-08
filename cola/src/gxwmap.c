@@ -1315,3 +1315,20 @@ void gxwclose (gaint flag) {
   mcpos = 0;
   mclen = 0;
 }
+
+/* Copy the parameters the projection routines above keep between calls,
+   and put a copy back, for undo (gxxfsave, gxxfrest). */
+
+void gxmpsave (gadouble *v, gaint *adj) {
+  v[0] = lomin; v[1] = lomax; v[2] = lamin; v[3] = lamax;
+  v[4] = lonref; v[5] = (gadouble)londif; v[6] = fudge;
+  v[7] = hemi; v[8] = r; v[9] = 0.0;
+  *adj = adjtyp;
+}
+
+void gxmprest (gadouble *v, gaint adj) {
+  lomin = v[0]; lomax = v[1]; lamin = v[2]; lamax = v[3];
+  lonref = v[4]; londif = (float)v[5]; fudge = v[6];
+  hemi = v[7]; r = v[8];
+  adjtyp = adj;
+}

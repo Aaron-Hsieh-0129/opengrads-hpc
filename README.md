@@ -43,7 +43,9 @@ libraries are available.
 - **OpenMP calculation engine.** Common grid arithmetic, functions, and
   reductions can use multiple CPU cores. The default is four calculation
   threads; control it with `set threads N`, `./opengrads -j N`, or
-  `GA_NUM_THREADS=N`. See [performance notes](docs/PERFORMANCE.md).
+  `GA_NUM_THREADS=N`. A long `ave`, `sum`, `tloop`, `define` and the like
+  shows a progress line with the time left. See
+  [performance notes](docs/PERFORMANCE.md).
 
 - **Restored self-describing-file access.** Release builds require NetCDF and
   UDUNITS support, so `sdfopen` and `xdfopen` remain available for compatible
@@ -58,13 +60,23 @@ libraries are available.
   vectors, multi-panel layouts, legends, and publication-ready output. Existing OpenGrADS extensions are
   retained under [extensions](extensions).
 
+- **Plots in the terminal, no X needed.** Over ssh from iTerm2, the picture
+  appears in a tmux pane beside the `ga->` prompt and updates after each
+  command, with no X server or `ssh -X`. Animations play frame by frame as
+  they are drawn, as in an X window, and slow transfers show iTerm2's
+  progress bar. The launcher picks it automatically, on Linux and on a Mac.
+  See [terminal display](docs/TERMINAL.md).
+
 - **Undo for the plot.** Step the picture back one command at a time, off by
   default: `set undo 10` turns it on and keeps ten steps, `undo` rewinds one,
-  and a whole script counts as a single step. It rewinds the graphics, not
-  settings or open files. See [undo documentation](docs/UNDO.md).
+  a whole script counts as a single step, and `clear` can be undone too. The
+  picture comes back with what GrADS knows about it (axis ranges, scaling,
+  shading levels); settings and open files stay. See
+  [undo documentation](docs/UNDO.md).
 
 - **Modern interactive and release experience.** Optional GNU Readline adds
-  command history and Tab completion. The release builders produce three
+  command history and Tab completion. Ctrl-C clears a half-typed command, as
+  in a shell, and interrupts a running one, but never ends GrADS. The release builders produce three
   self-contained archives — Linux x86_64 and aarch64, and macOS arm64 —
   carrying BP5, OpenMP, the graphics plug-ins available on that platform, and
   every required runtime library.
@@ -94,6 +106,7 @@ Use `q config` to see whether this build includes `adios2-bp5`, `openmp`,
 - [Licensing and usage rules](docs/LICENSING.md)
 - [Release and packaging guide](docs/RELEASES.md)
 - [BP5 reader guide and limitations](docs/BP5.md)
+- [Terminal display: plots over ssh without X](docs/TERMINAL.md)
 - [Undo: settings and limits](docs/UNDO.md)
 - [OpenMP controls and benchmark notes](docs/PERFORMANCE.md)
 - [Architecture and development roadmap](docs/ARCHITECTURE.md)

@@ -87,7 +87,11 @@ jobs:
         run: |
           brew update
           brew install adios2 autoconf automake cairo coreutils gcc libgeotiff hdf5 \
-            libomp libtool netcdf pkgconf readline udunits
+            libomp libtool libx11 libxext libxmu netcdf pkgconf readline udunits
+          # tmux lets the terminal display's tests draw into a tmux pane.
+          brew install tmux
+          # XQuartz's Xvfb lets the packager draw with the X displays.
+          brew install --cask xquartz
 
       - name: Build, test, and package
         env:
